@@ -203,9 +203,9 @@ export async function handleSaveExam(examData) {
         // Get subject-specific configuration for accurate stats
         const subjectConfig = state.subjectConfigs[examData.subject] || {};
         const statsOptions = {
-            writtenPass: Number(subjectConfig.writtenPass) || undefined,
-            mcqPass: Number(subjectConfig.mcqPass) || undefined,
-            totalPass: Number(subjectConfig.total) * 0.33 || 33 // Default 33% if not specified
+            writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : undefined,
+            mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : undefined,
+            totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : 33
         };
 
         const stats = calculateStatistics(state.studentData, statsOptions);

@@ -109,8 +109,9 @@ export function determineStatus(student, options = {}) {
     const isCQOnly = written !== null && mcq === null && (practical === null);
 
     if (isCQOnly) {
-        // For CQ-only subjects, pass mark is strictly 33
-        return (written || 0) >= 33 ? 'পাস' : 'ফেল';
+        // For CQ-only subjects, use provided writtenPass or fallback to 33
+        const passMark = options.writtenPass !== undefined ? options.writtenPass : 33;
+        return (written || 0) >= passMark ? 'পাস' : 'ফেল';
     }
 
     // Custom Logic 2: Standard/Custom Component Subject

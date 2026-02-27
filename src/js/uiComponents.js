@@ -356,9 +356,9 @@ export function renderFailedStudents(container, data, options = {}) {
   container.innerHTML = paginatedStudents
     .map(student => {
       const gradeInfo = calculateGrade(student.total);
-      const failReason = Number(student.written) < writtenPass
+      const failReason = (student.written !== null && Number(student.written) < writtenPass)
         ? `লিখিত: ${student.written} < ${writtenPass}`
-        : Number(student.mcq) < mcqPass
+        : (student.mcq !== null && Number(student.mcq) < mcqPass)
           ? `MCQ: ${student.mcq} < ${mcqPass}`
           : `মোট মার্কস < ${totalPass}`;
 
@@ -391,8 +391,8 @@ export function renderFailedStudents(container, data, options = {}) {
             </div>
 
             <div class="fail-pill-ribbon">
-              ${Number(student.written) < writtenPass ? '<i class="fas fa-pen-nib"></i>' :
-          Number(student.mcq) < mcqPass ? '<i class="fas fa-check-double"></i>' :
+              ${(student.written !== null && Number(student.written) < writtenPass) ? '<i class="fas fa-pen-nib"></i>' :
+          (student.mcq !== null && Number(student.mcq) < mcqPass) ? '<i class="fas fa-check-double"></i>' :
             '<i class="fas fa-calculator"></i>'} ${failReason}
             </div>
           </div>
@@ -492,11 +492,11 @@ export function printFailedStudents(data, options = {}) {
       <td>${convertToBengaliDigits(s.roll || s.id)}</td>
       <td class="name-td">${s.name}</td>
       <td class="${getGroupClass(s.group)}">${s.group || '-'}</td>
-      <td ${Number(s.written) < writtenPass ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.written || 0)}</td>
-      <td ${Number(s.mcq) < mcqPass ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.mcq || 0)}</td>
-      <td>${convertToBengaliDigits(s.practical || 0)}</td>
+      <td ${(s.written !== null && Number(s.written) < writtenPass) ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.written !== null ? s.written : '-')}</td>
+      <td ${(s.mcq !== null && Number(s.mcq) < mcqPass) ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.mcq !== null ? s.mcq : '-')}</td>
+      <td>${convertToBengaliDigits(s.practical !== null ? s.practical : '-')}</td>
       <td><strong>${convertToBengaliDigits(s.total || 0)}</strong></td>
-      <td class="s-fail">${Number(s.written) < writtenPass ? 'CQ ফেল' : Number(s.mcq) < mcqPass ? 'MCQ ফেল' : 'মোট ফেল'}</td>
+      <td class="s-fail">${(s.written !== null && Number(s.written) < writtenPass) ? 'CQ ফেল' : (s.mcq !== null && Number(s.mcq) < mcqPass) ? 'MCQ ফেল' : 'মোট ফেল'}</td>
     </tr>`).join('');
 
   const printHTML = `<!DOCTYPE html>
@@ -746,10 +746,10 @@ export function printAllStudents(data, options = {}) {
       <td>${convertToBengaliDigits(s.roll || s.id)}</td>
       <td class="name-td">${s.name}</td>
       <td class="${getGroupClass(s.group)}">${s.group || '-'}</td>
-      <td ${Number(s.written) < writtenPass ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.written || 0)}</td>
-      <td ${Number(s.mcq) < mcqPass ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.mcq || 0)}</td>
-      <td>${convertToBengaliDigits(s.practical || 0)}</td>
-      <td><strong>${convertToBengaliDigits(s.total || 0)}</strong></td>
+      <td ${(s.written !== null && Number(s.written) < writtenPass) ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.written !== null ? s.written : '-')}</td>
+      <td ${(s.mcq !== null && Number(s.mcq) < mcqPass) ? 'style="color: #ef4444; font-weight: bold;"' : ''}>${convertToBengaliDigits(s.mcq !== null ? s.mcq : '-')}</td>
+      <td>${convertToBengaliDigits(s.practical !== null ? s.practical : '-')}</td>
+      <td><strong>${convertToBengaliDigits(s.total !== null ? s.total : 0)}</strong></td>
       <td>${convertToBengaliDigits(gradeInfo.point.toFixed(2))}</td>
       <td>${gradeInfo.grade}</td>
       <td class="${isAbs ? 's-abs' : isFailed ? 's-fail' : 's-pass'}">${status}</td>
@@ -965,10 +965,10 @@ export function renderTable(tbody, data, options = {}) {
           <td>${student.group}</td>
           <td>${student.class || '-'}</td>
           <td>${student.session || '-'}</td>
-          <td class="${Number(student.written) < writtenPass ? 'text-danger-custom' : ''}">${student.written}</td>
-          <td class="${Number(student.mcq) < mcqPass ? 'text-danger-custom' : ''}">${student.mcq}</td>
-          <td>${student.practical}</td>
-          <td><strong>${student.total}</strong></td>
+          <td class="${(student.written !== null && Number(student.written) < writtenPass) ? 'text-danger-custom' : ''}">${student.written !== null ? student.written : '-'}</td>
+          <td class="${(student.mcq !== null && Number(student.mcq) < mcqPass) ? 'text-danger-custom' : ''}">${student.mcq !== null ? student.mcq : '-'}</td>
+          <td>${student.practical !== null ? student.practical : '-'}</td>
+          <td><strong>${student.total !== null ? student.total : '-'}</strong></td>
           <td><span class="grade-cell ${getGradeClass(gradeInfo.grade)}">${gradeInfo.grade}</span></td>
           <td><span class="status-cell ${statusClass}">${status}</span></td>
         </tr >

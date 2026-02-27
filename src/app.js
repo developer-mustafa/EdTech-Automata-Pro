@@ -177,9 +177,9 @@ function updateViews() {
     }
 
     const subjectOptions = {
-        writtenPass: Number(subjectConfig.writtenPass) || FAILING_THRESHOLD.written,
-        mcqPass: Number(subjectConfig.mcqPass) || FAILING_THRESHOLD.mcq,
-        totalPass: Number(subjectConfig.total) * 0.33 || FAILING_THRESHOLD.total,
+        writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : FAILING_THRESHOLD.written,
+        mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : FAILING_THRESHOLD.mcq,
+        totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : FAILING_THRESHOLD.total,
         criteria: state.currentChartType
     };
 
@@ -1000,7 +1000,7 @@ function populateComparisonDropdowns(history, student) {
     let sessions = [...new Set(history.map(h => h.session || 'N/A'))].filter(Boolean);
 
     if (student && student.session) {
-        sessions = sessions.filter(s => s.toLowerCase() === student.session.toLowerCase());
+        sessions = sessions.filter(s => String(s).toLowerCase() === String(student.session).toLowerCase());
     }
 
     elements.analysisSessionSelect.innerHTML = '<option value="all">সকল সেশন</option>' +
@@ -1017,10 +1017,10 @@ function populateComparisonDropdowns(history, student) {
     const relevantExams = state.savedExams.filter(e => {
         let match = true;
         if (studentClass) {
-            match = match && (e.class || '').toLowerCase() === studentClass.toLowerCase();
+            match = match && String(e.class || '').toLowerCase() === String(studentClass).toLowerCase();
         }
         if (studentSession) {
-            match = match && (e.session || '').toLowerCase() === studentSession.toLowerCase();
+            match = match && String(e.session || '').toLowerCase() === String(studentSession).toLowerCase();
         }
         return match;
     });
@@ -1059,7 +1059,7 @@ function populateAnalysisSubjectDropdown() {
 
     let filteredHistory = history;
     if (selectedSession && selectedSession !== 'all') {
-        filteredHistory = history.filter(h => (h.session || 'N/A') === selectedSession);
+        filteredHistory = history.filter(h => String(h.session || 'N/A') === selectedSession);
     }
 
     const subjects = [...new Set(filteredHistory.map(h => h.subject))].filter(Boolean);

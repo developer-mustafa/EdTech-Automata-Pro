@@ -138,7 +138,8 @@ export const elements = {
     loadExamConfirmName: null,
     loadExamConfirmBtn: null,
     loadExamCancelBtn: null,
-    closeContactModalBtn: null
+    closeContactModalBtn: null,
+    formTitle: null
 };
 
 export function updateProfileUI(user, isAdmin, isSuperAdmin, role) {
@@ -338,6 +339,7 @@ export function initDOMReferences() {
     elements.loadExamConfirmBtn = document.getElementById('loadExamConfirmBtn');
     elements.loadExamCancelBtn = document.getElementById('loadExamCancelBtn');
     elements.closeContactModalBtn = document.getElementById('closeContactModalBtn');
+    elements.formTitle = document.getElementById('formTitle');
 }
 
 export function setLoading(isLoading, targetSelector = null) {
