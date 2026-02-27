@@ -582,7 +582,10 @@ function initEventListeners() {
             groupFilter: state.currentGroupFilter,
             gradeFilter: state.currentGradeFilter,
             sortBy: state.currentChartType,
-            sortOrder: state.currentSortOrder
+            sortOrder: state.currentSortOrder,
+            statusFilter: state.currentStatusFilter,
+            searchTerm: state.currentSearchTerm,
+            fullData: state.studentData // Added full data for stats
         });
     });
     elements.downloadFailedBtn?.addEventListener('click', () => {
@@ -615,7 +618,12 @@ function initEventListeners() {
         }, subjectOptions), {
             ...subjectOptions,
             examName: state.currentExamName,
-            subjectName: state.currentSubject
+            subjectName: state.currentSubject,
+            groupFilter: state.currentGroupFilter,
+            gradeFilter: state.currentGradeFilter,
+            statusFilter: state.currentStatusFilter,
+            searchTerm: state.currentSearchTerm,
+            fullData: state.studentData // Added full data for stats
         });
     });
 

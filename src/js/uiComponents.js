@@ -16,6 +16,7 @@ import {
   sortStudentData,
   formatDateBengali,
   normalizeText,
+  convertToBengaliDigits,
 } from './utils.js';
 import { FAILING_THRESHOLD, MAX_CHART_ENTRIES, MAX_TABLE_ENTRIES, GROUP_NAMES } from './constants.js';
 import { captureElementAsImage } from './dataService.js';
@@ -445,106 +446,187 @@ export function printFailedStudents(data, options = {}) {
   const subjectName = options.subjectName || 'N/A';
   const className = first.class || 'N/A';
   const session = first.session || 'N/A';
-  const totalStudents = data.length;
-  const participants = data.filter(s => Number(s.written) > 0 || Number(s.mcq) > 0).length;
-  const passedCount = participants - failedStudents.length;
 
-  const groupCounts = {};
-  failedStudents.forEach(s => { groupCounts[s.group] = (groupCounts[s.group] || 0) + 1; });
-  const groupSummary = Object.entries(groupCounts).map(([g, c]) => `${g}: ${c} জন`).join(' | ');
+  const statsData = options.fullData || data;
+  const overallStats = calculateStatistics(statsData, options);
+  const groupStats = calculateGroupStatistics(statsData, options);
 
-  const tableRows = failedStudents.map((s, i) => {
-    const failReason = Number(s.written) < writtenPass ? 'CQ ফেল'
-      : Number(s.mcq) < mcqPass ? 'MCQ ফেল' : 'মোট ফেল';
-    return `<tr>
-      <td>${i + 1}</td>
-      <td>${s.roll || s.id}</td>
-      <td class="name-cell">${s.name}</td>
-      <td>${s.group || '-'}</td>
-      <td>${s.written}</td>
-      <td>${s.mcq}</td>
-      <td>${s.practical}</td>
-      <td><strong>${s.total}</strong></td>
-      <td class="status-fail">${failReason}</td>
-    </tr>`;
+  // Dynamic Filters HTML
+  const filterChips = [];
+  if (options.groupFilter && options.groupFilter !== 'সব গ্রুপ') {
+    filterChips.push(`<span class="f-chip">বিভাগ: ${options.groupFilter}</span>`);
+  }
+  if (options.gradeFilter && options.gradeFilter !== 'সব গ্রেড') {
+    filterChips.push(`<span class="f-chip">গ্রেড: ${options.gradeFilter}</span>`);
+  }
+  const filtersHTML = filterChips.length > 0 ? `<div class="f-row">🔍 ফিল্টার: ${filterChips.join('')}</div>` : '';
+
+  const gradeDist = overallStats.gradeDistribution;
+  const gradesOrder = ['A+', 'A', 'A-', 'B', 'C', 'D', 'F'];
+  const gradeSummary = gradesOrder.map(g => {
+    const c = gradeDist[g] || 0;
+    const gClass = g.replace('+', 'plus').replace('-', 'minus');
+    return `
+      <div class="grade-box gb-${gClass}">
+        <div class="gb-top">${g}</div>
+        <div class="gb-btm">${convertToBengaliDigits(c)}</div>
+      </div>`;
   }).join('');
+
+  const groupSummaryHTML = groupStats.map(g => `
+    <div class="g-card">
+      <span class="gn">${g.group}</span>
+      <span class="gv">${convertToBengaliDigits(g.failedStudents)} জন ফেল</span>
+    </div>`).join('');
+
+  const tableRows = failedStudents.map((s, i) => `
+    <tr>
+      <td>${convertToBengaliDigits(i + 1)}</td>
+      <td>${convertToBengaliDigits(s.roll || s.id)}</td>
+      <td class="name-td">${s.name}</td>
+      <td>${s.group || '-'}</td>
+      <td>${convertToBengaliDigits(s.written || 0)}</td>
+      <td>${convertToBengaliDigits(s.mcq || 0)}</td>
+      <td>${convertToBengaliDigits(s.practical || 0)}</td>
+      <td><strong>${convertToBengaliDigits(s.total || 0)}</strong></td>
+      <td class="s-fail">${Number(s.written) < writtenPass ? 'CQ ফেল' : Number(s.mcq) < mcqPass ? 'MCQ ফেল' : 'মোট ফেল'}</td>
+    </tr>`).join('');
 
   const printHTML = `<!DOCTYPE html>
 <html lang="bn">
 <head>
   <meta charset="UTF-8">
-  <title>ফেল করা শিক্ষার্থী - ${examName}</title>
+  <title>ফেল - ${examName}</title>
   <style>
-    @page { size: A4; margin: 15mm 12mm; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; color: #1a1a2e; font-size: 11px; line-height: 1.4; }
-    .print-header { text-align: center; border-bottom: 3px double #1a1a2e; padding-bottom: 10px; margin-bottom: 12px; }
-    .print-header h1 { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
-    .print-header .sub { font-size: 12px; color: #555; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 16px; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #dee2e6; }
-    .info-item { font-size: 11px; }
-    .info-item .label { font-weight: 700; color: #555; }
-    .info-item .val { font-weight: 800; color: #1a1a2e; }
-    .stats-row { display: flex; gap: 12px; margin-bottom: 12px; justify-content: center; }
-    .stat-box { padding: 6px 16px; border-radius: 6px; text-align: center; font-size: 11px; font-weight: 700; border: 1px solid #dee2e6; }
-    .stat-box.total-box { background: #e8f4fd; color: #0c5460; }
-    .stat-box.pass-box { background: #d4edda; color: #155724; }
-    .stat-box.fail-box { background: #f8d7da; color: #721c24; }
-    .group-summary { text-align: center; font-size: 10px; color: #666; margin-bottom: 10px; }
-    table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-    th { background: #1a1a2e; color: white; padding: 6px 4px; text-align: center; font-weight: 700; font-size: 10px; }
-    td { padding: 5px 4px; text-align: center; border-bottom: 1px solid #dee2e6; }
-    tr:nth-child(even) { background: #f8f9fa; }
-    .name-cell { text-align: left; font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .status-fail { color: #dc3545; font-weight: 800; font-size: 9.5px; }
-    .print-footer { margin-top: 15px; text-align: center; font-size: 9px; color: #999; border-top: 1px solid #dee2e6; padding-top: 6px; }
+    @page { size: A4; margin: 10mm; }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust: exact; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1e293b; font-size: 10px; line-height: 1.3; }
+    
+    .h { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1.5px solid #0f172a; }
+    .h h1 { font-size: 18px; font-weight: 800; color: #0f172a; }
+    .h .sub { font-size: 12px; color: #475569; font-weight: 600; margin-top: 1px; }
+
+    .top-bar { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 12px; border-radius: 6px; margin-bottom: 10px; }
+    .top-item { display: flex; gap: 6px; font-size: 10px; }
+    .lbl { color: #64748b; font-weight: 600; }
+    .val { color: #0f172a; font-weight: 800; }
+    .pm-box { background: #fff7ed; padding: 1px 10px; border-radius: 4px; border: 1px solid #fed7aa; color: #9a3412; }
+
+    .f-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; background: #fffbeb; border: 1px solid #fef3c7; padding: 4px; border-radius: 6px; font-size: 9px; font-weight: 700; color: #92400e; }
+    .f-chip { background: #fbbf24; color: #78350f; padding: 1px 8px; border-radius: 4px; border: 1px solid #f59e0b; }
+
+    .dash { display: grid; grid-template-columns: 1fr 240px; gap: 10px; margin-bottom: 10px; }
+    .section { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; background: white; }
+    .st { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: center; }
+    
+    /* Grade Box Split Design */
+    .grade-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; }
+    .grade-box { width: 52px; border: 1.5px solid #e2e8f0; border-radius: 10px; overflow: hidden; text-align: center; }
+    .gb-top { font-size: 12px; font-weight: 800; padding: 4px 0; background: white; }
+    .gb-btm { font-size: 14px; font-weight: 900; padding: 4px 0; color: white; }
+
+    /* Grade Colors */
+    .gb-Aplus { border-color: #10b981; } .gb-Aplus .gb-top { color: #10b981; } .gb-Aplus .gb-btm { background: #10b981; }
+    .gb-A { border-color: #22c55e; } .gb-A .gb-top { color: #22c55e; } .gb-A .gb-btm { background: #22c55e; }
+    .gb-Aminus { border-color: #84cc16; } .gb-Aminus .gb-top { color: #84cc16; } .gb-Aminus .gb-btm { background: #84cc16; }
+    .gb-B { border-color: #3b82f6; } .gb-B .gb-top { color: #3b82f6; } .gb-B .gb-btm { background: #3b82f6; }
+    .gb-C { border-color: #f59e0b; } .gb-C .gb-top { color: #f59e0b; } .gb-C .gb-btm { background: #f59e0b; }
+    .gb-D { border-color: #f97316; } .gb-D .gb-top { color: #f97316; } .gb-D .gb-btm { background: #f97316; }
+    .gb-F { border-color: #ef4444; } .gb-F .gb-top { color: #ef4444; } .gb-F .gb-btm { background: #ef4444; }
+
+    .sum-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; height: calc(100% - 20px); align-items: center; }
+    .s-boxInner { text-align: center; padding: 6px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; }
+    .s-boxInner.t { background: #eff6ff; color: #1e40af; }
+    .s-boxInner.p { background: #f0fdf4; color: #166534; }
+    .s-boxInner.f { background: #fef2f2; color: #991b1b; }
+    .sn { font-size: 8px; font-weight: 700; opacity: 0.8; margin-top: 2px; }
+    .sv { font-size: 16px; font-weight: 900; }
+
+    .group-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .g-card { flex: 1; border: 1px solid #e2e8f0; padding: 6px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; text-align: center; background: white; }
+    .g-card .gn { font-size: 8px; color: #64748b; font-weight: 800; border-bottom: 1px solid #f1f5f9; width: 100%; margin-bottom: 2px; }
+    .g-card .gv { font-size: 11px; font-weight: 900; color: #ef4444; }
+
+    table { width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; margin-top: 5px; }
+    th { background: #f1f5f9; color: #334155; padding: 7px 4px; font-size: 9px; font-weight: 800; border: 1px solid #e2e8f0; border-bottom: 2px solid #cbd5e1; }
+    td { padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-size: 10px; }
+    tr:nth-child(even) { background: #f8fafc; }
+    .name-td { text-align: left; font-weight: 600; padding-left: 8px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .s-fail { color: #ef4444; font-weight: 800; font-size: 8.5px; }
+    
+    /* Persistent Footer Logic */
+    .ftr { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1.5px solid #e2e8f0; padding: 10px 0; text-align: center; }
+    .ftr-dev { font-size: 10px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
+    .ftr-contact { font-size: 9px; color: #64748b; font-weight: 600; }
+    .ftr-soft { color: #10b981; font-weight: 800; border-left: 2px solid #e2e8f0; margin-left: 8px; padding-left: 8px; }
+    
+    @media print {
+      body { padding: 0; margin: 0; }
+      .section, .g-card { break-inside: avoid; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+    }
   </style>
 </head>
 <body>
-  <div class="print-header">
-    <h1>ফেল করা শিক্ষার্থীদের তালিকা</h1>
+  <div class="h">
+    <h1>অকৃতকার্য শিক্ষার্থীদের তালিকা</h1>
     <div class="sub">${examName} — ${subjectName}</div>
   </div>
 
-  <div class="info-grid">
-    <div class="info-item"><span class="label">শ্রেণি:</span> <span class="val">${className}</span></div>
-    <div class="info-item"><span class="label">সেশন:</span> <span class="val">${session}</span></div>
-    <div class="info-item"><span class="label">মোট শিক্ষার্থী:</span> <span class="val">${totalStudents} জন</span></div>
-    <div class="info-item"><span class="label">পরীক্ষার্থী:</span> <span class="val">${participants} জন</span></div>
-    <div class="info-item"><span class="label">পাস মার্ক (CQ):</span> <span class="val">${writtenPass}</span></div>
-    <div class="info-item"><span class="label">পাস মার্ক (MCQ):</span> <span class="val">${mcqPass}</span></div>
+  <div class="top-bar">
+    <div class="top-item"><span class="lbl">শ্রেণি ও সেশন:</span> <span class="val">${className} (${convertToBengaliDigits(session)})</span></div>
+    <div class="top-item pm-box"><span class="lbl">Pass (CQ/MCQ):</span> <span class="val">${convertToBengaliDigits(writtenPass)} / ${convertToBengaliDigits(mcqPass)}</span></div>
   </div>
 
-  <div class="stats-row">
-    <div class="stat-box total-box">পরীক্ষার্থী: <strong>${participants}</strong> জন</div>
-    <div class="stat-box pass-box">পাস: <strong>${passedCount}</strong> জন</div>
-    <div class="stat-box fail-box">ফেল: <strong>${failedStudents.length}</strong> জন</div>
+  ${filtersHTML}
+
+  <div class="dash">
+    <div class="section">
+      <div class="st">গ্রেড বিন্যাস</div>
+      <div class="grade-grid">${gradeSummary}</div>
+    </div>
+    <div class="section">
+      <div class="st">সারসংক্ষেপ</div>
+      <div class="sum-grid">
+        <div class="s-boxInner t"><div class="sv">${convertToBengaliDigits(overallStats.participants)}</div><div class="sn">পরীক্ষার্থী</div></div>
+        <div class="s-boxInner p"><div class="sv">${convertToBengaliDigits(overallStats.passedStudents)}</div><div class="sn">পাস</div></div>
+        <div class="s-boxInner f"><div class="sv">${convertToBengaliDigits(overallStats.failedStudents)}</div><div class="sn">ফেল</div></div>
+      </div>
+    </div>
   </div>
 
-  <div class="group-summary">বিভাগভিত্তিক ফেল: ${groupSummary}</div>
+  <div class="group-row">${groupSummaryHTML}</div>
 
   <table>
     <thead>
       <tr>
-        <th>ক্র.নং</th>
-        <th>রোল</th>
-        <th style="text-align:left">নাম</th>
-        <th>বিভাগ</th>
-        <th>CQ</th>
-        <th>MCQ</th>
-        <th>Practical</th>
-        <th>Total</th>
-        <th>Status</th>
+        <th width="40">ক্র.নং</th>
+        <th width="60">রোল</th>
+        <th style="text-align:left; padding-left: 8px;">নাম</th>
+        <th width="80">বিভাগ</th>
+        <th width="40">CQ</th>
+        <th width="40">MCQ</th>
+        <th width="40">Prac</th>
+        <th width="50">Total</th>
+        <th width="70">অবস্থা</th>
       </tr>
     </thead>
     <tbody>${tableRows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="9" style="border: none; padding: 0; height: 45px;"></td>
+      </tr>
+    </tfoot>
   </table>
 
-  <div class="print-footer">
-    Generated from Students Performance Analysis — ${new Date().toLocaleDateString('bn-BD')}
+  <!-- Persistent Footer -->
+  <div class="ftr">
+    <div class="ftr-dev">সফটওয়্যার নির্মাতা: মোস্তফা রাহমান, সিনিয়র সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
+    <div class="ftr-contact">যোগাযোগ: ০১৮৪০-৬৪৩৯৪৬ <span class="ftr-soft">অটোমেটেড এক্সাম এনালিষ্ট সফটওয়্যার</span></div>
   </div>
 
-  <script>window.onload = () => { window.print(); }</script>
+  <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); }</script>
 </body>
 </html>`;
 
@@ -563,30 +645,30 @@ export function printAllStudents(data, options = {}) {
   const { writtenPass = FAILING_THRESHOLD.written, mcqPass = FAILING_THRESHOLD.mcq, totalPass = 33 } = options;
   const examName = options.examName || 'N/A';
   const subjectName = options.subjectName || 'N/A';
-  const groupFilter = options.groupFilter || 'সব গ্রুপ';
-  const gradeFilter = options.gradeFilter || 'সব গ্রেড';
   const first = data[0] || {};
   const className = first.class || 'N/A';
   const session = first.session || 'N/A';
 
-  // Build filter info for header
-  const filterParts = [];
-  if (groupFilter && groupFilter !== 'সব গ্রুপ') filterParts.push(`বিভাগ: ${groupFilter}`);
-  if (gradeFilter && gradeFilter !== 'সব গ্রেড') filterParts.push(`গ্রেড: ${gradeFilter}`);
-  const filterLine = filterParts.length > 0 ? filterParts.join(' | ') : '';
+  const statsData = options.fullData || data;
+  const overallStats = calculateStatistics(statsData, options);
 
-  // Dynamic sorting based on filter panel
+  // Dynamic Filters HTML
+  const filterChips = [];
+  if (options.groupFilter && options.groupFilter !== 'সব গ্রুপ') {
+    filterChips.push(`<span class="f-chip">বিভাগ: ${options.groupFilter}</span>`);
+  }
+  if (options.gradeFilter && options.gradeFilter !== 'সব গ্রেড') {
+    filterChips.push(`<span class="f-chip">গ্রেড: ${options.gradeFilter}</span>`);
+  }
+  const filtersHTML = filterChips.length > 0 ? `<div class="f-row">🔍 ফিল্টার: ${filterChips.join('')}</div>` : '';
+
+  // Sorting
   const sortBy = options.sortBy || 'total';
   const sortOrder = options.sortOrder || 'desc';
-  const sortLabels = { 'total': 'মোট স্কোর', 'written': 'লিখিত', 'mcq': 'MCQ', 'practical': 'প্র্যাকটিক্যাল' };
-  const orderLabels = { 'desc': 'সর্বোচ্চ → সর্বনিম্ন', 'asc': 'সর্বনিম্ন → সর্বোচ্চ', 'roll-asc': 'রোল: ছোট → বড়', 'roll-desc': 'রোল: বড় → ছোট' };
-
   const sorted = [...data].sort((a, b) => {
     if (sortOrder === 'roll-asc' || sortOrder === 'roll-desc') {
-      // First sort by group (বিজ্ঞান → ব্যবসায় → মানবিক)
       const groupCompare = (a.group || '').localeCompare(b.group || '', 'bn');
       if (groupCompare !== 0) return groupCompare;
-      // Then by roll within each group
       const rollA = parseInt(a.roll || a.id) || 0;
       const rollB = parseInt(b.roll || b.id) || 0;
       return sortOrder === 'roll-asc' ? rollA - rollB : rollB - rollA;
@@ -596,60 +678,34 @@ export function printAllStudents(data, options = {}) {
     return sortOrder === 'asc' ? valA - valB : valB - valA;
   });
 
-  const totalStudents = sorted.length;
-  const stats = calculateStatistics(sorted, options);
-  const participants = stats.participants;
-  const failedStudents = getFailedStudents(sorted, options);
-  const passedCount = stats.passedStudents;
-  const passRate = participants > 0 ? ((passedCount / participants) * 100).toFixed(1) : 0;
-
-  // Grade distribution (exclude absent students)
-  const gradeDist = {};
-  let absentCount = 0;
-  sorted.forEach(s => {
-    if (isAbsent(s)) {
-      absentCount++;
-      return;
-    }
-    const status = determineStatus(s, options);
-    const g = status === 'ফেল' ? 'F' : calculateGrade(s.total).grade;
-    gradeDist[g] = (gradeDist[g] || 0) + 1;
-  });
-  const gradeColors = { 'A+': '#10b981', 'A': '#22c55e', 'A-': '#84cc16', 'B': '#3b82f6', 'C': '#f59e0b', 'D': '#f97316', 'F': '#ef4444' };
-  const gradeBoxes = ['A+', 'A', 'A-', 'B', 'C', 'D', 'F'].map(g => {
-    const count = gradeDist[g] || 0;
-    const color = gradeColors[g];
-    return `<div class="grade-box" style="border-color: ${color};">
-      <span class="gb-grade" style="color: ${color};">${g}</span>
-      <span class="gb-count" style="background: ${color};">${count}</span>
-    </div>`;
-  }).join('') + (absentCount > 0 ? `<div class="grade-box" style="border-color: #94a3b8;">
-      <span class="gb-grade" style="color: #94a3b8;">অনু.</span>
-      <span class="gb-count" style="background: #94a3b8;">${absentCount}</span>
-    </div>` : '');
+  // Grade Summary (Split-card)
+  const gradeDist = overallStats.gradeDistribution;
+  const gradesOrder = ['A+', 'A', 'A-', 'B', 'C', 'D', 'F'];
+  const gradeSummary = gradesOrder.map(g => {
+    const c = gradeDist[g] || 0;
+    const gClass = g.replace('+', 'plus').replace('-', 'minus');
+    return `<div class="grade-box gb-${gClass}"><div class="gb-top">${g}</div><div class="gb-btm">${convertToBengaliDigits(c)}</div></div>`;
+  }).join('');
 
   const tableRows = sorted.map((s, i) => {
     const gradeInfo = calculateGrade(s.total);
     const status = determineStatus(s, options);
-    const isFailed = status === 'ফেল';
     const isAbs = status === 'অনুপস্থিত';
-    const statusClass = isAbs ? 'status-absent' : isFailed ? 'status-fail' : 'status-pass';
-    const groupColorClass = (s.group || '').includes('বিজ্ঞান') ? 'grp-science' :
-      (s.group || '').includes('ব্যবসায়') ? 'grp-business' : 'grp-arts';
-    const rowGroupClass = (s.group || '').includes('বিজ্ঞান') ? 'row-science' :
-      (s.group || '').includes('ব্যবসায়') ? 'row-business' : 'row-arts';
-    return `<tr class="${rowGroupClass} ${isFailed ? 'row-fail' : ''}">
-      <td>${i + 1}</td>
-      <td>${s.roll || s.id}</td>
-      <td class="name-cell">${s.name}</td>
+    const isFailed = status === 'ফেল';
+    const groupColorClass = (s.group || '').includes('বিজ্ঞান') ? 'grp-science' : (s.group || '').includes('ব্যবসায়') ? 'grp-business' : 'grp-arts';
+
+    return `<tr class="${isFailed ? 'row-fail' : ''}">
+      <td>${convertToBengaliDigits(i + 1)}</td>
+      <td>${convertToBengaliDigits(s.roll || s.id)}</td>
+      <td class="name-td">${s.name}</td>
       <td><span class="grp-cell ${groupColorClass}">${s.group || '-'}</span></td>
-      <td>${s.written}</td>
-      <td>${s.mcq}</td>
-      <td>${s.practical}</td>
-      <td><strong>${s.total}</strong></td>
-      <td>${gradeInfo.point.toFixed(2)}</td>
+      <td>${convertToBengaliDigits(s.written || 0)}</td>
+      <td>${convertToBengaliDigits(s.mcq || 0)}</td>
+      <td>${convertToBengaliDigits(s.practical || 0)}</td>
+      <td><strong>${convertToBengaliDigits(s.total || 0)}</strong></td>
+      <td>${convertToBengaliDigits(gradeInfo.point.toFixed(2))}</td>
       <td>${gradeInfo.grade}</td>
-      <td class="${statusClass}">${status}</td>
+      <td class="${isAbs ? 's-abs' : isFailed ? 's-fail' : 's-pass'}">${status}</td>
     </tr>`;
   }).join('');
 
@@ -659,126 +715,131 @@ export function printAllStudents(data, options = {}) {
   <meta charset="UTF-8">
   <title>${examName} - ফলাফল</title>
   <style>
-    @page { size: A4; margin: 12mm 10mm; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; color: #1a1a2e; font-size: 10px; line-height: 1.3; }
+    @page { size: A4; margin: 10mm; }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust: exact; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1e293b; font-size: 10px; line-height: 1.3; }
+    
+    .h { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1.5px solid #0f172a; }
+    .h h1 { font-size: 18px; font-weight: 800; color: #0f172a; }
+    .h .sub { font-size: 12px; color: #475569; font-weight: 600; margin-top: 1px; }
 
-    .print-header { text-align: center; border-bottom: 3px double #1a1a2e; padding-bottom: 8px; margin-bottom: 10px; }
-    .print-header h1 { font-size: 16px; font-weight: 900; margin-bottom: 2px; }
-    .print-header .sub { font-size: 11px; color: #555; margin-bottom: 4px; }
-    .header-badges { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-    .header-badge { padding: 3px 12px; border-radius: 4px; font-size: 10px; font-weight: 700; background: #f0f0f0; border: 1px solid #ccc; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 12px; border-radius: 6px; margin-bottom: 10px; }
+    .top-item { display: flex; gap: 6px; font-size: 10px; }
+    .lbl { color: #64748b; font-weight: 600; }
+    .val { color: #0f172a; font-weight: 800; }
+    .pm-box { background: #fff7ed; padding: 1px 10px; border-radius: 4px; border: 1px solid #fed7aa; color: #9a3412; }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
-    .summary-item { text-align: center; padding: 6px 4px; border-radius: 6px; border: 1px solid #dee2e6; }
-    .summary-item .s-label { font-size: 8px; font-weight: 700; color: #777; text-transform: uppercase; display: block; }
-    .summary-item .s-value { font-size: 14px; font-weight: 900; display: block; }
-    .summary-item.total-box { background: #e8f4fd; }
-    .summary-item.total-box .s-value { color: #0c5460; }
-    .summary-item.exam-box { background: #fff3cd; }
-    .summary-item.exam-box .s-value { color: #856404; }
-    .summary-item.pass-box { background: #d4edda; }
-    .summary-item.pass-box .s-value { color: #155724; }
-    .summary-item.fail-box { background: #f8d7da; }
-    .summary-item.fail-box .s-value { color: #721c24; }
-    .summary-item.rate-box { background: #e2e3f1; }
-    .summary-item.rate-box .s-value { color: #383d6e; }
+    .dash { display: grid; grid-template-columns: 1fr 240px; gap: 10px; margin-bottom: 10px; }
+    .section { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; background: white; }
+    .st { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: center; }
+    
+    .grade-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; }
+    .grade-box { width: 52px; border: 1.5px solid #e2e8f0; border-radius: 10px; overflow: hidden; text-align: center; }
+    .gb-top { font-size: 12px; font-weight: 800; padding: 4px 0; background: white; color: #1e293b; }
+    .gb-btm { font-size: 14px; font-weight: 900; padding: 4px 0; color: white; }
 
-    .grade-section { margin-bottom: 10px; }
-    .grade-section-title { text-align: center; font-size: 9px; color: #888; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
-    .grade-boxes { display: flex; justify-content: center; gap: 6px; }
-    .grade-box { display: flex; flex-direction: column; align-items: center; border: 2px solid #ccc; border-radius: 8px; min-width: 44px; overflow: hidden; background: white; }
-    .gb-grade { font-size: 13px; font-weight: 900; padding: 4px 0 2px; }
-    .gb-count { display: block; width: 100%; text-align: center; color: white; font-size: 11px; font-weight: 800; padding: 2px 0; }
+    .gb-Aplus { border-color: #10b981; } .gb-Aplus .gb-top { color: #10b981; } .gb-Aplus .gb-btm { background: #10b981; }
+    .gb-A { border-color: #22c55e; } .gb-A .gb-top { color: #22c55e; } .gb-A .gb-btm { background: #22c55e; }
+    .gb-Aminus { border-color: #84cc16; } .gb-Aminus .gb-top { color: #84cc16; } .gb-Aminus .gb-btm { background: #84cc16; }
+    .gb-B { border-color: #3b82f6; } .gb-B .gb-top { color: #3b82f6; } .gb-B .gb-btm { background: #3b82f6; }
+    .gb-C { border-color: #f59e0b; } .gb-C .gb-top { color: #f59e0b; } .gb-C .gb-btm { background: #f59e0b; }
+    .gb-D { border-color: #f97316; } .gb-D .gb-top { color: #f97316; } .gb-D .gb-btm { background: #f97316; }
+    .gb-F { border-color: #ef4444; } .gb-F .gb-top { color: #ef4444; } .gb-F .gb-btm { background: #ef4444; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
-    th { background: #1a1a2e; color: white; padding: 5px 3px; text-align: center; font-weight: 700; font-size: 8.5px; text-transform: uppercase; }
-    td { padding: 4px 3px; text-align: center; border-bottom: 1px solid #e9ecef; }
-    tr:nth-child(even) { background: #f8f9fa; }
-    .row-fail { background: #fff5f5 !important; }
-    .name-cell { text-align: left; font-weight: 600; }
-    .status-pass { color: #27ae60; font-weight: 800; }
-    .status-fail { color: #e74c3c; font-weight: 800; }
-    .status-absent { color: #95a5a6; font-weight: 700; }
+    .sum-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; height: calc(100% - 20px); align-items: center; }
+    .s-boxInner { text-align: center; padding: 6px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; }
+    .s-boxInner.t { background: #eff6ff; color: #1e40af; }
+    .s-boxInner.p { background: #f0fdf4; color: #166534; }
+    .s-boxInner.f { background: #fef2f2; color: #991b1b; }
+    .sn { font-size: 8px; font-weight: 700; opacity: 0.8; margin-top: 2px; }
+    .sv { font-size: 16px; font-weight: 900; }
 
-    .grp-cell { font-weight: 700; font-size: 8.5px; padding: 2px 6px; border-radius: 4px; color: white; white-space: nowrap; display: inline-block; }
+    table { width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; margin-top: 5px; }
+    th { background: #f1f5f9; color: #334155; padding: 7px 4px; font-size: 9px; font-weight: 800; border: 1px solid #e2e8f0; border-bottom: 2px solid #cbd5e1; }
+    td { padding: 4px; border: 1px solid #e2e8f0; text-align: center; font-size: 10px; }
+    tr:nth-child(even) { background: #f8fafc; }
+    .name-td { text-align: left; font-weight: 600; padding-left: 8px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    
+    .grp-cell { font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 3px; color: white; white-space: nowrap; }
     .grp-science { background: #6366f1; }
     .grp-business { background: #f59e0b; }
     .grp-arts { background: #f43f5e; }
-    tr.row-science { border-left: 3px solid #6366f1; }
-    tr.row-business { border-left: 3px solid #f59e0b; }
-    tr.row-arts { border-left: 3px solid #f43f5e; }
 
-    .filter-info { text-align: center; font-size: 9px; color: #e74c3c; font-weight: 700; margin-bottom: 8px; }
-    .filter-tag { display: inline-block; background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 4px; font-size: 9px; margin: 0 2px; border: 1px solid #ffc107; }
-
-    .print-footer { margin-top: 10px; text-align: center; font-size: 8px; color: #aaa; border-top: 1px solid #dee2e6; padding-top: 4px; }
+    .s-pass { color: #27ae60; font-weight: 800; }
+    .s-fail { color: #ef4444; font-weight: 800; }
+    .s-abs { color: #94a3b8; font-weight: 700; }
+    
+    .ftr { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1.5px solid #e2e8f0; padding: 10px 0; text-align: center; }
+    .ftr-dev { font-size: 10px; font-weight: 700; color: #0f172a; margin-bottom: 3px; }
+    .ftr-contact { font-size: 9px; color: #64748b; font-weight: 600; }
+    .ftr-soft { color: #10b981; font-weight: 800; border-left: 2px solid #e2e8f0; margin-left: 8px; padding-left: 8px; }
+    
+    @media print {
+      body { padding: 0; margin: 0; }
+      .section { break-inside: avoid; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+    }
   </style>
 </head>
 <body>
-  <div class="print-header">
-    <h1>${examName}</h1>
-    <div class="sub">${subjectName}</div>
-    <div class="header-badges">
-      <span class="header-badge">📚 শ্রেণি: ${className}</span>
-      <span class="header-badge">📅 সেশন: ${session}</span>
-    </div>
-    ${filterLine ? `<div class="filter-info">🔍 ফিল্টার: ${filterParts.map(f => `<span class="filter-tag">${f}</span>`).join(' ')}</div>` : ''}
-    <div class="filter-info">📊 সাজানো: <span class="filter-tag">${sortLabels[sortBy] || sortBy} — ${orderLabels[sortOrder] || sortOrder}</span></div>
+  <div class="h">
+    <h1>শিক্ষার্থীদের পূর্ণাঙ্গ ফলাফল তালিকা</h1>
+    <div class="sub">${examName} — ${subjectName}</div>
   </div>
 
-  <div class="summary-grid">
-    <div class="summary-item total-box">
-      <span class="s-label">মোট শিক্ষার্থী</span>
-      <span class="s-value">${totalStudents}</span>
-    </div>
-    <div class="summary-item exam-box">
-      <span class="s-label">পরীক্ষার্থী</span>
-      <span class="s-value">${participants}</span>
-    </div>
-    <div class="summary-item pass-box">
-      <span class="s-label">পাস</span>
-      <span class="s-value">${passedCount}</span>
-    </div>
-    <div class="summary-item fail-box">
-      <span class="s-label">ফেল</span>
-      <span class="s-value">${failedStudents.length}</span>
-    </div>
-    <div class="summary-item rate-box">
-      <span class="s-label">পাসের হার</span>
-      <span class="s-value">${passRate}%</span>
-    </div>
+  <div class="top-bar">
+    <div class="top-item"><span class="lbl">শ্রেণি ও সেশন:</span> <span class="val">${className} (${convertToBengaliDigits(session)})</span></div>
+    <div class="top-item pm-box"><span class="lbl">Pass (CQ/MCQ):</span> <span class="val">${convertToBengaliDigits(writtenPass)} / ${convertToBengaliDigits(mcqPass)}</span></div>
   </div>
 
-  <div class="grade-section">
-    <div class="grade-section-title">গ্রেড বিন্যাস</div>
-    <div class="grade-boxes">${gradeBoxes}</div>
+  ${filtersHTML}
+
+  <div class="dash">
+    <div class="section">
+      <div class="st">গ্রেড বিন্যাস</div>
+      <div class="grade-grid">${gradeSummary}</div>
+    </div>
+    <div class="section">
+      <div class="st">সারসংক্ষেপ</div>
+      <div class="sum-grid">
+        <div class="s-boxInner t"><div class="sv">${convertToBengaliDigits(overallStats.participants)}</div><div class="sn">পরীক্ষার্থী</div></div>
+        <div class="s-boxInner p"><div class="sv">${convertToBengaliDigits(overallStats.passedStudents)}</div><div class="sn">পাস</div></div>
+        <div class="s-boxInner f"><div class="sv">${convertToBengaliDigits(overallStats.failedStudents)}</div><div class="sn">ফেল</div></div>
+      </div>
+    </div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>ক্র.নং</th>
-        <th>রোল</th>
-        <th style="text-align:left">নাম</th>
-        <th>বিভাগ</th>
-        <th>CQ</th>
-        <th>MCQ</th>
-        <th>Practical</th>
-        <th>Total</th>
-        <th>GPA</th>
-        <th>Grade</th>
-        <th>Status</th>
+        <th width="35">ক্র.নং</th>
+        <th width="50">রোল</th>
+        <th style="text-align:left; padding-left: 8px;">নাম</th>
+        <th width="80">বিভাগ</th>
+        <th width="35">CQ</th>
+        <th width="35">MCQ</th>
+        <th width="35">Prac</th>
+        <th width="45">Total</th>
+        <th width="40">GPA</th>
+        <th width="40">Grade</th>
+        <th width="60">অবস্থা</th>
       </tr>
     </thead>
     <tbody>${tableRows}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="11" style="border: none; padding: 0; height: 45px;"></td>
+      </tr>
+    </tfoot>
   </table>
 
-  <div class="print-footer">
-    Students Performance Analysis — ${new Date().toLocaleDateString('bn-BD')}
+  <div class="ftr">
+    <div class="ftr-dev">সফটওয়্যার নির্মাতা: মোস্তফা রাহমান, সিনিয়র সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
+    <div class="ftr-contact">যোগাযোগ: ০১৮৪০-৬৪৩৯৪৬ <span class="ftr-soft">অটোমেটেড এক্সাম এনালিষ্ট সফটওয়্যার</span></div>
   </div>
 
-  <script>window.onload = () => { window.print(); }<\/script>
+  <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); }</script>
 </body>
 </html>`;
 
