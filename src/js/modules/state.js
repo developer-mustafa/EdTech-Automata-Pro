@@ -8,7 +8,8 @@ export const state = {
     subjectConfigs: {},
     classSubjectMapping: {},
     currentGroupFilter: 'all',
-    currentGradeFilter: 'all',
+    currentStatusFilter: 'all', // 'all', 'pass', 'fail', 'absent'
+    currentGradeFilter: 'all',  // 'A+', 'A', etc.
     currentSearchTerm: '',
     currentView: 'chart',
     currentChartType: 'total',
@@ -46,6 +47,13 @@ export const state = {
     savedExamsCurrentPage: 1,
     savedExamsPerPage: 4,
     savedExamsClassFilter: 'all',
+    savedExamsSessionFilter: 'all',
+
+    // Failed Students Pagination
+    failedStudentsCurrentPage: 1,
+    failedStudentsPerPage: 12,
+    failedSearchTerm: '',
+
     defaultExamId: null,
     currentExamSession: null,
     currentExamClass: null,

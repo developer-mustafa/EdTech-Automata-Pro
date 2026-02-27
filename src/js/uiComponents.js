@@ -15,6 +15,7 @@ import {
   isAbsent,
   sortStudentData,
   formatDateBengali,
+  normalizeText,
 } from './utils.js';
 import { FAILING_THRESHOLD, MAX_CHART_ENTRIES, MAX_TABLE_ENTRIES, GROUP_NAMES } from './constants.js';
 import { captureElementAsImage } from './dataService.js';
@@ -268,16 +269,24 @@ export function renderGroupStats(container, data, options = {}) {
 
 
 export function renderFailedStudents(container, data, options = {}) {
-  const { metaElement } = options;
+  const { metaElement, paginationContainer } = options;
 
   // যদি data না থাকে
   if (!data || data.length === 0) {
     container.innerHTML = '<div class="failed-student fade-in">কোনো ডেটা নেই</div>';
     if (metaElement) metaElement.innerHTML = '';
+    if (paginationContainer) paginationContainer.innerHTML = '';
     return;
   }
 
-  const { writtenPass = FAILING_THRESHOLD.written, mcqPass = FAILING_THRESHOLD.mcq, totalPass = 33 } = options;
+  const {
+    writtenPass = FAILING_THRESHOLD.written,
+    mcqPass = FAILING_THRESHOLD.mcq,
+    totalPass = 33,
+    currentPage = 1,
+    perPage = 12,
+    onPageChange = null
+  } = options;
   let failedStudents = getFailedStudents(data, options);
 
   // Sort by Group (Bengali) and Roll
@@ -286,6 +295,30 @@ export function renderFailedStudents(container, data, options = {}) {
     if (groupCompare !== 0) return groupCompare;
     return (parseInt(a.roll || a.id) || 0) - (parseInt(b.roll || b.id) || 0);
   });
+
+  // Update group toggle chip counts
+  const groupCounts = {};
+  failedStudents.forEach(s => {
+    const normGroup = normalizeText(s.group);
+    groupCounts[normGroup] = (groupCounts[normGroup] || 0) + 1;
+  });
+
+  document.querySelectorAll('.chip-count[data-count-group]').forEach(el => {
+    const normAttr = normalizeText(el.dataset.countGroup);
+    el.textContent = groupCounts[normAttr] || 0;
+  });
+
+  if (failedStudents.length === 0) {
+    container.innerHTML = '<div class="failed-student fade-in">এই গ্রুপে কোনো ফেল করা শিক্ষার্থী নেই</div>';
+    if (paginationContainer) paginationContainer.innerHTML = '';
+    return;
+  }
+
+  // Pagination Logic
+  const totalPages = Math.ceil(failedStudents.length / perPage);
+  const start = (currentPage - 1) * perPage;
+  const end = start + perPage;
+  const paginatedStudents = failedStudents.slice(start, end);
 
   // Dynamic Title Update
   const cardTitle = container.closest('.failed-students')?.querySelector('.card-title');
@@ -307,11 +340,6 @@ export function renderFailedStudents(container, data, options = {}) {
     `;
   }
 
-  if (failedStudents.length === 0) {
-    container.innerHTML = '<div class="failed-student fade-in">এই গ্রুপে কোনো ফেল করা শিক্ষার্থী নেই</div>';
-    return;
-  }
-
   // 🔹 Parent grid classes add (JS-only)
   container.classList.add(
     'w-full',       // পূর্ণ প্রস্থ
@@ -324,7 +352,7 @@ export function renderFailedStudents(container, data, options = {}) {
   );
 
   // Render each student card
-  container.innerHTML = failedStudents
+  container.innerHTML = paginatedStudents
     .map(student => {
       const gradeInfo = calculateGrade(student.total);
       const failReason = Number(student.written) < writtenPass
@@ -386,14 +414,14 @@ export function renderFailedStudents(container, data, options = {}) {
     })
     .join('');
 
-  // Update group toggle chip counts
-  const groupCounts = {};
-  failedStudents.forEach(s => {
-    groupCounts[s.group] = (groupCounts[s.group] || 0) + 1;
-  });
-  document.querySelectorAll('.chip-count[data-count-group]').forEach(el => {
-    el.textContent = groupCounts[el.dataset.countGroup] || 0;
-  });
+  // Render Pagination
+  if (paginationContainer) {
+    if (totalPages > 1) {
+      renderPagination(paginationContainer, currentPage, totalPages, onPageChange);
+    } else {
+      paginationContainer.innerHTML = '';
+    }
+  }
 }
 
 
@@ -880,6 +908,24 @@ export function applyTheme(isDark, button) {
   }
 }
 /**
+ * Helper to get consistent session styles
+ */
+export function getSessionStyle(session) {
+  if (!session) return '';
+  const colors = [
+    { bg: 'rgba(67, 97, 238, 0.1)', text: '#4361ee' },
+    { bg: 'rgba(114, 9, 183, 0.1)', text: '#7209b7' },
+    { bg: 'rgba(76, 175, 80, 0.1)', text: '#4caf50' },
+    { bg: 'rgba(255, 152, 0, 0.1)', text: '#ff9800' },
+    { bg: 'rgba(0, 188, 212, 0.1)', text: '#00bcd4' },
+    { bg: 'rgba(233, 30, 99, 0.1)', text: '#e91e63' }
+  ];
+  const hash = session.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const color = colors[Math.abs(hash) % colors.length];
+  return `style="background: ${color.bg}; color: ${color.text}; border: 1px solid ${color.text.replace(')', ', 0.3)')}"`;
+}
+
+/**
  * Render saved exams list with pagination
  */
 export function renderSavedExamsList(container, exams, options = {}) {
@@ -890,12 +936,14 @@ export function renderSavedExamsList(container, exams, options = {}) {
     currentExamId = null,
     defaultExamId = null,
     classFilter = 'all',
+    sessionFilter = 'all',
     onLoad = null,
     onEdit = null,
     onDelete = null,
     onSetDefault = null,
     onPageChange = null,
     onFilterChange = null,
+    onSessionFilterChange = null,
     subjectConfigs = {}
   } = options;
 
@@ -910,10 +958,18 @@ export function renderSavedExamsList(container, exams, options = {}) {
     renderSavedExamsFilters(filterContainer, exams, classFilter, onFilterChange);
   }
 
+  const sessionFilterContainer = document.getElementById('savedExamsSessionFilters');
+  if (sessionFilterContainer) {
+    renderSavedExamsSessionFilters(sessionFilterContainer, exams, sessionFilter, onSessionFilterChange);
+  }
+
   // Filter exams
   let filteredExams = exams;
   if (classFilter && classFilter !== 'all') {
-    filteredExams = exams.filter(e => (e.class || 'N/A') === classFilter);
+    filteredExams = filteredExams.filter(e => (e.class || 'N/A') === classFilter);
+  }
+  if (sessionFilter && sessionFilter !== 'all') {
+    filteredExams = filteredExams.filter(e => (e.session || 'N/A') === sessionFilter);
   }
 
   if (!filteredExams || filteredExams.length === 0) {
@@ -956,26 +1012,11 @@ export function renderSavedExamsList(container, exams, options = {}) {
     // Get color based on pass rate
     const barColor = passRate >= 80 ? '#27ae60' : passRate >= 50 ? '#f39c12' : '#e74c3c';
 
-    // Session Color Logic
-    const getSessionStyle = (session) => {
-      if (!session) return '';
-      const colors = [
-        { bg: 'rgba(67, 97, 238, 0.1)', text: '#4361ee' },
-        { bg: 'rgba(114, 9, 183, 0.1)', text: '#7209b7' },
-        { bg: 'rgba(76, 175, 80, 0.1)', text: '#4caf50' },
-        { bg: 'rgba(255, 152, 0, 0.1)', text: '#ff9800' },
-        { bg: 'rgba(0, 188, 212, 0.1)', text: '#00bcd4' },
-        { bg: 'rgba(233, 30, 99, 0.1)', text: '#e91e63' }
-      ];
-      const hash = session.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const color = colors[Math.abs(hash) % colors.length];
-      return `style="background: ${color.bg}; color: ${color.text}; border: 1px solid ${color.text.replace(')', ', 0.3)')}"`;
-    };
-
     const sessionStyle = getSessionStyle(exam.session);
+    const isDefault = exam.docId === defaultExamId;
 
     return `
-            <div class="exam-card ${isCurrent ? 'active' : ''} ${isActiveLoad ? 'is-active-load' : ''}" data-id="${exam.docId}">
+            <div class="exam-card ${isCurrent ? 'active' : ''} ${isActiveLoad ? 'is-active-load' : ''} ${isDefault ? 'is-default' : ''}" data-id="${exam.docId}">
                 <div class="exam-card-header-compact">
                     <div class="card-meta">
                         <div class="meta-badges">
@@ -1119,6 +1160,43 @@ export function renderSavedExamsFilters(container, exams, currentFilter, onFilte
   container.querySelectorAll('.class-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (onFilterChange) onFilterChange(btn.dataset.class);
+    });
+  });
+}
+
+/**
+ * Render session filters with dynamic colors
+ */
+export function renderSavedExamsSessionFilters(container, exams, currentFilter, onFilterChange) {
+  if (!container) return;
+
+  // Extract unique sessions
+  const sessions = [...new Set(exams.map(e => e.session || 'N/A'))].filter(Boolean).sort().reverse();
+
+  let html = `
+    <button class="class-filter-btn ${currentFilter === 'all' ? 'active' : ''}" data-session="all">সব সেশন</button>
+  `;
+
+  html += sessions.map(session => {
+    const isActive = currentFilter === session;
+    const sessionStyle = getSessionStyle(session);
+    // Remove 'style="' and the closing '"' to extract the inner style
+    const styleContent = sessionStyle.replace('style="', '').slice(0, -1);
+
+    return `
+      <button class="class-filter-btn ${isActive ? 'active' : ''}" 
+        data-session="${session}"
+        style="${isActive ? '' : styleContent}">
+        ${session}
+      </button>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-session]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (onFilterChange) onFilterChange(btn.dataset.session);
     });
   });
 }

@@ -27,7 +27,7 @@ import {
 import { initializeMainChart, handleChartDownload, initializeHistoryChart } from './js/modules/chartManager.js';
 
 // Utilities & Services
-import { showNotification, filterStudentData, sortStudentData, calculateStatistics, convertToEnglishDigits, formatDateBengali } from './js/utils.js';
+import { showNotification, filterStudentData, sortStudentData, calculateStatistics, convertToEnglishDigits, formatDateBengali, normalizeText } from './js/utils.js';
 import { FAILING_THRESHOLD } from './js/constants.js';
 import {
     applyTheme,
@@ -167,16 +167,12 @@ async function init() {
 function updateViews() {
     if (state.isLoading) return;
 
-    // Build subject-specific options from current subject's config
-    // Normalized lookup to handle Bengali character variants (ি↔ী, ু↔ূ, etc.)
-    const normalizeBn = (str) => str ? str.replace(/ী/g, 'ি').replace(/ূ/g, 'ু').replace(/ৈ/g, 'ে').replace(/ৌ/g, 'ো').toLowerCase().trim() : '';
-
     let subjectConfig = state.subjectConfigs[state.currentSubject]; // Exact match first
     if (!subjectConfig) {
-        // Fuzzy match: normalize both sides
-        const normalizedCurrent = normalizeBn(state.currentSubject);
+        // Fuzzy match using centralized normalizeText
+        const normalizedCurrent = normalizeText(state.currentSubject);
         const matchedKey = Object.keys(state.subjectConfigs)
-            .find(key => key !== 'updatedAt' && normalizeBn(key) === normalizedCurrent);
+            .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
         subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
     }
 
@@ -191,7 +187,9 @@ function updateViews() {
     const filteredData = filterStudentData(state.studentData, {
         group: state.currentGroupFilter,
         grade: state.currentGradeFilter,
-        searchTerm: state.currentSearchTerm
+        status: state.currentStatusFilter,
+        searchTerm: state.currentSearchTerm,
+        subject: state.currentSubject
     }, subjectOptions);
 
     renderStats(elements.statsContainer, filteredData, subjectOptions);
@@ -204,8 +202,17 @@ function updateViews() {
     renderFailedStudents(elements.failedStudentsContainer, filteredData, {
         ...subjectOptions,
         metaElement: elements.failedHeaderMeta,
+        paginationContainer: elements.failedStudentsPagination,
         examName: state.currentExamName,
-        subjectName: state.currentSubject
+        subjectName: state.currentSubject,
+        currentPage: state.failedStudentsCurrentPage,
+        perPage: state.failedStudentsPerPage,
+        searchTerm: state.failedSearchTerm,
+        onPageChange: (page) => {
+            state.failedStudentsCurrentPage = page;
+            updateViews();
+            elements.failedStudentsContainer.scrollIntoView({ behavior: 'smooth' });
+        }
     });
 
     elements.chartTitle.innerHTML = getChartTitle(state.currentChartType, state.currentExamName, state.currentSubject);
@@ -260,6 +267,7 @@ function renderSavedExams() {
         currentExamId: state.defaultExamId,
         defaultExamId: state.defaultExamId,
         classFilter: state.savedExamsClassFilter,
+        sessionFilter: state.savedExamsSessionFilter,
         paginationContainer: elements.savedExamsPagination,
         subjectConfigs: state.subjectConfigs,
         onPageChange: (page) => {
@@ -268,6 +276,11 @@ function renderSavedExams() {
         },
         onFilterChange: (cls) => {
             state.savedExamsClassFilter = cls;
+            state.savedExamsCurrentPage = 1;
+            renderSavedExams();
+        },
+        onSessionFilterChange: (session) => {
+            state.savedExamsSessionFilter = session;
             state.savedExamsCurrentPage = 1;
             renderSavedExams();
         },
@@ -339,15 +352,63 @@ function initEventListeners() {
             elements.groupFilters.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             state.currentGroupFilter = btn.dataset.group;
+            state.failedStudentsCurrentPage = 1; // Reset page
             updateViews();
         });
     });
 
     elements.gradeFilters?.forEach(btn => {
         btn.addEventListener('click', () => {
-            elements.gradeFilters.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.currentGradeFilter = btn.dataset.grade;
+            const selectedValue = btn.dataset.grade;
+
+            // Logic for different button types
+            if (selectedValue === 'all') {
+                state.currentStatusFilter = 'all';
+                state.currentGradeFilter = 'all';
+            }
+            else if (selectedValue === 'total-pass') {
+                state.currentStatusFilter = 'pass';
+                state.currentGradeFilter = 'all';
+            }
+            else if (selectedValue === 'total-fail') {
+                state.currentStatusFilter = 'fail';
+                state.currentGradeFilter = 'all';
+            }
+            else if (selectedValue === 'absent') {
+                state.currentStatusFilter = 'absent';
+                state.currentGradeFilter = 'all';
+            }
+            else {
+                // Individual grade clicks (A+, A, B, etc. or F)
+                state.currentGradeFilter = selectedValue;
+                // Auto-set status category
+                if (selectedValue === 'F') {
+                    state.currentStatusFilter = 'fail';
+                } else {
+                    state.currentStatusFilter = 'pass';
+                }
+            }
+
+            // Update UI Highlighting
+            elements.gradeFilters.forEach(b => {
+                const val = b.dataset.grade;
+                b.classList.remove('active');
+
+                // Highlight logic
+                if (val === 'all' && state.currentStatusFilter === 'all') {
+                    b.classList.add('active');
+                } else if (val === 'total-pass' && state.currentStatusFilter === 'pass') {
+                    b.classList.add('active');
+                } else if (val === 'total-fail' && state.currentStatusFilter === 'fail') {
+                    b.classList.add('active');
+                } else if (val === 'absent' && state.currentStatusFilter === 'absent') {
+                    b.classList.add('active');
+                } else if (val === state.currentGradeFilter && state.currentGradeFilter !== 'all') {
+                    b.classList.add('active');
+                }
+            });
+
+            state.failedStudentsCurrentPage = 1; // Reset page
             updateViews();
         });
     });
@@ -375,6 +436,13 @@ function initEventListeners() {
         }
     });
 
+    // Failed Students Search
+    elements.failedSearchInput?.addEventListener('input', (e) => {
+        state.failedSearchTerm = e.target.value;
+        state.failedStudentsCurrentPage = 1; // Reset to page 1 on search
+        updateViews();
+    });
+
     // Close global search results on click outside
     document.addEventListener('click', (e) => {
         if (!elements.searchInput?.contains(e.target) && !elements.globalSearchResults?.contains(e.target)) {
@@ -398,6 +466,7 @@ function initEventListeners() {
     elements.resetFiltersBtn?.addEventListener('click', () => {
         // Reset all filter states
         state.currentGroupFilter = 'all';
+        state.currentStatusFilter = 'all';
         state.currentGradeFilter = 'all';
         state.currentSearchTerm = '';
         state.currentChartType = 'total';
@@ -488,12 +557,11 @@ function initEventListeners() {
         }
     });
     elements.printBtn?.addEventListener('click', () => {
-        const normalizeBn = (str) => str ? str.replace(/ী/g, 'ি').replace(/ূ/g, 'ু').replace(/ৈ/g, 'ে').replace(/ৌ/g, 'ো').toLowerCase().trim() : '';
         let subjectConfig = state.subjectConfigs[state.currentSubject];
         if (!subjectConfig) {
-            const normalizedCurrent = normalizeBn(state.currentSubject);
+            const normalizedCurrent = normalizeText(state.currentSubject);
             const matchedKey = Object.keys(state.subjectConfigs)
-                .find(key => key !== 'updatedAt' && normalizeBn(key) === normalizedCurrent);
+                .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
             subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
         }
         const subjectOptions = {
@@ -504,7 +572,9 @@ function initEventListeners() {
         printAllStudents(filterStudentData(state.studentData, {
             group: state.currentGroupFilter,
             grade: state.currentGradeFilter,
-            searchTerm: state.currentSearchTerm
+            status: state.currentStatusFilter,
+            searchTerm: state.currentSearchTerm,
+            subject: state.currentSubject
         }, subjectOptions), {
             ...subjectOptions,
             examName: state.currentExamName,
@@ -524,12 +594,11 @@ function initEventListeners() {
 
     // Print Failed Students
     document.getElementById('printFailedBtn')?.addEventListener('click', () => {
-        const normalizeBn = (str) => str ? str.replace(/ী/g, 'ি').replace(/ূ/g, 'ু').replace(/ৈ/g, 'ে').replace(/ৌ/g, 'ো').toLowerCase().trim() : '';
         let subjectConfig = state.subjectConfigs[state.currentSubject];
         if (!subjectConfig) {
-            const normalizedCurrent = normalizeBn(state.currentSubject);
+            const normalizedCurrent = normalizeText(state.currentSubject);
             const matchedKey = Object.keys(state.subjectConfigs)
-                .find(key => key !== 'updatedAt' && normalizeBn(key) === normalizedCurrent);
+                .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
             subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
         }
         const subjectOptions = {
@@ -540,7 +609,9 @@ function initEventListeners() {
         printFailedStudents(filterStudentData(state.studentData, {
             group: state.currentGroupFilter,
             grade: state.currentGradeFilter,
-            searchTerm: state.currentSearchTerm
+            status: state.currentStatusFilter,
+            searchTerm: state.currentSearchTerm,
+            subject: state.currentSubject
         }, subjectOptions), {
             ...subjectOptions,
             examName: state.currentExamName,
@@ -598,7 +669,7 @@ function initEventListeners() {
         updateProfileUI(null, false, false, 'guest');
     });
 
-    elements.closeProfileBtn?.addEventListener('click', () => elements.profileModal.classList.remove('active'));
+    elements.closeContactModalBtn?.addEventListener('click', () => elements.contactModal.classList.remove('active'));
     elements.closeProfileIcon?.addEventListener('click', () => elements.profileModal.classList.remove('active'));
 
     // Analysis View Navigation

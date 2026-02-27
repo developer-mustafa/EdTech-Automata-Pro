@@ -6,6 +6,25 @@
 import { GRADING_SYSTEM, FAILING_THRESHOLD, CHART_COLORS, GROUP_NAMES } from './constants.js';
 
 /**
+ * Robust Bengali and English text normalization
+ * Handles character variants, spacing, and casing
+ */
+export function normalizeText(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/ী/g, 'ি')
+        .replace(/ূ/g, 'ু')
+        .replace(/ৈ/g, 'ে')
+        .replace(/ৌ/g, 'ো')
+        .replace(/ড়/g, 'র')
+        .replace(/ঢ়/g, 'র')
+        .replace(/য়/g, 'য়')
+        .replace(/\s+/g, ' ') // collapse multiple spaces to single
+        .toLowerCase()
+        .trim();
+}
+
+/**
  * Check if a value represents absence (0, blank, "অনুপস্থিত", "absent", null, undefined)
  * @param {*} value - Value to check
  * @returns {boolean} - True if value indicates absence
@@ -151,17 +170,34 @@ export function getGradeClass(grade) {
  * Filter student data based on criteria
  * @param {Array} data - Student data array
  * @param {Object} filters - Filter criteria
+ * @param {Object} options - Subject configuration options
  * @returns {Array} - Filtered data
  */
 export function filterStudentData(data, filters, options = {}) {
     let filteredData = [...data];
 
-    const { group, searchTerm, grade } = filters;
-    const { writtenPass = FAILING_THRESHOLD.written, mcqPass = FAILING_THRESHOLD.mcq } = options;
+    const { group, searchTerm, grade, status, subject } = filters;
 
-    // Filter by group
+    // 1. Group Filter (Improved robustness)
     if (group && group !== 'all') {
-        filteredData = filteredData.filter((student) => student.group === group);
+        const normFilter = normalizeText(group);
+        filteredData = filteredData.filter((student) => {
+            const normStudentGroup = normalizeText(student.group);
+            // Match exactly or if keywords are present (e.g., "বিজ্ঞান" in "বিজ্ঞান গ্রুপ")
+            return normStudentGroup === normFilter ||
+                (normFilter.includes('বিজ্ঞান') && normStudentGroup.includes('বিজ্ঞান')) ||
+                (normFilter.includes('ব্যবসায়') && normStudentGroup.includes('ব্যবসায়')) ||
+                (normFilter.includes('মানবিক') && normStudentGroup.includes('মানবিক'));
+        });
+    }
+
+    // 2. Subject Filter (Improved robustness)
+    if (subject && subject !== 'all' && subject !== '') {
+        const normSubject = normalizeText(subject);
+        filteredData = filteredData.filter((student) => {
+            if (!student.subject) return true;
+            return normalizeText(student.subject) === normSubject;
+        });
     }
 
     // Filter by search term
@@ -174,40 +210,27 @@ export function filterStudentData(data, filters, options = {}) {
         );
     }
 
-    // Filter by grade
+    // Filter by status (First tier: Pass/Fail/Absent)
+    if (status && status !== 'all') {
+        filteredData = filteredData.filter((student) => {
+            if (status === 'absent') return isAbsent(student);
+            const studentStatus = determineStatus(student, options);
+            if (status === 'pass') return studentStatus === 'পাস';
+            if (status === 'fail') return studentStatus === 'ফেল';
+            return true;
+        });
+    }
+
+    // Filter by grade (Second tier: A+, A, etc.)
     if (grade && grade !== 'all') {
         filteredData = filteredData.filter((student) => {
-            // Handle absent filter
-            if (grade === 'absent') {
-                return isAbsent(student);
+            if (isAbsent(student)) return false;
+
+            // If filtering by F, ensure it matches failure status
+            if (grade === 'F') {
+                return determineStatus(student, options) === 'ফেল';
             }
 
-            const isWrittenView = options.criteria === 'written';
-            const isMcqView = options.criteria === 'mcq';
-
-            // Handle Total Fail
-            if (grade === 'total-fail') {
-                if (isAbsent(student)) return false;
-                const failedWritten = Number(student.written) < writtenPass;
-                const failedMcq = Number(student.mcq) < mcqPass;
-
-                if (isWrittenView) return failedWritten;
-                if (isMcqView) return failedMcq;
-
-                return failedWritten || failedMcq;
-            }
-            // Handle Total Pass
-            if (grade === 'total-pass') {
-                if (isAbsent(student)) return false;
-                const passedWritten = Number(student.written) >= writtenPass;
-                const passedMcq = Number(student.mcq) >= mcqPass;
-
-                if (isWrittenView) return passedWritten;
-                if (isMcqView) return passedMcq;
-
-                return passedWritten && passedMcq;
-            }
-            // Normal grade filter
             const gradeInfo = calculateGrade(student.total);
             return gradeInfo.grade === grade;
         });
@@ -322,9 +345,23 @@ export function calculateGroupStatistics(data, options = {}) {
  * @returns {Array} - Failed students array
  */
 export function getFailedStudents(data, options = {}) {
-    return data.filter(
-        (student) => determineStatus(student, options) === 'ফেল'
-    );
+    const { searchTerm = '' } = options;
+
+    return data.filter((student) => {
+        // First check if student is failed
+        const isFailed = determineStatus(student, options) === 'ফেল';
+        if (!isFailed) return false;
+
+        // If no search term, return all failed
+        if (!searchTerm) return true;
+
+        // Search by roll or id (exact match)
+        const roll = String(student.roll || student.id || '').trim();
+        const search = convertToEnglishDigits(searchTerm.trim());
+        const searchBn = convertToBengaliDigits(searchTerm.trim());
+
+        return roll === search || roll === searchBn;
+    });
 }
 
 /**

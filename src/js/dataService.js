@@ -234,8 +234,8 @@ async function handleExcelUpload(file) {
 
                 students.forEach(student => {
                     if (student.id) {
-                        // Create unique key based on all identity fields
-                        const key = `${student.id}_${student.name}_${student.group}_${student.class || ''}_${student.session || ''}`;
+                        // Create unique key based on all identity fields including subject
+                        const key = `${student.id}_${student.name}_${student.group}_${student.class || ''}_${student.session || ''}_${student.subject || ''}`;
                         studentMap.set(key, student);
                     }
                 });
@@ -414,9 +414,10 @@ function parseExcelRow(row, columnMap, rowIndex) {
         }
     }
 
-    // Get Class and Session
+    // Get Class, Session and Subject
     const classVal = columnMap.class >= 0 ? String(row[columnMap.class] || '').trim() : '';
-    const sessionVal = columnMap.session >= 0 ? String(row[columnMap.session] || '').trim() : '';
+    const sessionVal = columnMap.session || '';
+    const subjectVal = columnMap.subject >= 0 ? String(row[columnMap.subject] || '').trim() : '';
 
     return {
         id,
@@ -424,6 +425,7 @@ function parseExcelRow(row, columnMap, rowIndex) {
         group,
         class: classVal,
         session: sessionVal,
+        subject: subjectVal,
         written,
         mcq,
         practical,

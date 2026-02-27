@@ -137,7 +137,8 @@ export const elements = {
     loadExamConfirmModal: null,
     loadExamConfirmName: null,
     loadExamConfirmBtn: null,
-    loadExamCancelBtn: null
+    loadExamCancelBtn: null,
+    closeContactModalBtn: null
 };
 
 export function updateProfileUI(user, isAdmin, isSuperAdmin, role) {
@@ -189,6 +190,8 @@ export function initDOMReferences() {
     elements.themeToggle = document.getElementById('themeToggle');
     elements.chartTitle = document.getElementById('chartTitle');
     elements.failedHeaderMeta = document.getElementById('failedHeaderMeta');
+    elements.failedStudentsPagination = document.getElementById('failedStudentsPagination');
+    elements.failedSearchInput = document.getElementById('failedSearchInput');
     elements.groupStatsHeaderMeta = document.getElementById('groupStatsHeaderMeta');
     elements.jsonFileInput = document.getElementById('jsonFileInput');
     elements.downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
@@ -328,6 +331,7 @@ export function initDOMReferences() {
     elements.loadExamConfirmName = document.getElementById('loadExamConfirmName');
     elements.loadExamConfirmBtn = document.getElementById('loadExamConfirmBtn');
     elements.loadExamCancelBtn = document.getElementById('loadExamCancelBtn');
+    elements.closeContactModalBtn = document.getElementById('closeContactModalBtn');
 }
 
 export function setLoading(isLoading, targetSelector = null) {

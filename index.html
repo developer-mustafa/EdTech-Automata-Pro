@@ -146,10 +146,13 @@
             <h3 class="section-title">
               <i class="fas fa-history"></i> সংরক্ষিত ফলাফল (Saved Database)
             </h3>
-            <div id="savedExamsFilterBar" class="saved-exams-filter-bar admin-only">
+            <div id="savedExamsFilterBar" class="saved-exams-filter-bar">
               <span id="savedExamsCount" class="exams-count-badge">মোট: ০টি এক্সাম</span>
               <div id="savedExamsClassFilters" class="class-filter-container">
                 <!-- ক্লাস ফিল্টারসমূহ এখানে দেখা যাবে -->
+              </div>
+              <div id="savedExamsSessionFilters" class="class-filter-container session-filter-container">
+                <!-- সেশন ফিল্টারসমূহ এখানে দেখা যাবে -->
               </div>
             </div>
           </div>
@@ -383,6 +386,13 @@
             </div>
           </div>
 
+          <div class="header-search-failed">
+            <div class="search-input-wrapper-failed">
+              <i class="fas fa-search search-icon"></i>
+              <input type="text" id="failedSearchInput" placeholder="রোল দিয়ে খুঁজুন..." autocomplete="off">
+            </div>
+          </div>
+
           <div class="header-right-toggles">
             <div class="failed-group-toggles" id="failedGroupToggles">
               <label class="group-toggle-chip science active" data-group="বিজ্ঞান গ্রুপ">
@@ -406,6 +416,7 @@
     <div class="failed-list" id="failedStudentsContainer">
       <!-- Failed students will be rendered here -->
     </div>
+    <div id="failedStudentsPagination" class="pagination-container pagination-right-minimal"></div>
   </div>
 
   <!-- Group Statistics Section -->
@@ -761,6 +772,7 @@
   <!-- Developer Profile Modal -->
   <div id="contactModal" class="modal">
     <div class="modal-content profile-modal-content">
+      <button id="closeContactModalBtn" class="close-profile-btn" title="Close Profile">&times;</button>
       <div class="profile-header">
         <div class="profile-avatar-container">
           <div class="profile-ring"></div>
@@ -779,40 +791,86 @@
             <i class="fas fa-globe-europe"></i> Working Remotely, Turkey 🇹🇷
           </div>
         </div>
-        <button class="close-profile-btn" id="closeContactModal">&times;</button>
       </div>
 
       <div class="profile-body">
-        <div class="profile-section">
-          <h3><i class="fas fa-tools"></i>Major Technology Stack </h3>
-          <div class="tech-tags">
-            <span class="tech-tag">Cyber Security</span>
-            <span class="tech-tag">TypeScript,Prisma,PostgreSQL,MongoDB,ORM/ODM</span>
-            <span class="tech-tag">JavaScript (ES6+)</span>
-            <span class="tech-tag">Python</span>
-            <span class="tech-tag">Node.js , Express.js ,NestJS</span>
-            <span class="tech-tag">React / Next.js</span>
-            <span class="tech-tag">Full-Stack Architecture</span>
-            <span class="tech-tag">Cloud Infrastructure</span>
-            <span class="tech-tag">Modern Web Technologies</span>
-          </div>
+        <!-- Floating Social Links (Top Right) -->
+        <div class="social-header-links">
+          <a href="https://wa.me/8801840643946" target="_blank" class="social-icon-btn whatsapp" title="WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+          </a>
+          <a href="https://facebook.com" target="_blank" class="social-icon-btn facebook" title="Facebook">
+            <i class="fab fa-facebook"></i>
+          </a>
+          <a href="https://linkedin.com" target="_blank" class="social-icon-btn linkedin" title="LinkedIn">
+            <i class="fab fa-linkedin"></i>
+          </a>
         </div>
 
-        <div class="profile-section">
-          <h3><i class="fas fa-link"></i> Connect with Me</h3>
-          <div class="social-links-grid">
-            <a href="https://wa.me/8801840643946" target="_blank" class="social-btn whatsapp">
-              <i class="fab fa-whatsapp"></i>
-              <span>WhatsApp</span>
-            </a>
-            <a href="https://facebook.com" target="_blank" class="social-btn facebook">
-              <i class="fab fa-facebook"></i>
-              <span>Facebook</span>
-            </a>
-            <a href="https://linkedin.com" target="_blank" class="social-btn linkedin">
-              <i class="fab fa-linkedin"></i>
-              <span>LinkedIn</span>
-            </a>
+        <div class="profile-section full-width">
+          <h3><i class="fas fa-microchip"></i>Tech Ecosystem</h3>
+
+          <div class="tech-grid">
+            <!-- 1. Tech Stack -->
+            <div class="tech-category">
+              <span class="category-title"><i class="fas fa-layer-group"></i> Tech Stack</span>
+              <div class="tech-tags">
+                <span class="tech-tag">MERN Stack</span>
+                <span class="tech-tag">Next.js with Prisma</span>
+                <span class="tech-tag">Serverless Stack</span>
+                <span class="tech-tag">Microservices</span>
+              </div>
+            </div>
+
+            <!-- 2. Programming Languages -->
+            <div class="tech-category">
+              <span class="category-title"><i class="fas fa-code"></i> Languages</span>
+              <div class="tech-tags">
+                <span class="tech-tag">JavaScript / TypeScript</span>
+                <span class="tech-tag">Python / Go</span>
+                <span class="tech-tag">C / C++</span>
+              </div>
+            </div>
+
+            <!-- 3. DevOps & Tools -->
+            <div class="tech-category">
+              <span class="category-title"><i class="fas fa-tools"></i> Tools</span>
+              <div class="tech-tags">
+                <span class="tech-tag">Git / Linux</span>
+                <span class="tech-tag">Docker / K8s</span>
+                <span class="tech-tag">GitHub Actions / Terraform</span>
+              </div>
+            </div>
+
+            <!-- 4. Databases -->
+            <div class="tech-category">
+              <span class="category-title"><i class="fas fa-database"></i> Databases</span>
+              <div class="tech-tags">
+                <span class="tech-tag">Postgres / MySQL / SQLite</span>
+                <span class="tech-tag">MongoDB / Firebase / Redis</span>
+                <span class="tech-tag">Supabase / Elasticsearch</span>
+              </div>
+            </div>
+
+            <!-- 5. Architecture -->
+            <div class="tech-category">
+              <span class="category-title"><i class="fas fa-project-diagram"></i> Architecture</span>
+              <div class="tech-tags">
+                <span class="tech-tag">MVC / Clean / Layered</span>
+                <span class="tech-tag">Microservices / Monolith</span>
+                <span class="tech-tag">Event-Driven Architecture</span>
+              </div>
+            </div>
+
+            <!-- 6. Core Topics -->
+            <div class="tech-category">
+              <span class="category-title"><i class="fas fa-brain"></i> Core Knowledge</span>
+              <div class="tech-tags">
+                <span class="tech-tag">DSA / OS / Networking</span>
+                <span class="tech-tag">System Design / Cloud</span>
+                <span class="tech-tag">OWASP 10 / DevSecOps</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

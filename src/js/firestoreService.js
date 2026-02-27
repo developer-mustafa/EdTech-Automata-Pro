@@ -35,6 +35,13 @@ const COLLECTIONS = {
     users: 'users',
 };
 
+// Memory cache for expensive read operations
+const _cache = {
+    exams: null,
+    examsExpiry: 0,
+    CACHE_DURATION: 10 * 60 * 1000 // 10 minutes cache
+};
+
 // ==========================================
 // STUDENTS COLLECTION OPERATIONS
 // ==========================================
@@ -300,6 +307,8 @@ export async function saveExam(examData) {
         });
 
         console.log('Exam saved with ID:', docId);
+        // Invalidate cache on new save
+        _cache.exams = null;
         return true;
     } catch (error) {
         console.error('পরীক্ষা সেভ করতে সমস্যা:', error);
@@ -308,19 +317,33 @@ export async function saveExam(examData) {
 }
 
 /**
- * Get all saved exams
+ * Get all saved exams (with memory caching to optimize reads)
  * @returns {Promise<Array>} - Array of exam documents ordered by date
  */
 export async function getSavedExams() {
+    // Return cached results if valid (to save billable reads)
+    const now = Date.now();
+    if (_cache.exams && now < _cache.examsExpiry) {
+        console.log('Returning cached exams (Read Optimization Active)');
+        return _cache.exams;
+    }
+
     try {
+        console.log('Fetching fresh exams from Firestore (Cache expired or empty)');
         const examsRef = collection(db, COLLECTIONS.exams);
         const q = query(examsRef, orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
 
-        return snapshot.docs.map(doc => ({
+        const exams = snapshot.docs.map(doc => ({
             docId: doc.id,
             ...doc.data()
         }));
+
+        // Update Cache
+        _cache.exams = exams;
+        _cache.examsExpiry = now + _cache.CACHE_DURATION;
+
+        return exams;
     } catch (error) {
         console.error('পরীক্ষার তালিকা লোড করতে সমস্যা:', error);
         return [];
@@ -335,6 +358,8 @@ export async function getSavedExams() {
 export async function deleteExam(docId) {
     try {
         await deleteDoc(doc(db, COLLECTIONS.exams, docId));
+        // Invalidate cache on delete
+        _cache.exams = null;
         return true;
     } catch (error) {
         console.error('পরীক্ষা মুছতে সমস্যা:', error);
@@ -355,6 +380,8 @@ export async function updateExam(docId, updates) {
             ...updates,
             updatedAt: serverTimestamp(),
         });
+        // Invalidate cache on update
+        _cache.exams = null;
         return true;
     } catch (error) {
         console.error('পরীক্ষা আপডেট করতে সমস্যা:', error);
