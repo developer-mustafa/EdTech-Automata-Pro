@@ -5,7 +5,7 @@
  * @module resultEntryManager
  */
 
-import { getSavedExams, updateExam, saveExam, getAllStudents } from '../firestoreService.js';
+import { getSavedExams, updateExam, saveExam, getAllStudents, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits, calculateStatistics } from '../utils.js';
 import { isTeacherAuthorized, getTeacherAssignmentsByUid } from './teacherAssignmentManager.js';
@@ -157,30 +157,39 @@ export async function populateREDropdowns() {
             if (subjects.length === 1) subjectSelect.value = subjects[0];
         }
 
-        // Exam names (further filtered by subject) + allow custom input via datalist
-        const updateExamList = () => {
-            const selSubject = subjectSelect?.value;
-            const subFiltered = filtered.filter(e => !selSubject || e.subject === selSubject);
-            const examNames = [...new Set(subFiltered.map(e => e.name).filter(Boolean))];
+        // --- Exam Names from Global Exam Configs ---
+        const updateExamList = async () => {
+            const selClass = classSelect?.value;
+            const examSelect = document.getElementById('reExam');
 
-            const examInput = document.getElementById('reExam');
-            const examDatalist = document.getElementById('reExamDatalist');
+            if (!examSelect) return;
 
-            if (examInput) {
-                examInput.value = ''; // Reset
+            if (!selClass) {
+                examSelect.innerHTML = '<option value="">ক্লাস নির্বাচন করুন</option>';
+                return;
             }
-            if (examDatalist) {
-                examDatalist.innerHTML = '';
+
+            examSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+
+            // Fetch global configs for the selected class
+            const configs = await getExamConfigs(selClass);
+            const examNames = configs.map(c => c.examName);
+
+            if (examNames.length === 0) {
+                examSelect.innerHTML = '<option value="">কোনো পরীক্ষা তৈরি করা নেই</option>';
+            } else {
+                examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন করুন</option>';
                 examNames.forEach(name => {
-                    examDatalist.innerHTML += `<option value="${name}">`;
+                    examSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 });
             }
         };
 
-        if (subjectSelect) {
-            subjectSelect.removeEventListener('change', updateExamList);
-            subjectSelect.addEventListener('change', updateExamList);
+        if (classSelect) {
+            classSelect.removeEventListener('change', updateExamList);
+            classSelect.addEventListener('change', updateExamList);
         }
+        // Also call once immediately if class is already selected
         updateExamList();
     };
 

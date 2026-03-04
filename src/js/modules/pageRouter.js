@@ -13,7 +13,8 @@ const NEW_PAGE_IDS = {
     'students': 'studentsPage',
     'result-entry': 'resultEntryPage',
     'marksheet': 'marksheetPage',
-    'access-requests': 'accessRequestsPage'
+    'access-requests': 'accessRequestsPage',
+    'exam-config': 'examConfigPage'
 };
 
 // IDs/selectors of all dashboard-only sections to hide on other pages
@@ -32,17 +33,23 @@ let currentPage = 'dashboard';
 export function navigateTo(pageId) {
     currentPage = pageId;
 
-    // Hide ALL new pages first
-    Object.values(NEW_PAGE_IDS).forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+    // Hide ALL dynamic pages first
+    document.querySelectorAll('.app-page').forEach(page => {
+        page.style.display = 'none';
+        page.classList.remove('active');
     });
 
     if (pageId === 'dashboard') {
         // Show all dashboard sections
         DASHBOARD_ONLY_SELECTORS.forEach(sel => {
             const el = sel.startsWith('#') ? document.getElementById(sel.slice(1)) : document.querySelector(sel);
-            if (el) el.classList.remove('page-hidden');
+            if (el) {
+                el.classList.remove('page-hidden');
+                if (el.id === 'dashboardPage') {
+                    el.style.display = 'block';
+                    el.classList.add('active');
+                }
+            }
         });
     } else {
         // Hide all dashboard sections
@@ -55,7 +62,10 @@ export function navigateTo(pageId) {
         const targetId = NEW_PAGE_IDS[pageId];
         if (targetId) {
             const target = document.getElementById(targetId);
-            if (target) target.style.display = 'block';
+            if (target) {
+                target.style.display = 'block';
+                target.classList.add('active');
+            }
         }
     }
 
@@ -113,9 +123,14 @@ export function initPageRouter(callback) {
     // Listen for hash changes (back/forward navigation, direct URL entry)
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.replace('#', '') || 'dashboard';
-        const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests'];
+        const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config'];
         if (validPages.includes(hash)) {
-            navigateTo(hash);
+            // Role protection for direct hash entry
+            if (hash === 'exam-config' && state.userRole !== 'super_admin') {
+                navigateTo('dashboard');
+            } else {
+                navigateTo(hash);
+            }
         }
     });
 
@@ -124,7 +139,7 @@ export function initPageRouter(callback) {
 
     // Handle initial hash
     const currentHash = window.location.hash.replace('#', '') || 'dashboard';
-    const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests'];
+    const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config'];
     if (initialPages.includes(currentHash) && currentHash !== 'dashboard') {
         navigateTo(currentHash);
     }
@@ -156,13 +171,26 @@ export function updateNavVisibility() {
             if (page === 'students') visible = false;
         }
 
-        btn.style.display = visible ? 'inline-flex' : 'none';
+        // Apply visibility
+        if (visible) {
+            // For super-admin-only elements, we must respect the CSS !important rules
+            // Removing inline display: none allows the CSS body.is-super-admin rule to take over
+            if (btn.classList.contains('super-admin-only')) {
+                btn.style.display = '';
+            } else {
+                btn.style.display = 'inline-flex';
+            }
+        } else {
+            btn.style.display = 'none';
+        }
     });
 
     // Handle initial navigation if on a restricted page
     const currentHash = window.location.hash.replace('#', '') || 'dashboard';
     if (role === 'admin' && (currentHash === 'dashboard' || currentHash === 'students')) {
         navigateTo('result-entry');
+    } else if (role !== 'super_admin' && currentHash === 'exam-config') {
+        navigateTo('dashboard');
     } else if (role === 'teacher' && currentHash === 'students') {
         navigateTo('dashboard');
     }

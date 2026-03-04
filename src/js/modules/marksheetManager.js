@@ -4,7 +4,7 @@
  * @module marksheetManager
  */
 
-import { getSavedExams } from '../firestoreService.js';
+import { getSavedExams, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits } from '../utils.js';
 
@@ -78,22 +78,33 @@ export async function populateMSDropdowns() {
         if (sessions.length === 1) sessionSelect.value = sessions[0];
     }
 
-    const updateExamNames = () => {
+    const updateExamNames = async () => {
         const selClass = classSelect?.value;
         const selSession = sessionSelect?.value;
+        const examSelect = document.getElementById('msExamName');
+
+        if (examSelect) {
+            examSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+
+            let examNames = [];
+            if (selClass) {
+                const configs = await getExamConfigs(selClass);
+                examNames = configs.map(c => c.examName);
+            }
+
+            examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন</option>';
+            if (examNames.length > 0) {
+                examSelect.innerHTML += '<option value="__all__">সব পরীক্ষা (Combined)</option>';
+                examNames.forEach(n => examSelect.innerHTML += `<option value="${n}">${n}</option>`);
+            } else if (selClass) {
+                examSelect.innerHTML = '<option value="">কোনো পরীক্ষা তৈরি করা নেই</option>';
+            }
+        }
+
         const filtered = exams.filter(e =>
             (!selClass || e.class === selClass) &&
             (!selSession || e.session === selSession)
         );
-        const examNames = [...new Set(filtered.map(e => e.name).filter(Boolean))];
-        const examSelect = document.getElementById('msExamName');
-        if (examSelect) {
-            examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন</option>';
-            if (examNames.length > 0) {
-                examSelect.innerHTML += '<option value="__all__">সব পরীক্ষা (Combined)</option>';
-            }
-            examNames.forEach(n => examSelect.innerHTML += `<option value="${n}">${n}</option>`);
-        }
         updateStudentDropdown(filtered);
     };
 

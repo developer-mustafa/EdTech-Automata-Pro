@@ -130,6 +130,9 @@
         <i class="fas fa-user-shield"></i> <span>রিকোয়েস্ট</span>
         <span id="navAccessReqBadge" class="nav-badge" style="display: none;">0</span>
       </button>
+      <button class="page-nav-btn super-admin-only" data-page="exam-config" style="display: none;">
+        <i class="fas fa-cogs"></i> <span>এক্সাম কনফিগ</span>
+      </button>
 
       <style>
         .nav-badge {
@@ -585,9 +588,9 @@
           </div>
           <div class="selector-group">
             <label>পরীক্ষার নাম</label>
-            <input type="text" id="reExam" class="form-control" list="reExamDatalist"
-              placeholder="পরীক্ষার নাম লিখুন বা নির্বাচন করুন" autocomplete="off">
-            <datalist id="reExamDatalist"></datalist>
+            <select id="reExam" class="form-control">
+              <option value="">ক্লাস নির্বাচন করুন</option>
+            </select>
           </div>
           <button id="reLoadBtn" class="dm-btn dm-save">
             <i class="fas fa-sync-alt"></i> <span class="dm-btn-text">লোড করুন</span>
@@ -1307,7 +1310,8 @@
     </div>
 
 
-    <div id="accessRequestsPage" style="display: none; max-width: 1000px; margin: 0 auto; padding: 20px;">
+    <div id="accessRequestsPage" class="app-page"
+      style="display: none; max-width: 1000px; margin: 0 auto; padding: 20px;">
 
 
       <div class="card"
@@ -1342,6 +1346,82 @@
           <p style="opacity: 0.5; text-align: center; padding: 30px;">লোড হচ্ছে...</p>
         </div>
         <div id="arSliderNav" style="display: none;"></div>
+      </div>
+    </div>
+    <!-- END PAGE: ACCESS REQUESTS -->
+
+    <!-- ========== PAGE: EXAM CONFIGURATION (Super Admin Only) ========== -->
+    <div id="examConfigPage" class="app-page" style="display: none; padding: 0 20px 20px 20px;">
+      <div style="display: grid; grid-template-columns: minmax(300px, 350px) 1fr; gap: 24px; align-items: start;">
+        <div class="card"
+          style="padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <h3 style="margin-top: 0; color: var(--primary);"><i class="fas fa-plus-circle"></i> নতুন পরীক্ষার নাম তৈরি
+            করুন
+          </h3>
+          <form id="addExamConfigForm" style="display: flex; flex-direction: column; gap: 15px;">
+            <div class="form-group">
+              <label for="configClass">ক্লাস সিলেক্ট করুন</label>
+              <select id="configClass" class="form-control" required>
+                <option value="">সিলেক্ট করুন</option>
+                <option value="6">৬ষ্ঠ শ্রেণি</option>
+                <option value="7">৭ম শ্রেণি</option>
+                <option value="8">৮ম শ্রেণি</option>
+                <option value="9">৯ম শ্রেণি</option>
+                <option value="10">১০ম শ্রেণি</option>
+                <option value="SSC">SSC</option>
+                <option value="HSC">HSC</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="configExamName">পরীক্ষার নাম (উদা: ১ম সাময়িক পরীক্ষা ২০২৬)</label>
+              <input type="text" id="configExamName" class="form-control" required placeholder="পরীক্ষার নাম লিখুন">
+            </div>
+            <div class="form-group">
+              <label for="configExamDate">পরীক্ষার তারিখ (ঐচ্ছিক)</label>
+              <input type="date" id="configExamDate" class="form-control">
+            </div>
+            <div class="form-group">
+              <button type="submit" class="btn-primary" style="width: 100%;">
+                <i class="fas fa-save"></i> সংরক্ষণ করুন
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card"
+          style="padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: var(--primary);"><i class="fas fa-list"></i> তৈরি করা পরীক্ষাসমূহ</h3>
+            <select id="filterConfigClass" class="form-select" style="max-width: 200px;">
+              <option value="all">সব ক্লাস</option>
+              <option value="6">৬ষ্ঠ শ্রেণি</option>
+              <option value="7">৭ম শ্রেণি</option>
+              <option value="8">৮ম শ্রেণি</option>
+              <option value="9">৯ম শ্রেণি</option>
+              <option value="10">১০ম শ্রেণি</option>
+              <option value="SSC">SSC</option>
+              <option value="HSC">HSC</option>
+            </select>
+          </div>
+          <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="data-table">
+              <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--surface);">
+                <tr>
+                  <th>ক্লাস</th>
+                  <th>পরীক্ষার নাম</th>
+                  <th>তারিখ</th>
+                  <th>তৈরি করেছেন</th>
+                  <th style="text-align: right;">অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="examConfigTableBody">
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 20px;">লোড হচ্ছে...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -36,7 +36,8 @@ const COLLECTIONS = {
     settings: 'settings',
     users: 'users',
     access_requests: 'access_requests',
-    teacher_assignments: 'teacher_assignments'
+    teacher_assignments: 'teacher_assignments',
+    examConfigs: 'examConfigs'
 };
 
 // Memory cache for expensive read operations
@@ -1241,4 +1242,79 @@ export function subscribeToClassSubjectMappings(callback) {
             callback({});
         }
     });
+}
+
+// ==========================================
+// EXAM CONFIGS OPERATIONS (Global Exam Management)
+// ==========================================
+
+/**
+ * Add a new Exam Configuration
+ * @param {Object} configData - { class, examName, examDate, createdBy, creatorName }
+ * @returns {Promise<boolean>}
+ */
+export async function addExamConfig(configData) {
+    try {
+        const docRef = doc(collection(db, COLLECTIONS.examConfigs));
+        await setDoc(docRef, {
+            ...configData,
+            createdAt: serverTimestamp(),
+            docId: docRef.id
+        });
+        return true;
+    } catch (error) {
+        console.error('এক্সাম কনফিগ যোগ করতে সমস্যা:', error);
+        return false;
+    }
+}
+
+/**
+ * Get Exam Configurations (Optionally filtered by class)
+ * @param {string} [className] - Optional class name to filter
+ * @returns {Promise<Array>}
+ */
+export async function getExamConfigs(className = null) {
+    try {
+        const configsRef = collection(db, COLLECTIONS.examConfigs);
+        let q;
+        if (className) {
+            // Remove orderBy to prevent needing a composite index in Firestore
+            q = query(configsRef, where('class', '==', className));
+        } else {
+            // Remove orderBy here as well to keep logic consistent
+            q = query(configsRef);
+        }
+
+        const snapshot = await getDocs(q);
+        const configs = snapshot.docs.map(doc => ({
+            docId: doc.id,
+            ...doc.data()
+        }));
+
+        // Sort descending locally by createdAt
+        return configs.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis() || 0;
+            const timeB = b.createdAt?.toMillis() || 0;
+            return timeB - timeA;
+        });
+    } catch (error) {
+        console.error('এক্সাম কনফিগ লোড করতে সমস্যা:', error);
+        return [];
+    }
+}
+
+/**
+ * Delete an Exam Configuration
+ * @param {string} docId 
+ * @returns {Promise<boolean>}
+ */
+export async function deleteExamConfig(docId) {
+    try {
+        const docRef = doc(db, COLLECTIONS.examConfigs, docId);
+        await deleteDoc(docRef);
+        return true;
+    } catch (error) {
+        console.error('এক্সাম কনফিগ মুছতে সমস্যা:', error);
+        return false;
+    }
 }

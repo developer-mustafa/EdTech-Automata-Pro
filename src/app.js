@@ -52,6 +52,7 @@ import { initAccessRequestUI, loadAccessRequests, initAccessRequestNotifications
 import { initStudentManager, loadStudents } from './js/modules/studentManager.js';
 import { initResultEntryManager, populateREDropdowns } from './js/modules/resultEntryManager.js';
 import { initMarksheetManager, populateMSDropdowns } from './js/modules/marksheetManager.js';
+import { initExamConfigManager, loadExamConfigs } from './js/modules/examConfigManager.js';
 
 /**
  * Recalculate student grades/statuses using CURRENT subject config.
@@ -229,12 +230,14 @@ async function init() {
             if (pageId === 'students') await loadStudents();
             if (pageId === 'result-entry') await populateREDropdowns();
             if (pageId === 'marksheet') await populateMSDropdowns();
+            if (pageId === 'exam-config') await loadExamConfigs();
         });
         initTeacherAssignmentUI();
 
         initStudentManager();
         initResultEntryManager();
         initMarksheetManager();
+        initExamConfigManager();
 
         // Listen for exam data updates from Result Entry
         window.addEventListener('examDataUpdated', async () => {
