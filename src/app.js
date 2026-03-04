@@ -52,7 +52,7 @@ import { initAccessRequestUI, loadAccessRequests, initAccessRequestNotifications
 import { initStudentManager, loadStudents } from './js/modules/studentManager.js';
 import { initResultEntryManager, populateREDropdowns } from './js/modules/resultEntryManager.js';
 import { initMarksheetManager, populateMSDropdowns } from './js/modules/marksheetManager.js';
-import { initExamConfigManager, loadExamConfigs } from './js/modules/examConfigManager.js';
+import { initExamConfigManager, loadExamConfigs, populateExamNameDropdown } from './js/modules/examConfigManager.js';
 
 /**
  * Recalculate student grades/statuses using CURRENT subject config.
@@ -1046,6 +1046,11 @@ function initEventListeners() {
             elements.examSubject.disabled = true;
         }
 
+        if (elements.examName) {
+            elements.examName.innerHTML = '<option value="">আগে শ্রেণি সিলেক্ট করুন</option>';
+            elements.examName.disabled = true;
+        }
+
         elements.saveExamModal.classList.add('active');
     });
 
@@ -1090,6 +1095,7 @@ function initEventListeners() {
     // Modal Class Selection Listeners
     elements.examClass?.addEventListener('change', (e) => {
         populateSubjectDropdown(elements.examSubject, e.target.value);
+        populateExamNameDropdown(document.getElementById('examName'), e.target.value);
     });
 
     elements.editExamClass?.addEventListener('change', (e) => {

@@ -138,3 +138,37 @@ async function handleAddConfig(e) {
         showNotification('গ্লোবাল এক্সাম নাম সেভ করতে সমস্যা হয়েছে।', 'error');
     }
 }
+
+/**
+ * Populate a dropdown with configured exam names based on class selection
+ * @param {HTMLElement} dropdown 
+ * @param {string} className 
+ */
+export async function populateExamNameDropdown(dropdown, className) {
+    if (!dropdown) return;
+
+    if (!className) {
+        dropdown.innerHTML = '<option value="">আগে শ্রেণি সিলেক্ট করুন</option>';
+        dropdown.disabled = true;
+        return;
+    }
+
+    try {
+        const configs = await getExamConfigs(className);
+
+        if (!configs || configs.length === 0) {
+            dropdown.innerHTML = '<option value="">এই ক্লাসের জন্য কোনো এক্সাম কনফিগ করা নেই</option>';
+            dropdown.disabled = true;
+            return;
+        }
+
+        dropdown.disabled = false;
+        dropdown.innerHTML = configs.map(cfg =>
+            `<option value="${cfg.examName}">${cfg.examName}</option>`
+        ).join('');
+    } catch (error) {
+        console.error('Error populating exam name dropdown:', error);
+        dropdown.innerHTML = '<option value="">লোড করতে সমস্যা হয়েছে</option>';
+        dropdown.disabled = true;
+    }
+}
