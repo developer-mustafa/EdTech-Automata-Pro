@@ -39,24 +39,33 @@ async function collectStudents() {
         });
     });
 
-    // 2. Enrich students with exam references (but don't add new students from exams)
+    // 2. Enrich students with records from all saved exams
     const exams = await getSavedExams();
     exams.forEach(exam => {
         if (exam.studentData && Array.isArray(exam.studentData)) {
             exam.studentData.forEach(s => {
-                const key = generateStudentDocId({
+                const studentDataForId = {
                     id: s.id,
                     group: s.group,
                     class: exam.class || s.class,
                     session: exam.session || s.session
-                });
+                };
+                const key = generateStudentDocId(studentDataForId);
 
-                // Only add exam reference if student already exists in students collection
                 if (studentMap.has(key)) {
+                    // Update existing record if it came from the buffer (buffer records usually have more fields or are primary)
                     const existing = studentMap.get(key);
                     if (!existing._examDocIds.includes(exam.docId)) {
                         existing._examDocIds.push(exam.docId);
                     }
+                } else {
+                    // Add new student discovered from an exam record
+                    studentMap.set(key, {
+                        ...studentDataForId,
+                        name: s.name,
+                        _examDocIds: [exam.docId],
+                        _isFromExamOnly: true // Flag to indicate this student isn't in the main buffer
+                    });
                 }
             });
         }
@@ -174,7 +183,7 @@ function renderStudentTable() {
                     <button class="action-btn edit-student-btn" data-index="${start + i}" title="এডিট">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="action-btn delete-student-btn" data-index="${start + i}" title="মুছুন" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                    <button class="action-btn delete-student-btn" data-index="${start + i}" title="মুছুন">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>

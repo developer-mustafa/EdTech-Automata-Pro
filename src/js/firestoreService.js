@@ -214,16 +214,26 @@ export async function bulkImportStudents(studentsArray) {
  * @returns {Promise<boolean>} - Success status
  */
 export async function deleteAllStudents() {
+    const BATCH_SIZE = 400;
     try {
-        const batch = writeBatch(db);
         const students = await getAllStudents();
+        if (students.length === 0) return true;
 
-        for (const student of students) {
-            const docRef = doc(db, COLLECTIONS.students, student.docId);
-            batch.delete(docRef);
+        console.log(`Deleting ${students.length} students in batches...`);
+
+        for (let i = 0; i < students.length; i += BATCH_SIZE) {
+            const batch = writeBatch(db);
+            const chunk = students.slice(i, i + BATCH_SIZE);
+
+            for (const student of chunk) {
+                const docRef = doc(db, COLLECTIONS.students, student.docId);
+                batch.delete(docRef);
+            }
+
+            await batch.commit();
+            console.log(`Deleted batch ${Math.floor(i / BATCH_SIZE) + 1}`);
         }
 
-        await batch.commit();
         return true;
     } catch (error) {
         console.error('সব শিক্ষার্থী মুছতে সমস্যা:', error);

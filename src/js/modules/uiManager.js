@@ -415,11 +415,21 @@ export function updateSyncStatus(isOnline) {
  * Show confirmation modal with custom message and callback
  * @param {string} message - Message to display
  * @param {Function} onConfirm - Callback on confirm
+ * @param {string} itemName - Name of the item being deleted
+ * @param {string} contextInfo - Where/what is being deleted
  */
-export function showConfirmModal(message, onConfirm) {
+export function showConfirmModal(message, onConfirm, itemName = '', contextInfo = 'এটি ডাটাবেস থেকে স্থায়ীভাবে মুছে যাবে') {
     if (!elements.confirmModal || !elements.confirmMessage || !elements.confirmDeleteBtn) return;
 
     elements.confirmMessage.textContent = message;
+
+    // Update new informative elements
+    const itemNameEl = document.getElementById('confirmItemName');
+    const contextInfoEl = document.getElementById('confirmContextInfo');
+
+    if (itemNameEl) itemNameEl.textContent = itemName;
+    if (contextInfoEl) contextInfoEl.textContent = contextInfo;
+
     elements.confirmModal.classList.add('active');
 
     // Clean up previous listeners & clone buttons to avoid listener accumulation

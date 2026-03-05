@@ -1178,7 +1178,7 @@ export function renderSavedExamsList(container, exams, options = {}) {
                     <div class="stats-row-minimal">
                         <div class="stat-group">
                           <span class="stat-label-tiny">মোট</span>
-                          <div class="stat-bubble" title="শিক্ষার্থী"><i class="fas fa-users"></i> ${exam.studentCount || 0}</div>
+                          <div class="stat-bubble" title="শিক্ষার্থী"><i class="fas fa-users"></i> ${stats.totalStudents || 0}</div>
                         </div>
                         <div class="stat-group">
                           <span class="stat-label-tiny">পরীক্ষার্থী</span>

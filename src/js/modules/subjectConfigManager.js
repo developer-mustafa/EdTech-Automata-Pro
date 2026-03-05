@@ -7,7 +7,7 @@ import {
     deleteSubjectConfig,
     subscribeToSubjectConfigs
 } from '../firestoreService.js';
-import { elements } from './uiManager.js';
+import { elements, showConfirmModal } from './uiManager.js';
 import { showNotification } from '../utils.js';
 import { state, DEFAULT_SUBJECT_CONFIG } from './state.js';
 
@@ -202,14 +202,18 @@ async function handleDeleteConfig() {
     const subject = state.editingSubjectKey;
     if (!subject) return;
 
-    const confirmed = confirm(`আপনি কি নিশ্চিত যে আপনি '${subject}' কনফিগারেশন মুছে ফেলতে চান?`);
-    if (!confirmed) return;
-
-    const success = await deleteSubjectConfig(subject);
-    if (success) {
-        showNotification(`${subject} কনফিগারেশন মুছে ফেলা হয়েছে`);
-        resetConfigForm();
-    } else {
-        showNotification('ডিলিট করতে সমস্যা হয়েছে', 'error');
-    }
+    showConfirmModal(
+        `আপনি কি নিশ্চিত যে আপনি এই বিষযের কনফিগারেশন মুছে ফেলতে চান?`,
+        async () => {
+            const success = await deleteSubjectConfig(subject);
+            if (success) {
+                showNotification(`${subject} কনফিগারেশন মুছে ফেলা হয়েছে`);
+                resetConfigForm();
+            } else {
+                showNotification('ডিলিট করতে সমস্যা হয়েছে', 'error');
+            }
+        },
+        subject,
+        'এটি ডাটাবেস থেকে স্থায়ীভাবে মুছে যাবে।'
+    );
 }

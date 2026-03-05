@@ -788,22 +788,31 @@
 
     <!-- User Management Modal -->
     <div id="userManagementModal" class="modal">
-      <div class="modal-content" style="max-width: 800px;">
-        <span class="close" id="closeUserManagementBtn">&times;</span>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h2><i class="fas fa-users-cog"></i> ব্যবহারকারী ব্যবস্থাপনা</h2>
-          <button id="subjectSettingsBtn" class="btn-primary admin-only" style="font-size: 0.9em;">
-            <i class="fas fa-cogs"></i> বিষয় সেটিংস
-          </button>
+      <div class="modal-content user-mgmt-modal">
+        <div class="modal-header-premium">
+          <div class="header-title-left">
+            <h2><i class="fas fa-users-cog"></i> ব্যবহারকারী ব্যবস্থাপনা</h2>
+          </div>
+          <div class="header-actions-right">
+            <button id="subjectSettingsBtn" class="dm-btn dm-report admin-only" title="বিষয় সেটিংস">
+              <i class="fas fa-sliders-h"></i> <span class="dm-btn-text">বিষয় সেটিংস</span>
+            </button>
+            <button id="openClassMappingBtn" class="dm-btn dm-template admin-only" title="ম্যাপিং সেটিংস">
+              <i class="fas fa-project-diagram"></i> <span class="dm-btn-text">ম্যাপিং সেটিংস</span>
+            </button>
+            <button class="modal-close-premium" id="closeUserManagementBtn" aria-label="Close">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
         </div>
-        <div class="user-list-container" style="overflow-x: auto;">
-          <table class="user-table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <div class="user-list-container">
+          <table class="user-table-premium">
             <thead>
-              <tr style="background: #f1f2f6; text-align: left; color: #2d3436;">
-                <th style="padding: 10px;">ব্যবহারকারী</th>
-                <th style="padding: 10px;">ইমেইল</th>
-                <th style="padding: 10px;">বর্তমান রোল</th>
-                <th style="padding: 10px; text-align: right;">পদক্ষেপ</th>
+              <tr>
+                <th>ব্যবহারকারী</th>
+                <th>ইমেইল</th>
+                <th>রোল</th>
+                <th style="text-align: right;">পদক্ষেপ</th>
               </tr>
             </thead>
             <tbody id="userListBody">
@@ -813,16 +822,7 @@
         </div>
 
         <!-- New Class Subject Mapping Section -->
-        <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h3><i class="fas fa-list-alt"></i> ক্লাস ও বিষয় ম্যাপিং</h3>
-            <button id="openClassMappingBtn" class="btn-secondary admin-only" style="font-size: 0.9em;">
-              <i class="fas fa-edit"></i> ম্যাপিং এডিট করুন
-            </button>
-          </div>
-          <p style="font-size: 0.9em; color: #666;">এখানে ক্লাস অনুযায়ী বিষয়গুলো সেট করুন। এটি এক্সাম সেভ করার সময়
-            ড্রপডাউনে দেখাবে।</p>
-        </div>
+
       </div>
     </div>
 
@@ -1010,13 +1010,19 @@
     <div id="confirmModal" class="modal">
       <div class="modal-content confirm-modal-content">
         <div class="confirm-modal-icon">
-          <i class="fas fa-exclamation-triangle"></i>
+          <i class="fas fa-trash-alt"></i>
         </div>
-        <h2 id="confirmTitle">নিশ্চিত করুন</h2>
+        <h2 id="confirmTitle">মুছে ফেলতে চান?</h2>
         <p id="confirmMessage">আপনি কি নিশ্চিত যে আপনি এটি মুছে ফেলতে চান?</p>
+
+        <div class="confirm-item-details">
+          <div class="confirm-item-name" id="confirmItemName">পরীক্ষার নাম এখানে</div>
+          <div class="confirm-context-info" id="confirmContextInfo">এটি ডাটাবেস থেকে স্থায়ীভাবে মুছে যাবে</div>
+        </div>
+
         <div class="confirm-modal-actions">
           <button id="confirmCancelBtn" class="btn-secondary">না, থাক</button>
-          <button id="confirmDeleteBtn" class="btn-danger super-admin-only">হ্যাঁ, মুছে ফেলুন</button>
+          <button id="confirmDeleteBtn" class="btn-danger-confirm">হ্যাঁ, মুছে ফেলুন</button>
         </div>
       </div>
     </div>
@@ -1136,43 +1142,187 @@
 
     <!-- Marksheet Settings Modal (Super Admin) -->
     <div id="marksheetSettingsModal" class="modal">
-      <div class="modal-content" style="max-width: 600px;">
-        <span class="close" id="closeMarksheetSettingsModal">&times;</span>
-        <h2><i class="fas fa-cog"></i> মার্কশীট সেটিংস</h2>
-        <form id="marksheetSettingsForm">
-          <div class="form-group">
-            <label for="msInstitutionName">প্রতিষ্ঠানের নাম</label>
-            <input type="text" id="msInstitutionName" class="form-control" placeholder="আদর্শ উচ্চ বিদ্যালয়">
+      <div class="modal-content landscape-modal marksheet-config-modal">
+        <div class="modal-header">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <h2><i class="fas fa-file-invoice"></i> মার্কশীট কনফিগারেশন</h2>
+            <span class="close" id="closeMarksheetSettingsModal">&times;</span>
           </div>
-          <div class="form-group">
-            <label for="msInstitutionAddress">ঠিকানা</label>
-            <input type="text" id="msInstitutionAddress" class="form-control" placeholder="ঢাকা, বাংলাদেশ">
-          </div>
-          <div class="form-group">
-            <label for="msHeaderLine1">হেডার লাইন ১</label>
-            <input type="text" id="msHeaderLine1" class="form-control" placeholder="পরীক্ষার ফলাফল পত্র">
-          </div>
-          <div class="form-group">
-            <label for="msHeaderLine2">হেডার লাইন ২ (ঐচ্ছিক)</label>
-            <input type="text" id="msHeaderLine2" class="form-control" placeholder="">
-          </div>
-          <div class="form-row" style="display: flex; gap: 10px;">
-            <div class="form-group" style="flex: 2;">
-              <label for="msWatermarkUpload">ওয়াটারমার্ক ছবি</label>
-              <input type="file" id="msWatermarkUpload" class="form-control" accept="image/*">
+        </div>
+
+        <div class="landscape-body">
+          <!-- Sidebar for Categories -->
+          <div class="config-sidebar">
+            <div class="sidebar-header">
+              <h4>সেটিংস ক্যাটাগরি</h4>
             </div>
-            <div class="form-group" style="flex: 1;">
-              <label for="msWatermarkOpacity">অপাসিটি</label>
-              <input type="range" id="msWatermarkOpacity" min="5" max="30" value="10" class="form-control">
+            <div class="config-menu">
+              <div class="config-menu-item active" data-tab="ms-general">
+                <i class="fas fa-university"></i> প্রতিষ্ঠানের তথ্য
+              </div>
+              <div class="config-menu-item" data-tab="ms-header">
+                <i class="fas fa-heading"></i> হেডার ডিজাইন
+              </div>
+              <div class="config-menu-item" data-tab="ms-watermark">
+                <i class="fas fa-image"></i> জলছাপ (Watermark)
+              </div>
+              <div class="config-menu-item" data-tab="ms-signature">
+                <i class="fas fa-signature"></i> ডিজিটাল স্বাক্ষর
+              </div>
+              <div class="config-menu-item" data-tab="ms-appearance">
+                <i class="fas fa-palette"></i> অ্যাপিয়ারেন্স
+              </div>
             </div>
           </div>
-          <div id="msWatermarkPreview" style="text-align:center; margin-bottom:10px;"></div>
-          <div class="form-group">
-            <label>স্বাক্ষর লেবেল (কমা দিয়ে আলাদা করুন)</label>
-            <input type="text" id="msSignatureLabels" class="form-control" placeholder="শ্রেণি শিক্ষক, প্রধান শিক্ষক">
+
+          <!-- Main Content Area -->
+          <div class="config-main">
+            <form id="marksheetSettingsForm">
+
+              <!-- General Settings -->
+              <div class="config-tab-content active" id="ms-general">
+                <div class="form-header">
+                  <h3>সাধারণ তথ্য</h3>
+                  <p>মার্কশীটে প্রদর্শিত প্রতিষ্ঠানের নাম ও ঠিকানা</p>
+                </div>
+                <div class="form-group">
+                  <label for="msInstitutionName">প্রতিষ্ঠানের নাম</label>
+                  <input type="text" id="msInstitutionName" class="form-control" placeholder="আদর্শ উচ্চ বিদ্যালয়">
+                </div>
+                <div class="form-group">
+                  <label for="msInstitutionAddress">ঠিকানা</label>
+                  <input type="text" id="msInstitutionAddress" class="form-control" placeholder="ঢাকা, বাংলাদেশ">
+                </div>
+              </div>
+
+              <!-- Header Settings -->
+              <div class="config-tab-content" id="ms-header">
+                <div class="form-header">
+                  <h3>হেডার সেটিংস</h3>
+                  <p>টাইটেল এবং স্লোগান কনফিগার করুন</p>
+                </div>
+                <div class="form-group">
+                  <label for="msHeaderLine1">হেডার লাইন ১</label>
+                  <input type="text" id="msHeaderLine1" class="form-control" placeholder="পরীক্ষার ফলাফল পত্র">
+                </div>
+                <div class="form-group">
+                  <label for="msHeaderLine2">হেডার লাইন ২ (ঐচ্ছিক)</label>
+                  <input type="text" id="msHeaderLine2" class="form-control" placeholder="শিক্ষাবর্ষ: ২০২৪-২০২৫">
+                </div>
+              </div>
+
+              <!-- Watermark Settings -->
+              <div class="config-tab-content" id="ms-watermark">
+                <div class="form-header">
+                  <h3>জলছাপ (Watermark)</h3>
+                  <p>পেজের মাঝখানে প্রদর্শিত হালকা লোগো</p>
+                </div>
+                <div class="form-row" style="display: flex; gap: 15px; align-items: flex-end;">
+                  <div class="form-group" style="flex: 2;">
+                    <label for="msWatermarkUpload">ওয়াটারমার্ক ছবি আপলোড</label>
+                    <input type="file" id="msWatermarkUpload" class="form-control" accept="image/*">
+                  </div>
+                  <div class="form-group" style="flex: 1;">
+                    <label for="msWatermarkOpacity">অপাসিটি (<span id="msOpacityVal">10</span>%)</label>
+                    <input type="range" id="msWatermarkOpacity" min="5" max="40" value="10" class="form-control">
+                  </div>
+                </div>
+                <div id="msWatermarkPreview"
+                  style="margin-top: 15px; padding: 15px; border: 1px dashed var(--border-color); border-radius: 8px; text-align: center;">
+                  <span style="opacity: 0.5;">কোনো ছবি নেই</span>
+                </div>
+              </div>
+
+              <!-- Signature Settings -->
+              <div class="config-tab-content" id="ms-signature">
+                <div class="signature-manager-premium">
+                  <div class="sig-manager-header">
+                    <label><i class="fas fa-file-signature"></i> স্বাক্ষরসমূহ (Signatures)</label>
+                    <button type="button" id="addSignatureSlotBtn" class="dm-btn dm-report btn-sm">
+                      <i class="fas fa-plus"></i> নতুন স্লট
+                    </button>
+                  </div>
+                  <div id="msSignatureSlotsContainer" class="sig-slots-grid">
+                    <!-- Signature slots will be injected here -->
+                  </div>
+                  <p class="sig-help-text">প্রতিটি পদের জন্য আলাদা স্বাক্ষর ছবি আপলোড করতে পারেন।</p>
+                </div>
+              </div>
+
+              <!-- Appearance Settings -->
+              <div class="config-tab-content" id="ms-appearance">
+                <div class="form-header">
+                  <h3>অ্যাপিয়ারেন্স (Appearance)</h3>
+                  <p>মার্কশীটের সামগ্রিক ডিজাইন ও স্টাইল কাস্টমাইজ করুন</p>
+                </div>
+
+                <div class="form-row" style="display: flex; gap: 15px;">
+                  <div class="form-group" style="flex: 1;">
+                    <label for="msTheme">থিম সিলেক্ট করুন</label>
+                    <select id="msTheme" class="form-control">
+                      <option value="classic">Classic (ক্লাসিক ব্লু)</option>
+                      <option value="modern">Modern (আধুনিক স্লিক)</option>
+                      <option value="elite">Elite (রয়াল গোল্ড ও ডার্ক)</option>
+                      <option value="certificate">Certificate (সনদ স্টাইল)</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="flex: 1;">
+                    <label for="msPrimaryColor">মূল রং (Primary Color)</label>
+                    <input type="color" id="msPrimaryColor" class="form-control" style="height: 45px; padding: 5px;"
+                      value="#4361ee">
+                  </div>
+                </div>
+
+                <div class="form-row" style="display: flex; gap: 15px; margin-top: 15px;">
+                  <div class="form-group" style="flex: 1;">
+                    <label for="msBorderStyle">বর্ডার স্টাইল</label>
+                    <select id="msBorderStyle" class="form-control">
+                      <option value="double">Double (মডার্ন ডাবল)</option>
+                      <option value="ornate">Ornate (অলঙ্কৃত ফ্রেম)</option>
+                      <option value="minimal">Minimal (সবার বর্ডার)</option>
+                      <option value="none">No Border (বর্ডারহীন)</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="flex: 1;">
+                    <label for="msTypography">ফন্ট পেয়ারিং (Typography)</label>
+                    <select id="msTypography" class="form-control">
+                      <option value="default">ডিফল্ট সিম্পল</option>
+                      <option value="premium">মডার্ন ও নিট (Premium)</option>
+                      <option value="formal">অফিসিয়াল ফরমাল</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row" style="display: flex; gap: 15px; margin-top: 15px;">
+                  <div class="form-group" style="flex: 1;">
+                    <label for="msFontSize">বেস ফন্ট সাইজ</label>
+                    <select id="msFontSize" class="form-control">
+                      <option value="small">ছোট (Small)</option>
+                      <option value="medium" selected>মাঝারি (Normal)</option>
+                      <option value="large">বড় (Large)</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="flex: 1;">
+                    <label for="msRowDensity">টেবিল ডেনসিটি</label>
+                    <select id="msRowDensity" class="form-control">
+                      <option value="compact">কমপ্যাক্ট (Compact)</option>
+                      <option value="normal" selected>স্বাভাবিক (Normal)</option>
+                      <option value="relaxed">রিল্যাক্সড (Relaxed)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Save Container -->
+              <div
+                style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                <button type="submit" class="dm-btn dm-primary" style="padding: 12px 30px; font-weight: 700;">
+                  <i class="fas fa-save"></i> সেটিংস সংরক্ষণ করুন
+                </button>
+              </div>
+            </form>
           </div>
-          <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">সংরক্ষণ করুন</button>
-        </form>
+        </div>
       </div>
     </div>
 

@@ -24,6 +24,7 @@ export const state = {
     isSuperAdmin: false,
     userRole: 'guest',
     isViewingSavedExam: false,
+    isImporting: false,
     currentAnalyzedStudent: null,
     currentAnalyzedHistory: [],
 

@@ -7,7 +7,7 @@ import './styles/main.css';
 
 // Core Modules
 import { state, DEFAULT_SUBJECT_CONFIG } from './js/modules/state.js';
-import { elements, initDOMReferences, setLoading, updateSyncStatus, updateProfileUI } from './js/modules/uiManager.js';
+import { elements, initDOMReferences, setLoading, updateSyncStatus, updateProfileUI, showConfirmModal } from './js/modules/uiManager.js';
 import { setupAuthListener, handleLogin, handleLogout, handleEmailLogin, handleAccessRequest } from './js/modules/authManager.js';
 import {
     initializeData,
@@ -186,7 +186,7 @@ async function init() {
 
         // Real-time Data Sync
         state.onDataUpdateUnsubscribe = subscribeToDataUpdates((data) => {
-            if (state.isViewingSavedExam) return;
+            if (state.isViewingSavedExam || state.isImporting) return;
             state.studentData = data;
             updateViews();
         });
@@ -430,13 +430,18 @@ function renderSavedExams() {
             elements.editExamModal.classList.add('active');
         },
         onDelete: async (exam) => {
-            if (confirm('আপনি কি নিশ্চিত যে আপনি এই পরীক্ষাটি মুছতে চান?')) {
-                const success = await deleteExam(exam.docId);
-                if (success) {
-                    await fetchExams();
-                    renderSavedExams();
-                }
-            }
+            showConfirmModal(
+                'আপনি কি নিশ্চিত যে আপনি এই পরীক্ষাটি মুষতে চান?',
+                async () => {
+                    const success = await deleteExam(exam.docId);
+                    if (success) {
+                        await fetchExams();
+                        renderSavedExams();
+                    }
+                },
+                `${exam.name || 'অজ্ঞাত পরীক্ষা'} (${exam.subject || ''})`,
+                `ক্লাস: ${exam.class || ''} | সেশন: ${exam.session || ''} - এটি স্থায়ীভাবে মুছে যাবে`
+            );
         }
     });
 }
@@ -641,7 +646,10 @@ function initEventListeners() {
 
     // Downloads
     elements.downloadChartBtn?.addEventListener('click', () => handleChartDownload(`${state.currentExamName} - ${state.currentSubject}.png`));
-    elements.downloadExcelBtn?.addEventListener('click', () => exportToExcel(state.studentData, `${state.currentExamName}.xlsx`, state.currentSubject));
+    elements.downloadExcelBtn?.addEventListener('click', () => {
+        const filename = `${state.currentSubject}_${state.currentExamClass}_${state.currentExamName}(${state.currentExamSession}).xlsx`;
+        exportToExcel(state.studentData, filename, state.currentSubject);
+    });
 
     // Toolbar Downloads & Print
     elements.downloadBtn?.addEventListener('click', () => {

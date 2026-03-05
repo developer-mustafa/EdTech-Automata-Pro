@@ -10,7 +10,7 @@ import {
     handleFileUpload,
     getDefaultData
 } from '../dataService.js';
-import { calculateStatistics, showNotification } from '../utils.js';
+import { calculateStatistics, showNotification, convertToEnglishDigits, normalizeText } from '../utils.js';
 import {
     saveExam as firestoreSaveExam,
     getSavedExams,
@@ -167,10 +167,14 @@ export async function onFileUpload(event, callback) {
     if (!file) return;
 
     setLoading(true);
+    state.isImporting = true; // Block real-time sync during import
     try {
         const uploadedData = await handleFileUpload(file);
         state.studentData = uploadedData;
         state.allowEmptyData = false;
+
+        // Clear old working buffer before saving new import
+        await clearDataFromStorage();
         await saveDataToStorage(state.studentData);
 
         triggerAnalyticsSave();
@@ -183,6 +187,7 @@ export async function onFileUpload(event, callback) {
         showNotification(error.message, 'error');
     } finally {
         setLoading(false);
+        state.isImporting = false; // Resume real-time sync
         event.target.value = '';
     }
 }
@@ -237,11 +242,44 @@ export async function handleSaveExam(examData) {
         };
 
         const stats = calculateStatistics(state.studentData, statsOptions);
+
+        // METADATA FILTERING & ASSIGNMENT:
+        // 1. If student metadata exists, it MUST match the exam's metadata.
+        // 2. If student metadata is missing, we assume they are candidates for the current import.
+        const filteredStudents = state.studentData.filter(s => {
+            const sSess = convertToEnglishDigits(String(s.session || '').trim());
+            const eSess = convertToEnglishDigits(String(examData.session || '').trim());
+            const sCls = normalizeText(s.class || '');
+            const eCls = normalizeText(examData.class || '');
+            const sSub = normalizeText(s.subject || '');
+            const eSub = normalizeText(examData.subject || '');
+
+            // STRICT FILTER:
+            // - If student has a session, it must match.
+            // - If student has a class, it must match.
+            // - If student has a subject, it must match (or the exam has no global subject).
+
+            const sessionMatch = !sSess || sSess === eSess;
+            const classMatch = !sCls || sCls === eCls;
+            const subjectMatch = !sSub || !eSub || sSub === eSub;
+
+            return sessionMatch && classMatch && subjectMatch;
+        }).map(s => ({
+            ...s,
+            // Assign exam metadata if student record is missing it
+            session: s.session || examData.session,
+            class: s.class || examData.class,
+            subject: s.subject || examData.subject
+        }));
+
+        // Recalculate stats for the strictly filtered set
+        const finalStats = calculateStatistics(filteredStudents, statsOptions);
+
         const fullExamData = {
             ...examData,
-            studentCount: state.studentData.length,
-            studentData: state.studentData,
-            stats,
+            studentCount: filteredStudents.length,
+            studentData: filteredStudents,
+            stats: finalStats,
             createdBy: state.currentUser?.uid,
             creatorName: state.currentUser?.displayName
         };

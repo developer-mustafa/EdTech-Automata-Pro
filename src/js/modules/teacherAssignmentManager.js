@@ -11,7 +11,7 @@ import {
 import { getAllUsers, createTeacherAccount, deleteTeacherFromFirestore, updateTeacherPassword, getLoginPermission, setLoginPermission, setUserLoginDisabled, getClassSubjectMappings } from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification } from '../utils.js';
-import { setLoading } from './uiManager.js';
+import { setLoading, showConfirmModal } from './uiManager.js';
 
 const COLLECTION_NAME = 'teacher_assignments';
 
@@ -134,26 +134,33 @@ export function initTeacherAssignmentUI() {
             const uid = teacherSelect.value;
             if (!uid || uid === 'new') return;
 
-            if (confirm('আপনি কি নিশ্চিত যে এই শিক্ষক অ্যাকাউন্টটি মুছে ফেলতে চান? শিক্ষকের সব অ্যাসাইনমেন্টও মুছে যাবে।')) {
-                setLoading(true, '#teacherAssignmentPage .ta-form-column');
-                // Optional: delete their assignments to clean up DB
-                const assignments = await getTeacherAssignments();
-                for (const a of assignments) {
-                    if (a.uid === uid) {
-                        await removeTeacherAssignment(a.docId);
-                    }
-                }
-                const success = await deleteTeacherFromFirestore(uid);
-                setLoading(false, '#teacherAssignmentPage .ta-form-column');
+            const teacherName = teacherSelect.options[teacherSelect.selectedIndex].text;
 
-                if (success) {
-                    showNotification('শিক্ষক অ্যাকাউন্ট সফলভাবে মুছে ফেলা হয়েছে');
-                    teacherSelect.value = '';
-                    await loadTeacherAssignmentData();
-                } else {
-                    showNotification('শিক্ষক মুছতে সমস্যা হয়েছে', 'error');
-                }
-            }
+            showConfirmModal(
+                'আপনি কি নিশ্চিত যে এই শিক্ষক অ্যাকাউন্টটি মুছে ফেলতে চান?',
+                async () => {
+                    setLoading(true, '#teacherAssignmentPage .ta-form-column');
+                    // Optional: delete their assignments to clean up DB
+                    const assignments = await getTeacherAssignments();
+                    for (const a of assignments) {
+                        if (a.uid === uid) {
+                            await removeTeacherAssignment(a.docId);
+                        }
+                    }
+                    const success = await deleteTeacherFromFirestore(uid);
+                    setLoading(false, '#teacherAssignmentPage .ta-form-column');
+
+                    if (success) {
+                        showNotification('শিক্ষক অ্যাকাউন্ট সফলভাবে মুছে ফেলা হয়েছে');
+                        teacherSelect.value = '';
+                        await loadTeacherAssignmentData();
+                    } else {
+                        showNotification('শিক্ষক মুছতে সমস্যা হয়েছে', 'error');
+                    }
+                },
+                teacherName,
+                'শিক্ষকের সব অ্যাসাইনমেন্টও মুছে যাবে। এটি স্থায়ীভাবে মুছে যাবে।'
+            );
         });
     }
 
@@ -453,24 +460,25 @@ export async function loadTeacherAssignmentData() {
             toggle.checked = isEnabled;
             updateToggleUI(isEnabled, label, track, thumb);
 
-            toggle.onchange = async () => {
-                const newState = toggle.checked;
-                const confirmMsg = newState
-                    ? "সকল ইউজারের লগইন পারমিশন এনাবল করতে চান?"
-                    : "⚠️ সকল ইউজারের লগইন সম্পূর্ণ বন্ধ করতে চান? সুপার অ্যাডমিন ছাড়া কেউ লগইন করতে পারবে না!";
-                if (!confirm(confirmMsg)) {
-                    toggle.checked = !newState;
-                    return;
-                }
-                const success = await setLoginPermission(newState);
-                if (success) {
-                    updateToggleUI(newState, label, track, thumb);
-                    showNotification(newState ? "লগইন এনাবল করা হয়েছে ✅" : "লগইন ডিসেবল করা হয়েছে ⛔");
-                } else {
-                    toggle.checked = !newState;
-                    showNotification("সেটিংস আপডেট করতে সমস্যা হয়েছে", "error");
-                }
-            };
+            const confirmMsg = newState
+                ? "সকল ইউজারের লগইন পারমিশন এনাবল করতে চান?"
+                : "⚠️ সকল ইউজারের লগইন সম্পূর্ণ বন্ধ করতে চান?";
+
+            showConfirmModal(
+                confirmMsg,
+                async () => {
+                    const success = await setLoginPermission(newState);
+                    if (success) {
+                        updateToggleUI(newState, label, track, thumb);
+                        showNotification(newState ? "লগইন এনাবল করা হয়েছে ✅" : "লগইন ডিসেবল করা হয়েছে ⛔");
+                    } else {
+                        toggle.checked = !newState;
+                        showNotification("সেটিংস আপডেট করতে সমস্যা হয়েছে", "error");
+                    }
+                },
+                "গ্লোবাল লগইন কন্ট্রোল",
+                newState ? "সব টিচার লগইন করতে পারবেন।" : "সুপার অ্যাডমিন ছাড়া কেউ লগইন করতে পারবে না!"
+            );
 
             track.onclick = () => {
                 toggle.checked = !toggle.checked;
@@ -614,10 +622,19 @@ async function renderExistingAssignments() {
     // Delete handlers
     listEl.querySelectorAll('.ta-remove-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-            if (confirm('এই অ্যাসাইনমেন্ট মুছে ফেলতে চান?')) {
-                await removeTeacherAssignment(btn.dataset.docId);
-                await renderExistingAssignments();
-            }
+            const card = btn.closest('.ta-assignment-card');
+            const teacherName = card.querySelector('.ta-name').textContent;
+            const details = card.querySelector('.ta-detail').textContent;
+
+            showConfirmModal(
+                'এই অ্যাসাইনমেন্ট মুছে ফেলতে চান?',
+                async () => {
+                    await removeTeacherAssignment(btn.dataset.docId);
+                    await renderExistingAssignments();
+                },
+                teacherName,
+                `${details} - এটি স্থায়ীভাবে মুছে যাবে`
+            );
         });
     });
 
@@ -706,30 +723,32 @@ async function renderExistingAssignments() {
                 ? `${name} এর লগইন বন্ধ করতে চান?`
                 : `${name} এর লগইন চালু করতে চান?`;
 
-            if (!confirm(confirmMsg)) {
-                cb.checked = !cb.checked;
-                return;
-            }
-
-            const success = await setUserLoginDisabled(uid, disableLogin);
-            if (success) {
-                // Update UI
-                if (loginEnabled) {
-                    track.style.background = '#4caf50';
-                    thumb.style.left = '18px';
-                    label.textContent = 'চালু';
-                    label.style.color = '#4caf50';
-                } else {
-                    track.style.background = '#d32f2f';
-                    thumb.style.left = '2px';
-                    label.textContent = 'বন্ধ';
-                    label.style.color = '#d32f2f';
-                }
-                showNotification(loginEnabled ? `${name} এর লগইন চালু করা হয়েছে ✅` : `${name} এর লগইন বন্ধ করা হয়েছে ⛔`);
-            } else {
-                cb.checked = !cb.checked;
-                showNotification('সেটিংস পরিবর্তন করতে সমস্যা হয়েছে', 'error');
-            }
+            showConfirmModal(
+                confirmMsg,
+                async () => {
+                    const success = await setUserLoginDisabled(uid, disableLogin);
+                    if (success) {
+                        // Update UI
+                        if (loginEnabled) {
+                            track.style.background = '#4caf50';
+                            thumb.style.left = '18px';
+                            label.textContent = 'চালু';
+                            label.style.color = '#4caf50';
+                        } else {
+                            track.style.background = '#d32f2f';
+                            thumb.style.left = '2px';
+                            label.textContent = 'বন্ধ';
+                            label.style.color = '#d32f2f';
+                        }
+                        showNotification(loginEnabled ? `${name} এর লগইন চালু করা হয়েছে ✅` : `${name} এর লগইন বন্ধ করা হয়েছে ⛔`);
+                    } else {
+                        cb.checked = !cb.checked;
+                        showNotification('সেটিংস পরিবর্তন করতে সমস্যা হয়েছে', 'error');
+                    }
+                },
+                name,
+                loginEnabled ? "টিচার এখন লগইন করতে পারবেন।" : "টিচার আর লগইন করতে পারবেন না।"
+            );
         });
     });
 

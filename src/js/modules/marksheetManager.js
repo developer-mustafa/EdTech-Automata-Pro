@@ -15,7 +15,17 @@ let marksheetSettings = {
     headerLine2: '',
     watermarkUrl: '',
     watermarkOpacity: 0.1,
-    signatureLabels: ['শ্রেণি শিক্ষক', 'পরীক্ষা কমিটি', 'অধ্যক্ষ']
+    primaryColor: '#4361ee',
+    fontSize: 'medium',
+    theme: 'classic',
+    borderStyle: 'double',
+    typography: 'default',
+    rowDensity: 'normal',
+    signatures: [
+        { label: 'শ্রেণি শিক্ষক', url: '' },
+        { label: 'পরীক্ষা কমিটি', url: '' },
+        { label: 'অধ্যক্ষ', url: '' }
+    ]
 };
 
 /**
@@ -272,10 +282,13 @@ function renderSingleMarksheet(student, subjects, examDisplayName) {
     const resultText = allPassed ? 'পাস' : 'অকৃতকার্য';
     const resultClass = allPassed ? 'ms-result-pass' : 'ms-result-fail';
 
-    const signatureHtml = (ms.signatureLabels || ['শ্রেণি শিক্ষক', 'পরীক্ষা কমিটি', 'অধ্যক্ষ']).map(label =>
+    const signaturesToRender = ms.signatures || (ms.signatureLabels || ['শ্রেণি শিক্ষক', 'পরীক্ষা কমিটি', 'অধ্যক্ষ']).map(l => ({ label: l, url: '' }));
+
+    const signatureHtml = signaturesToRender.map(sig =>
         `<div class="ms-sig-block">
+            ${sig.url ? `<img src="${sig.url}" class="ms-sig-img" alt="Signature">` : ''}
             <div class="ms-sig-line"></div>
-            <span>${label}</span>
+            <span>${sig.label}</span>
         </div>`
     ).join('');
 
@@ -285,7 +298,7 @@ function renderSingleMarksheet(student, subjects, examDisplayName) {
     const todayDate = new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' });
 
     return `
-        <div class="ms-page">
+        <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" style="--ms-primary: ${ms.primaryColor || '#4361ee'};">
             ${watermarkHtml}
             
             <!-- Decorative Border -->
@@ -447,6 +460,26 @@ function initMarksheetSettingsModal() {
         opacityVal.textContent = opacitySlider.value;
     }
 
+    const menuItems = document.querySelectorAll('.config-menu-item');
+    const tabContents = document.querySelectorAll('.config-tab-content');
+
+    // Tab Switching Logic
+    menuItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetTab = item.dataset.tab;
+
+            // Update Menu
+            menuItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+
+            // Update Content
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === targetTab) content.classList.add('active');
+            });
+        });
+    });
+
     if (settingsBtn) {
         settingsBtn.addEventListener('click', async () => {
             await loadMarksheetSettings();
@@ -455,7 +488,16 @@ function initMarksheetSettingsModal() {
             if (el('msInstitutionAddress')) el('msInstitutionAddress').value = marksheetSettings.institutionAddress || '';
             if (el('msHeaderLine1')) el('msHeaderLine1').value = marksheetSettings.headerLine1 || '';
             if (el('msHeaderLine2')) el('msHeaderLine2').value = marksheetSettings.headerLine2 || '';
-            if (el('msSignatureLabels')) el('msSignatureLabels').value = (marksheetSettings.signatureLabels || []).join(', ');
+            if (el('msPrimaryColor')) el('msPrimaryColor').value = marksheetSettings.primaryColor || '#4361ee';
+            if (el('msFontSize')) el('msFontSize').value = marksheetSettings.fontSize || 'medium';
+            if (el('msTheme')) el('msTheme').value = marksheetSettings.theme || 'classic';
+            if (el('msBorderStyle')) el('msBorderStyle').value = marksheetSettings.borderStyle || 'double';
+            if (el('msTypography')) el('msTypography').value = marksheetSettings.typography || 'default';
+            if (el('msRowDensity')) el('msRowDensity').value = marksheetSettings.rowDensity || 'normal';
+
+            // Render Signature Slots
+            renderSignatureSlots();
+
             if (opacitySlider) {
                 opacitySlider.value = (marksheetSettings.watermarkOpacity || 0.1) * 100;
                 if (opacityVal) opacityVal.textContent = opacitySlider.value;
@@ -465,6 +507,16 @@ function initMarksheetSettingsModal() {
                 if (preview) preview.innerHTML = `<img src="${marksheetSettings.watermarkUrl}" style="max-width:80px; opacity:0.3; border-radius:6px;">`;
             }
             if (modal) modal.classList.add('active');
+        });
+    }
+
+    // Add Signature Slot Button
+    const addSlotBtn = document.getElementById('addSignatureSlotBtn');
+    if (addSlotBtn) {
+        addSlotBtn.addEventListener('click', () => {
+            if (!marksheetSettings.signatures) marksheetSettings.signatures = [];
+            marksheetSettings.signatures.push({ label: '', url: '' });
+            renderSignatureSlots();
         });
     }
 
@@ -498,22 +550,106 @@ function initMarksheetSettingsModal() {
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const sigLabels = document.getElementById('msSignatureLabels').value
-                .split(',').map(s => s.trim()).filter(Boolean);
+
+            // Gather Signatures from UI
+            const sigCards = document.querySelectorAll('.sig-slot-card');
+            const signatures = [];
+            sigCards.forEach(card => {
+                const label = card.querySelector('.sig-label-input').value.trim();
+                const url = card.dataset.url || '';
+                if (label) {
+                    signatures.push({ label, url });
+                }
+            });
 
             await saveMarksheetSettings({
                 institutionName: document.getElementById('msInstitutionName').value.trim(),
                 institutionAddress: document.getElementById('msInstitutionAddress').value.trim(),
                 headerLine1: document.getElementById('msHeaderLine1').value.trim(),
                 headerLine2: document.getElementById('msHeaderLine2').value.trim(),
+                primaryColor: document.getElementById('msPrimaryColor').value,
+                fontSize: document.getElementById('msFontSize').value,
+                theme: document.getElementById('msTheme').value,
+                borderStyle: document.getElementById('msBorderStyle').value,
+                typography: document.getElementById('msTypography').value,
+                rowDensity: document.getElementById('msRowDensity').value,
                 watermarkUrl: marksheetSettings.watermarkUrl || '',
                 watermarkOpacity: parseInt(document.getElementById('msWatermarkOpacity').value) / 100,
-                signatureLabels: sigLabels.length > 0 ? sigLabels : ['শ্রেণি শিক্ষক', 'পরীক্ষা কমিটি', 'অধ্যক্ষ']
+                signatures: signatures.length > 0 ? signatures : [
+                    { label: 'শ্রেণি শিক্ষক', url: '' },
+                    { label: 'পরীক্ষা কমিটি', url: '' },
+                    { label: 'অধ্যক্ষ', url: '' }
+                ]
             });
 
             if (modal) modal.classList.remove('active');
         });
     }
+}
+
+/**
+ * Render Signature Slots in Settings Modal
+ */
+function renderSignatureSlots() {
+    const container = document.getElementById('msSignatureSlotsContainer');
+    if (!container) return;
+
+    if (!marksheetSettings.signatures || marksheetSettings.signatures.length === 0) {
+        marksheetSettings.signatures = [
+            { label: 'শ্রেণি শিক্ষক', url: '' },
+            { label: 'পরীক্ষা কমিটি', url: '' },
+            { label: 'অধ্যক্ষ', url: '' }
+        ];
+    }
+
+    container.innerHTML = marksheetSettings.signatures.map((sig, index) => `
+        <div class="sig-slot-card" data-index="${index}" data-url="${sig.url || ''}">
+            <div class="sig-input-wrapper">
+                <input type="text" class="form-control sig-label-input" value="${sig.label}" placeholder="পদের নাম (উদাঃ অধ্যক্ষ)">
+            </div>
+            <div class="sig-previews" style="display: flex; align-items: center; gap: 8px;">
+                <div class="sig-preview-thumb">
+                    ${sig.url ? `<img src="${sig.url}" alt="Signature">` : '<i class="fas fa-image" style="opacity: 0.2;"></i>'}
+                </div>
+                <label class="sig-upload-btn" title="স্বাক্ষর আপলোড">
+                    <i class="fas fa-upload"></i>
+                    <input type="file" accept="image/*" class="sig-file-input" style="display: none;">
+                </label>
+            </div>
+            <i class="fas fa-trash-alt btn-remove-sig" title="মুছে ফেলুন"></i>
+        </div>
+    `).join('');
+
+    // Add Event Listeners to Slots
+    container.querySelectorAll('.sig-slot-card').forEach(card => {
+        const index = card.dataset.index;
+        const fileInput = card.querySelector('.sig-file-input');
+        const removeBtn = card.querySelector('.btn-remove-sig');
+        const labelInput = card.querySelector('.sig-label-input');
+
+        labelInput.addEventListener('input', (e) => {
+            marksheetSettings.signatures[index].label = e.target.value;
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const url = ev.target.result;
+                    card.dataset.url = url;
+                    marksheetSettings.signatures[index].url = url;
+                    card.querySelector('.sig-preview-thumb').innerHTML = `<img src="${url}" alt="Signature">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeBtn.addEventListener('click', () => {
+            marksheetSettings.signatures.splice(index, 1);
+            renderSignatureSlots();
+        });
+    });
 }
 
 /**

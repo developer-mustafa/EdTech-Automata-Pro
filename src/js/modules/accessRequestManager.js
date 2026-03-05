@@ -8,6 +8,7 @@
 import { getAccessRequests, updateAccessRequestStatus, deleteAccessRequest, subscribeToPendingAccessRequests } from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification } from '../utils.js';
+import { showConfirmModal } from './uiManager.js';
 
 let _pendingRequestsUnsubscribe = null;
 let _currentSlideIndex = 0;
@@ -255,14 +256,21 @@ export async function loadAccessRequests() {
             btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
                 const name = btn.dataset.name;
-                if (!confirm(`${name} এর রিকোয়েস্ট অনুমোদন করতে চান?`)) return;
-                const success = await updateAccessRequestStatus(id, 'approved', 'teacher');
-                if (success) {
-                    showNotification(`${name} এর রিকোয়েস্ট অনুমোদিত হয়েছে ✅`);
-                    loadAccessRequests();
-                } else {
-                    showNotification('আপডেট করতে সমস্যা হয়েছে', 'error');
-                }
+
+                showConfirmModal(
+                    `${name} এর রিকোয়েস্ট অনুমোদন করতে চান?`,
+                    async () => {
+                        const success = await updateAccessRequestStatus(id, 'approved', 'teacher');
+                        if (success) {
+                            showNotification(`${name} এর রিকোয়েস্ট অনুমোদিত হয়েছে ✅`);
+                            loadAccessRequests();
+                        } else {
+                            showNotification('আপডেট করতে সমস্যা হয়েছে', 'error');
+                        }
+                    },
+                    name,
+                    'অনুমোদনের পর ব্যবহারকারী সিস্টেমে লগইন করতে পারবেন।'
+                );
             });
         });
 
@@ -270,28 +278,44 @@ export async function loadAccessRequests() {
             btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
                 const name = btn.dataset.name;
-                if (!confirm(`${name} এর রিকোয়েস্ট প্রত্যাখ্যান করতে চান?`)) return;
-                const success = await updateAccessRequestStatus(id, 'rejected');
-                if (success) {
-                    showNotification(`${name} এর রিকোয়েস্ট প্রত্যাখ্যাত হয়েছে ⛔`);
-                    loadAccessRequests();
-                } else {
-                    showNotification('আপডেট করতে সমস্যা হয়েছে', 'error');
-                }
+
+                showConfirmModal(
+                    `${name} এর রিকোয়েস্ট প্রত্যাখ্যান করতে চান?`,
+                    async () => {
+                        const success = await updateAccessRequestStatus(id, 'rejected');
+                        if (success) {
+                            showNotification(`${name} এর রিকোয়েস্ট প্রত্যাখ্যাত হয়েছে ⛔`);
+                            loadAccessRequests();
+                        } else {
+                            showNotification('আপডেট করতে সমস্যা হয়েছে', 'error');
+                        }
+                    },
+                    name,
+                    'প্রত্যাখ্যানের পর ব্যবহারকারী লগইন করতে পারবেন না।'
+                );
             });
         });
 
         listEl.querySelectorAll('.ar-delete-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
-                if (!confirm('এই রিকোয়েস্ট মুছে ফেলতে চান?')) return;
-                const success = await deleteAccessRequest(id);
-                if (success) {
-                    showNotification('রিকোয়েস্ট মুছে ফেলা হয়েছে');
-                    loadAccessRequests();
-                } else {
-                    showNotification('মুছতে সমস্যা হয়েছে', 'error');
-                }
+                const card = btn.closest('.ar-card');
+                const name = card.querySelector('.ar-card-name').textContent;
+
+                showConfirmModal(
+                    'এই রিকোয়েস্ট মুছে ফেলতে চান?',
+                    async () => {
+                        const success = await deleteAccessRequest(id);
+                        if (success) {
+                            showNotification('রিকোয়েস্ট মুছে ফেলা হয়েছে');
+                            loadAccessRequests();
+                        } else {
+                            showNotification('মুছতে সমস্যা হয়েছে', 'error');
+                        }
+                    },
+                    name,
+                    'এটি স্থায়ীভাবে মুছে যাবে।'
+                );
             });
         });
 
