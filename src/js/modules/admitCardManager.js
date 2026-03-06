@@ -86,10 +86,17 @@ export function initAdmitCardManager() {
 
     if (acPrintAllBtn) {
         acPrintAllBtn.addEventListener('click', () => {
+            const orientationSelect = document.getElementById('acOrientation');
+            const orientation = orientationSelect ? orientationSelect.value : 'portrait';
+
             document.body.classList.add('ac-printing');
+            document.body.classList.add(`ac-print-${orientation}`);
+
             window.print();
+
             setTimeout(() => {
                 document.body.classList.remove('ac-printing');
+                document.body.classList.remove(`ac-print-${orientation}`);
             }, 500);
         });
     }
@@ -147,6 +154,33 @@ export function initAdmitCardManager() {
         if (e.target === acSettingsModal) {
             acSettingsModal.classList.remove('active');
         }
+    });
+}
+
+/**
+ * Auto-scales institution names to fit on a single line
+ */
+function fitTitleScaling() {
+    const selectors = ['.ac-header-text h3', '.sp-inst-name'];
+    selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+            let fontSize = parseFloat(window.getComputedStyle(el).fontSize);
+            const container = el.parentElement;
+            if (!container) return;
+
+            // Reset font size to initial to re-evaluate
+            el.style.fontSize = ''; // Clear any previous scaling
+            fontSize = parseFloat(window.getComputedStyle(el).fontSize); // Get original computed size
+
+            // Reduce font size until it fits (max 40 iterations to prevent infinite loop)
+            let iterations = 0;
+            while (el.scrollWidth > el.clientWidth && fontSize > 8 && iterations < 40) {
+                fontSize -= 0.5;
+                el.style.fontSize = fontSize + 'px';
+                iterations++;
+            }
+        });
     });
 }
 
@@ -253,6 +287,9 @@ function updateACLivePreview() {
             ${spHtml}
         </div>
     `;
+
+    // Auto-scale titles in preview
+    setTimeout(fitTitleScaling, 10);
 }
 
 async function saveACSettings() {
@@ -287,6 +324,8 @@ async function saveACSettings() {
                 const isSeat = admitCardPreview.classList.contains('seat-plan-mode');
                 generateCards(isSeat ? 'seat' : 'admit');
             }
+            // Trigger auto-scaling for titles after settings are saved and potentially cards regenerated
+            setTimeout(fitTitleScaling, 50);
         } else {
             showNotification('সেটিংস সেভ করতে ব্যর্থ হয়েছে', 'error');
         }
@@ -378,6 +417,8 @@ async function generateCards(type) {
     const session = acSessionSelect?.value;
     const examName = acExamNameSelect?.value;
     const layoutSize = parseInt(acLayoutSelect?.value || '6', 10);
+    const orientationSelect = document.getElementById('acOrientation');
+    const pageOrientation = orientationSelect ? orientationSelect.value : 'portrait';
 
     if (!cls || !session || !examName) {
         showNotification('শ্রেণি, সেশন এবং পরীক্ষা নির্বাচন করুন', 'error');
@@ -455,25 +496,23 @@ async function generateCards(type) {
     const configPack = { institutionName, institutionAddress, logoUrl, watermarkUrl, baseFontSize, titleFontSize, tableFontSize, theme };
 
     // Chunking logic based on layoutSize
+    const cardsPerPage = type === 'admit' ? layoutSize : layoutSize * 2;
+    const totalPages = Math.ceil(studentsArray.length / cardsPerPage);
     let pagesHTML = '';
-    for (let i = 0; i < studentsArray.length; i += layoutSize) {
-        const chunk = studentsArray.slice(i, i + layoutSize);
-        let cardsHTML = '';
-
-        if (type === 'admit') {
-            cardsHTML = chunk.map(student => renderAdmitCard(student, subjects, examName, configPack)).join('');
-        } else {
-            cardsHTML = chunk.map(student => renderSeatPlan(student, examName, configPack)).join('');
-        }
+    for (let i = 0; i < totalPages; i++) {
+        const slice = studentsArray.slice(i * cardsPerPage, (i + 1) * cardsPerPage);
+        const cardsHtml = slice.map(student => {
+            if (type === 'admit') return renderAdmitCard(student, subjects, examName, configPack);
+            return renderSeatPlan(student, examName, configPack);
+        }).join('');
 
         pagesHTML += `
-            <div class="ac-page ac-layout-${layoutSize} ac-theme-${configPack.theme}" style="
-                --ac-watermark-url: url('${watermarkUrl}'); 
-                --ac-base-font-size: ${configPack.baseFontSize}; 
-                --ac-title-font-size: ${configPack.titleFontSize}; 
-                --ac-table-font-size: ${configPack.tableFontSize};
-            ">
-                ${cardsHTML}
+            <div class="ac-page ac-layout-${layoutSize} ac-theme-${configPack.theme} ac-page-${pageOrientation}" 
+                 style="--ac-watermark-url: url('${configPack.watermarkUrl}');
+                        --ac-base-font-size: ${configPack.baseFontSize};
+                        --ac-title-font-size: ${configPack.titleFontSize};
+                        --ac-table-font-size: ${configPack.tableFontSize};">
+                ${cardsHtml}
             </div>
         `;
     }
@@ -487,6 +526,9 @@ async function generateCards(type) {
     if (acPrintAllBtn) acPrintAllBtn.style.display = 'inline-flex';
 
     showNotification(`${studentsArray.length} জন শিক্ষার্থীর ${type === 'admit' ? 'এডমিট কার্ড' : 'সীট প্ল্যান'} তৈরি হয়েছে ✅`);
+
+    // Auto-scale titles to fit one line
+    setTimeout(fitTitleScaling, 50);
 }
 
 function renderAdmitCard(student, subjects, examName, config) {

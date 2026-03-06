@@ -11116,6 +11116,10 @@ body.is-super-admin td.admin-only {
   font-size: 1.1rem !important;
 }
 
+.ms-page.theme-elite.density-compact .ms-title-main {
+  font-size: 1.1rem !important;
+}
+
 .ms-page.density-relaxed .ms-table td,
 .ms-page.density-relaxed .ms-table th {
   padding: 12px 10px !important;
@@ -11210,17 +11214,38 @@ body.is-super-admin td.admin-only {
 }
 
 .ac-page {
-  width: 210mm;
-  min-height: 297mm;
   background: white;
-  margin: 0 auto;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-  padding: 10mm;
+  width: 210mm;
+  /* Removed legacy min-height for strict A4 control */
+  margin: 0 auto 20px auto;
+  padding: 5mm;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
   display: grid;
-  gap: 10mm;
-  transform-origin: top center;
-  transform: scale(var(--ac-main-scale, 1));
+  gap: 4mm;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 1fr;
+  align-content: stretch;
+  justify-content: center;
+  font-family: 'Inter', 'Noto Sans Bengali', sans-serif;
   font-size: var(--ac-base-font-size, 14px);
+  color: var(--ac-text-color, #334155);
+}
+
+.ac-page-portrait {
+  width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  max-height: 297mm;
+}
+
+.ac-page-landscape {
+  width: 297mm;
+  height: 210mm;
+  min-height: 210mm;
+  max-height: 210mm;
+  padding: 5mm;
+  gap: 4mm;
 }
 
 /* Admit Card Themes */
@@ -11266,13 +11291,39 @@ body.is-super-admin td.admin-only {
 .ac-layout-10 {
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(5, 1fr);
-  gap: 5mm;
+  gap: 4mm;
 }
 
 .ac-layout-12 {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(4, 1fr);
-  gap: 5mm;
+  gap: 4mm;
+}
+
+/* Landscape Grid Overrides - Optimized for A4 proportions */
+.ac-page-landscape.ac-layout-4 {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.ac-page-landscape.ac-layout-6 {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.ac-page-landscape.ac-layout-8 {
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.ac-page-landscape.ac-layout-10 {
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.ac-page-landscape.ac-layout-12 {
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
 }
 
 /* Admit Card & Seat Plan Premium Design */
@@ -11284,15 +11335,20 @@ body.is-super-admin td.admin-only {
   /* Outer gentle border */
   box-sizing: border-box;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
   /* very subtle inner depth */
+  break-inside: avoid;
+  page-break-inside: avoid;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Inner heavy border, typical of formal BD documents */
 .ac-card-inner {
   border: 2px solid var(--ac-primary-color, #2c3e50);
-  padding: 12px;
+  padding: 8px;
   height: 100%;
   box-sizing: border-box;
   position: relative;
@@ -11306,8 +11362,10 @@ body.is-super-admin td.admin-only {
   justify-content: center;
   gap: 12px;
   border-bottom: 2px solid var(--ac-primary-color, #2c3e50);
-  padding-bottom: 8px;
-  margin-bottom: 12px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  width: 100%;
+  overflow: visible;
 }
 
 .ac-logo-container {
@@ -11315,13 +11373,18 @@ body.is-super-admin td.admin-only {
 }
 
 .ac-logo {
-  max-width: 55px;
-  max-height: 55px;
+  max-width: 50px;
+  max-height: 50px;
   object-fit: contain;
 }
 
 .ac-header-text {
   text-align: center;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .ac-header-text h3 {
@@ -11330,7 +11393,10 @@ body.is-super-admin td.admin-only {
   font-family: 'Inter', sans-serif;
   color: var(--ac-primary-color, #1e293b);
   font-weight: 800;
-  letter-spacing: 0.2px;
+  letter-spacing: -0.2px;
+  line-height: 1.1;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .ac-address {
@@ -11340,29 +11406,30 @@ body.is-super-admin td.admin-only {
 }
 
 .ac-title-wrapper {
-  text-align: center;
   margin-bottom: 8px;
+  text-align: center;
 }
 
 .ac-title {
   display: inline-block;
   background: var(--ac-accent-color, #1e293b);
-  color: white;
-  padding: 4px 16px;
+  color: #fff;
+  padding: 2px 20px;
   border-radius: 20px;
-  font-size: 0.85em;
   font-weight: bold;
+  font-size: 0.9rem;
+  text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .ac-exam-name {
   text-align: center;
-  font-size: 0.9em;
-  font-weight: 700;
-  color: var(--ac-text-color, #334155);
-  margin-bottom: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: var(--ac-primary-color, #2c3e50);
+  font-size: 0.95rem;
   border-bottom: 1px dashed var(--ac-border-color, #cbd5e1);
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 
 .ac-body {
@@ -11370,7 +11437,7 @@ body.is-super-admin td.admin-only {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 
 .ac-info-section {
@@ -11399,7 +11466,7 @@ body.is-super-admin td.admin-only {
   width: 100%;
   font-size: var(--ac-table-font-size, 13px);
   border-collapse: separate;
-  border-spacing: 0 4px;
+  border-spacing: 0 2px;
 }
 
 .ac-info-table th {
@@ -11416,8 +11483,8 @@ body.is-super-admin td.admin-only {
 }
 
 .ac-subjects-box {
-  margin-top: 10px;
-  padding: 8px;
+  margin-top: 4px;
+  padding: 6px;
   background: #f8fafc;
   border-left: 3px solid #3b82f6;
   border-radius: 0 4px 4px 0;
@@ -11457,9 +11524,11 @@ body.is-super-admin td.admin-only {
 .ac-sig {
   border-top: 1px solid #64748b;
   padding-top: 4px;
-  width: 130px;
+  min-width: 100px;
+  max-width: 130px;
   text-align: center;
   color: #475569;
+  font-size: 0.85em;
 }
 
 /* Seat Plan Ticket Design */
@@ -11483,7 +11552,10 @@ body.is-super-admin td.admin-only {
   flex-direction: column;
   box-sizing: border-box;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  height: 100%;
 }
 
 .sp-card-inner {
@@ -11504,8 +11576,9 @@ body.is-super-admin td.admin-only {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 60%;
-  height: 60%;
+  width: 80mm;
+  /* Fixed size for better consistency */
+  height: 80mm;
   background-image: var(--ac-watermark-url);
   background-size: contain;
   background-repeat: no-repeat;
@@ -11531,6 +11604,8 @@ body.is-super-admin td.admin-only {
   border-bottom: 1px solid #94a3b8;
   padding-bottom: 6px;
   margin-bottom: 8px;
+  width: 100%;
+  overflow: visible;
 }
 
 .sp-logo {
@@ -11541,6 +11616,8 @@ body.is-super-admin td.admin-only {
 
 .sp-header-text {
   text-align: center;
+  flex: 1;
+  min-width: 0;
 }
 
 .sp-inst-name {
@@ -11548,6 +11625,7 @@ body.is-super-admin td.admin-only {
   font-size: 0.95rem;
   color: #1e293b;
   margin-bottom: 2px;
+  white-space: nowrap;
 }
 
 .sp-exam {
@@ -11612,11 +11690,18 @@ body.is-super-admin td.admin-only {
   }
 
   body.ac-printing .ac-page {
-    transform: scale(1) !important;
-    margin: 0 !important;
     box-shadow: none !important;
     page-break-after: always;
     break-after: page;
+    height: 297mm;
+    max-height: 297mm;
+    overflow: hidden;
+    position: relative;
+  }
+
+  body.ac-printing.ac-print-landscape .ac-page {
+    height: 210mm;
+    max-height: 210mm;
   }
 
   body.ac-printing .ac-page:last-child {
@@ -11624,8 +11709,25 @@ body.is-super-admin td.admin-only {
     break-after: auto;
   }
 
-  @page {
-    size: A4 portrait;
-    margin: 0;
+  body.ac-printing.ac-print-portrait {
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+  }
+
+  body.ac-printing.ac-print-landscape {
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+  }
+
+  /* Default fallback */
+  body.ac-printing:not(.ac-print-portrait):not(.ac-print-landscape) {
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
   }
 }
