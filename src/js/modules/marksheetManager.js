@@ -234,6 +234,21 @@ async function generateMarksheets() {
     if (bulkBtn) bulkBtn.style.display = 'inline-flex';
 
     showNotification(`${studentsArray.length} জন শিক্ষার্থীর মার্কশীট তৈরি হয়েছে ✅`);
+
+    // Show main zoom header
+    const mainHeader = document.getElementById('msMainPreviewHeader');
+    if (mainHeader) {
+        mainHeader.style.display = 'flex';
+        // Auto-fit check for mobile
+        if (window.innerWidth <= 768) {
+            const zoomInput = document.getElementById('msMainZoom');
+            const zoomLevelValue = document.getElementById('msMainZoomLevel');
+            const initialScale = window.innerWidth <= 480 ? 0.35 : 0.45;
+            if (zoomInput) zoomInput.value = initialScale;
+            if (zoomLevelValue) zoomLevelValue.innerText = Math.round(initialScale * 100) + '%';
+            previewArea.style.setProperty('--ms-main-scale', initialScale);
+        }
+    }
 }
 
 /**
@@ -873,8 +888,28 @@ export async function initMarksheetManager() {
                 `;
             }
             if (printAllBtn) printAllBtn.style.display = 'none';
+            const mainHeader = document.getElementById('msMainPreviewHeader');
+            if (mainHeader) mainHeader.style.display = 'none';
             showNotification('মার্কশীট প্রিভিউ রিসেট করা হয়েছে');
         });
+    }
+
+    // Initialize Main Zoom Controls
+    const mainZoomInput = document.getElementById('msMainZoom');
+    const mainZoomLevel = document.getElementById('msMainZoomLevel');
+    const mainPreviewArea = document.getElementById('marksheetPreview');
+
+    if (mainZoomInput && mainZoomLevel && mainPreviewArea) {
+        mainZoomInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            mainZoomLevel.innerText = Math.round(val * 100) + '%';
+            mainPreviewArea.style.setProperty('--ms-main-scale', val);
+        });
+    }
+
+    const mainRefreshBtn = document.getElementById('msMainRefreshBtn');
+    if (mainRefreshBtn) {
+        mainRefreshBtn.addEventListener('click', generateMarksheets);
     }
 
     initMarksheetSettingsModal();
