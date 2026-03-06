@@ -699,7 +699,7 @@
               <option value="">আগে শ্রেণি ও সেশন সিলেক্ট করুন</option>
             </select>
           </div>
-          <div class="form-row" style="display: flex; gap: 10px;">
+          <div class="form-row">
             <div class="form-group" style="flex: 1;">
               <label for="examClass">শ্রেণি (Class):</label>
               <select id="examClass" class="form-control" data-dynamic="class">
@@ -801,7 +801,7 @@
             </button>
           </div>
         </div>
-        <div class="user-list-container">
+        <div class="user-list-container" style="overflow-x: auto;">
           <table class="user-table-premium">
             <thead>
               <tr>
@@ -1208,7 +1208,7 @@
                     <h3>জলছাপ (Watermark)</h3>
                     <p>পেজের মাঝখানে প্রদর্শিত হালকা লোগো</p>
                   </div>
-                  <div class="form-row" style="display: flex; gap: 15px; align-items: flex-end;">
+                  <div class="form-row" style="align-items: flex-end;">
                     <div class="form-group" style="flex: 2;">
                       <label for="msWatermarkUpload">ওয়াটারমার্ক ছবি আপলোড</label>
                       <input type="file" id="msWatermarkUpload" class="form-control" accept="image/*">
@@ -1247,7 +1247,7 @@
                     <p>মার্কশীটের সামগ্রিক ডিজাইন ও স্টাইল কাস্টমাইজ করুন</p>
                   </div>
 
-                  <div class="form-row" style="display: flex; gap: 15px;">
+                  <div class="form-row">
                     <div class="form-group" style="flex: 1;">
                       <label for="msTheme">থিম সিলেক্ট করুন</label>
                       <select id="msTheme" class="form-control">
@@ -1264,7 +1264,7 @@
                     </div>
                   </div>
 
-                  <div class="form-row" style="display: flex; gap: 15px; margin-top: 15px;">
+                  <div class="form-row" style="margin-top: 15px;">
                     <div class="form-group" style="flex: 1;">
                       <label for="msBorderStyle">বর্ডার স্টাইল</label>
                       <select id="msBorderStyle" class="form-control">
@@ -1284,7 +1284,7 @@
                     </div>
                   </div>
 
-                  <div class="form-row" style="display: flex; gap: 15px; margin-top: 15px;">
+                  <div class="form-row" style="margin-top: 15px;">
                     <div class="form-group" style="flex: 1;">
                       <label for="msFontSize">বেস ফন্ট সাইজ</label>
                       <select id="msFontSize" class="form-control">
@@ -1398,7 +1398,7 @@
                 আপনি চাইলে নিজের মতো পাসওয়ার্ড লিখতে পারেন।</small>
             </div>
 
-            <div class="form-row" style="display: flex; gap: 10px;">
+            <div class="form-row">
               <div class="form-group" style="flex: 1;">
                 <label>শ্রেণি</label>
                 <select id="taClassSelect" class="form-control" data-dynamic="class"></select>
@@ -1570,7 +1570,7 @@
       </div>
     </div>
     <div id="examConfigPage" class="app-page" style="display: none; padding: 0 20px 20px 20px;">
-      <div style="display: grid; grid-template-columns: minmax(300px, 350px) 1fr; gap: 24px; align-items: start;">
+      <div class="exam-config-grid">
         <div class="card"
           style="padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
           <h3 style="margin-top: 0; color: var(--primary);"><i class="fas fa-plus-circle"></i> নতুন পরীক্ষার নাম তৈরি
@@ -1648,7 +1648,7 @@
         <h2 id="addStudentModalTitle"><i class="fas fa-user-plus"></i> নতুন শিক্ষার্থী যোগ করুন</h2>
         <form id="addStudentForm">
           <input type="hidden" id="editStudentDocId">
-          <div class="form-row" style="display: flex; gap: 10px;">
+          <div class="form-row">
             <div class="form-group" style="flex: 1;">
               <label for="studentName">নাম</label>
               <input type="text" id="studentFormName" class="form-control" required placeholder="শিক্ষার্থীর নাম">
@@ -1658,7 +1658,7 @@
               <input type="text" id="studentFormRoll" class="form-control" required placeholder="রোল নম্বর">
             </div>
           </div>
-          <div class="form-row" style="display: flex; gap: 10px;">
+          <div class="form-row">
             <div class="form-group" style="flex: 1;">
               <label for="studentClass">শ্রেণি</label>
               <select id="studentFormClass" class="form-control" data-dynamic="class">

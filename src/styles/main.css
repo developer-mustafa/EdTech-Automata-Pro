@@ -10535,6 +10535,45 @@ body.is-super-admin td.admin-only {
 }
 
 /* ==========================================================================
+   FORM & LAYOUT UTILITIES
+   ========================================================================== */
+.form-row {
+  display: flex !important;
+  gap: 15px !important;
+  width: 100%;
+}
+
+.exam-config-grid {
+  display: grid !important;
+  grid-template-columns: minmax(300px, 350px) 1fr !important;
+  gap: 24px !important;
+  align-items: start !important;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .exam-config-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  .modal-content {
+    max-width: 95% !important;
+    width: 95% !important;
+    padding: 15px !important;
+  }
+
+  .user-mgmt-modal {
+    max-width: 98% !important;
+    width: 98% !important;
+  }
+}
+
+/* ==========================================================================
    RESPONSIVE SETTINGS MODAL (MOBILE & TABLET)
    ========================================================================== */
 @media (max-width: 992px) {
