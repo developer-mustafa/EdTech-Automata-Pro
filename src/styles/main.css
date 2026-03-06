@@ -9335,6 +9335,11 @@ body.is-super-admin td.admin-only {
    Print CSS - Marksheet
    ========================================= */
 @media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 
   /* When printing marksheets, hide everything else */
   body.ms-printing * {
@@ -9342,8 +9347,9 @@ body.is-super-admin td.admin-only {
   }
 
   body.ms-printing .ms-page,
-  body.ms-printing .ms-page * {
-    visibility: visible;
+  body.ms-printing .ms-page *,
+  body.ms-printing .ms-watermark-bg {
+    visibility: visible !important;
   }
 
   body.ms-printing .ms-page {
@@ -9376,8 +9382,9 @@ body.is-super-admin td.admin-only {
   }
 
   body.ms-printing-single .ms-page.ms-single-active,
-  body.ms-printing-single .ms-page.ms-single-active * {
-    visibility: visible;
+  body.ms-printing-single .ms-page.ms-single-active *,
+  body.ms-printing-single .ms-watermark-bg {
+    visibility: visible !important;
   }
 
   body.ms-printing-single .ms-page.ms-single-active {
