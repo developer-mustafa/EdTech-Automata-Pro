@@ -126,7 +126,7 @@
         <i class="fas fa-file-alt"></i> <span>মার্কশীট</span>
       </button>
       <button class="page-nav-btn" data-page="admit-card">
-        <i class="fas fa-id-card"></i> <span>এডমিট কার্ড</span>
+        <i class="fas fa-id-card"></i> <span>এডমিট ও সিট প্লান</span>
       </button>
       <button class="page-nav-btn super-admin-only" data-page="access-requests"
         style="display: none; position: relative;">
@@ -661,6 +661,12 @@
           <div class="selector-group">
             <label>পরীক্ষা</label>
             <select id="msExamName" class="form-control"></select>
+          </div>
+          <div class="selector-group">
+            <label>গ্রুপ/বিভাগ</label>
+            <select id="msGroup" class="form-control">
+              <option value="all">সকল গ্রুপ</option>
+            </select>
           </div>
           <div class="selector-group">
             <label>শিক্ষার্থী</label>
@@ -1374,6 +1380,11 @@
         <div class="card-header">
           <div class="header-main-unified">
             <h2 class="card-title"><i class="fas fa-id-card"></i> এডমিট কার্ড ও সীট প্ল্যান</h2>
+            <div class="ms-header-actions">
+              <button id="acSettingsBtn" class="dm-btn dm-report" title="এডমিট কার্ড ও সীট প্ল্যান সেটিংস">
+                <i class="fas fa-cog"></i> ডিজাইন সেটিংস
+              </button>
+            </div>
           </div>
         </div>
         <!-- Admit Card Selectors -->
@@ -1390,6 +1401,12 @@
             <div class="selector-group">
               <label>পরীক্ষা</label>
               <select id="acExamName" class="form-control"></select>
+            </div>
+            <div class="selector-group">
+              <label>গ্রুপ/বিভাগ</label>
+              <select id="acGroup" class="form-control">
+                <option value="all">সকল গ্রুপ</option>
+              </select>
             </div>
             <div class="selector-group">
               <label>লেআউট</label>
@@ -1853,6 +1870,196 @@
         </form>
       </div>
     </div>
+    <!-- Admit Card Settings Modal -->
+    <div id="acSettingsModal" class="modal">
+      <div class="modal-content landscape-modal marksheet-config-modal">
+        <div class="modal-header">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <h2><i class="fas fa-id-card-alt"></i> এডমিট কার্ড কনফিগারেশন</h2>
+            <span class="close" id="closeAcSettingsBtn">&times;</span>
+          </div>
+        </div>
+
+        <div class="landscape-body">
+          <!-- Sidebar for Categories -->
+          <div class="config-sidebar">
+            <div class="sidebar-header">
+              <h4>সেটিংস ক্যাটাগরি</h4>
+            </div>
+            <div class="config-menu">
+              <div class="config-menu-item active" data-tab="ac-general">
+                <i class="fas fa-university"></i> প্রতিষ্ঠানের তথ্য
+              </div>
+              <div class="config-menu-item" data-tab="ac-watermark">
+                <i class="fas fa-image"></i> লোগো ও জলছাপ
+              </div>
+              <div class="config-menu-item" data-tab="ac-appearance">
+                <i class="fas fa-palette"></i> অ্যাপিয়ারেন্স (Appearance)
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Content Area -->
+          <div class="config-main">
+            <form id="acSettingsForm">
+              <div id="acSettingsFormContainer">
+
+                <!-- General Settings -->
+                <div class="config-tab-content active" id="ac-general">
+                  <div class="form-header">
+                    <h3><i class="fas fa-building"></i> প্রতিষ্ঠান পরিচিতি</h3>
+                    <p>কার্ডের ওপরের অংশে কী কী তথ্য থাকবে</p>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 15px;">
+                    <label>প্রতিষ্ঠানের নাম (Header)</label>
+                    <input type="text" id="acInstName" class="form-control" placeholder="যেমন: ঢাকা কলেজ, ঢাকা">
+                  </div>
+                  <div class="form-group">
+                    <label>ঠিকানা/অতিরিক্ত তথ্য লেবেল</label>
+                    <input type="text" id="acInstAddress" class="form-control"
+                      placeholder="স্থাপিত: ১৯১১ | ইআইআইএন: ১০৪৩৪৫">
+                  </div>
+                </div>
+
+                <!-- Watermark Settings -->
+                <div class="config-tab-content" id="ac-watermark">
+                  <div class="form-header">
+                    <h3><i class="fas fa-image"></i> লোগো ও জলছাপ (Watermark)</h3>
+                    <p>কার্ডের লোগো এবং ব্যাকগ্রাউন্ড ইমেজ</p>
+                  </div>
+
+                  <!-- Logo Upload -->
+                  <div class="form-row" style="align-items: flex-end; margin-bottom: 15px;">
+                    <div class="form-group" style="flex: 2;">
+                      <label>লোগো ছবি আপলোড (Logo)</label>
+                      <input type="file" id="acLogoUpload" class="form-control" accept="image/*">
+                    </div>
+                    <div class="form-group" style="flex: 1; text-align: right;">
+                      <button type="button" id="acClearLogoBtn" class="dm-btn dm-report btn-sm" style="height: 42px;">
+                        <i class="fas fa-trash-alt"></i> মুছুন
+                      </button>
+                    </div>
+                  </div>
+                  <div id="acLogoPreview"
+                    style="margin-bottom: 20px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 8px; text-align: center;">
+                    <span style="opacity: 0.5;">কোনো ছবি নেই</span>
+                  </div>
+
+                  <!-- Watermark Upload -->
+                  <div class="form-row" style="align-items: flex-end;">
+                    <div class="form-group" style="flex: 2;">
+                      <label>ওয়াটারমার্ক ছবি আপলোড</label>
+                      <input type="file" id="acWatermarkUpload" class="form-control" accept="image/*">
+                    </div>
+                    <div class="form-group" style="flex: 1; text-align: right;">
+                      <button type="button" id="acClearWatermarkBtn" class="dm-btn dm-report btn-sm"
+                        style="height: 42px;">
+                        <i class="fas fa-trash-alt"></i> মুছুন
+                      </button>
+                    </div>
+                  </div>
+                  <div id="acWatermarkPreview"
+                    style="margin-top: 15px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 8px; text-align: center;">
+                    <span style="opacity: 0.5;">কোনো ছবি নেই</span>
+                  </div>
+                </div>
+
+                <!-- Appearance Settings -->
+                <div class="config-tab-content" id="ac-appearance">
+                  <div class="form-header">
+                    <h3>অ্যাপিয়ারেন্স (Appearance)</h3>
+                    <p>এডমিট কার্ডের সামগ্রিক ডিজাইন ও স্টাইল কাস্টমাইজ করুন</p>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                      <label>বেস ফন্ট সাইজ (Base Font Size)</label>
+                      <select id="acBaseFontSize" class="form-control">
+                        <option value="12px">ছোট (12px)</option>
+                        <option value="14px" selected>মাঝারি (14px)</option>
+                        <option value="16px">বড় (16px)</option>
+                      </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                      <label>টাইটেল সাইজ (Title Size)</label>
+                      <select id="acTitleFontSize" class="form-control">
+                        <option value="18px">ছোট (18px)</option>
+                        <option value="22px" selected>মাঝারি (22px)</option>
+                        <option value="26px">বড় (26px)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row" style="margin-top: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                      <label>টেবিল ফন্ট সাইজ (Table Font Size)</label>
+                      <select id="acTableFontSize" class="form-control">
+                        <option value="11px">ছোট (11px)</option>
+                        <option value="13px" selected>মাঝারি (13px)</option>
+                        <option value="15px">বড় (15px)</option>
+                      </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                      <label>থিম স্টাইল (Theme)</label>
+                      <select id="acTheme" class="form-control">
+                        <option value="modern" selected>মডার্ন ব্লু (Modern Blue)</option>
+                        <option value="classic">ক্লাসিক ব্ল্যাক (Classic Black)</option>
+                        <option value="green">নেচার গ্রিন (Nature Green)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Save Container -->
+                <div
+                  style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                  <button type="submit" id="acSaveSettingsBtn" class="dm-btn dm-primary"
+                    style="padding: 12px 30px; font-weight: 700;">
+                    <i class="fas fa-save"></i> সেটিংস সংরক্ষণ করুন
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Live Preview Area -->
+          <div class="config-preview-panel" style="overflow-y: auto;">
+            <div class="preview-header"
+              style="position: sticky; top: 0; z-index: 10; background: var(--surface-color);">
+              <div class="preview-header-left">
+                <h4><i class="fas fa-eye"></i> রিয়েল-টাইম প্রিভিউ</h4>
+              </div>
+            </div>
+            <div class="preview-container-inner"
+              style="background:#f0f2f5; display: flex; flex-direction: column; gap: 20px; align-items: center; padding: 20px;">
+
+              <!-- Admit Card Mockup Container -->
+              <div style="width: 100%;">
+                <h5 style="text-align: center; margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9rem;">
+                  এডমিট কার্ড প্রিভিউ</h5>
+                <div id="acSettingsLivePreview"
+                  style="transform-origin: top center; transform: scale(0.7); width: 210mm; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 0 auto; margin-bottom: -80px;">
+                  <div style="padding: 20px; text-align: center; color: #666;">লোডিং...</div>
+                </div>
+              </div>
+
+              <!-- Seat Plan Mockup Container -->
+              <div style="width: 100%; margin-top: 10px;">
+                <h5 style="text-align: center; margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9rem;">
+                  সিট প্ল্যান প্রিভিউ</h5>
+                <div id="spSettingsLivePreview"
+                  style="transform-origin: top center; transform: scale(0.7); width: 210mm; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 0 auto; margin-bottom: -80px;">
+                  <div style="padding: 20px; text-align: center; color: #666;">লোডিং...</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- END .container-fluid -->
 </body>
 

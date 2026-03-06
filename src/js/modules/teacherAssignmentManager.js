@@ -460,29 +460,27 @@ export async function loadTeacherAssignmentData() {
             toggle.checked = isEnabled;
             updateToggleUI(isEnabled, label, track, thumb);
 
-            const confirmMsg = newState
-                ? "সকল ইউজারের লগইন পারমিশন এনাবল করতে চান?"
-                : "⚠️ সকল ইউজারের লগইন সম্পূর্ণ বন্ধ করতে চান?";
-
-            showConfirmModal(
-                confirmMsg,
-                async () => {
-                    const success = await setLoginPermission(newState);
-                    if (success) {
-                        updateToggleUI(newState, label, track, thumb);
-                        showNotification(newState ? "লগইন এনাবল করা হয়েছে ✅" : "লগইন ডিসেবল করা হয়েছে ⛔");
-                    } else {
-                        toggle.checked = !newState;
-                        showNotification("সেটিংস আপডেট করতে সমস্যা হয়েছে", "error");
-                    }
-                },
-                "গ্লোবাল লগইন কন্ট্রোল",
-                newState ? "সব টিচার লগইন করতে পারবেন।" : "সুপার অ্যাডমিন ছাড়া কেউ লগইন করতে পারবে না!"
-            );
-
             track.onclick = () => {
-                toggle.checked = !toggle.checked;
-                toggle.dispatchEvent(new Event("change"));
+                const newState = !toggle.checked;
+                const confirmMsg = newState
+                    ? "সকল ইউজারের লগইন পারমিশন এনাবল করতে চান?"
+                    : "⚠️ সকল ইউজারের লগইন সম্পূর্ণ বন্ধ করতে চান?";
+
+                showConfirmModal(
+                    confirmMsg,
+                    async () => {
+                        const success = await setLoginPermission(newState);
+                        if (success) {
+                            toggle.checked = newState;
+                            updateToggleUI(newState, label, track, thumb);
+                            showNotification(newState ? "লগইন এনাবল করা হয়েছে ✅" : "লগইন ডিসেবল করা হয়েছে ⛔");
+                        } else {
+                            showNotification("সেটিংস আপডেট করতে সমস্যা হয়েছে", "error");
+                        }
+                    },
+                    "গ্লোবাল লগইন কন্ট্রোল",
+                    newState ? "সব টিচার লগইন করতে পারবেন।" : "সুপার অ্যাডমিন ছাড়া কেউ লগইন করতে পারবে না!"
+                );
             };
         }
     } catch (err) {

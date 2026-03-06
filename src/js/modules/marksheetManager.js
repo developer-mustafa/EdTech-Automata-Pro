@@ -87,6 +87,61 @@ export async function populateMSDropdowns() {
         if (sessions.length === 1) sessionSelect.value = sessions[0];
     }
 
+    let currentFilteredExams = [];
+
+    const updateGroupDropdown = () => {
+        const msGroup = document.getElementById('msGroup');
+        if (msGroup) {
+            const currentVal = msGroup.value;
+            msGroup.innerHTML = '<option value="all">সকল গ্রুপ</option>';
+            const groups = new Set();
+            currentFilteredExams.forEach(exam => {
+                if (exam.studentData) {
+                    exam.studentData.forEach(s => {
+                        if (s.group) groups.add(s.group);
+                    });
+                }
+            });
+            const sortedGroups = [...groups].sort();
+            sortedGroups.forEach(g => {
+                const selected = g === currentVal ? 'selected' : '';
+                msGroup.innerHTML += `<option value="${g}" ${selected}>${g}</option>`;
+            });
+        }
+    };
+
+    const updateStudentDropdown = () => {
+        const msGroup = document.getElementById('msGroup')?.value || 'all';
+        const studentMap = new Map();
+        currentFilteredExams.forEach(exam => {
+            if (exam.studentData) {
+                exam.studentData.forEach(s => {
+                    const sGroup = s.group || '';
+                    if (msGroup !== 'all' && sGroup !== msGroup) return;
+
+                    const key = `${s.id}_${sGroup}`;
+                    if (!studentMap.has(key)) {
+                        studentMap.set(key, { id: s.id, name: s.name, group: sGroup });
+                    }
+                });
+            }
+        });
+        const studentSelect = document.getElementById('msStudent');
+        if (studentSelect) {
+            studentSelect.innerHTML = '<option value="all">সকল শিক্ষার্থী</option>';
+            [...studentMap.values()].sort((a, b) => {
+                const groupA = a.group.toLowerCase();
+                const groupB = b.group.toLowerCase();
+                if (groupA < groupB) return -1;
+                if (groupA > groupB) return 1;
+
+                return (parseInt(convertToEnglishDigits(String(a.id))) || 0) - (parseInt(convertToEnglishDigits(String(b.id))) || 0);
+            }).forEach(s => {
+                studentSelect.innerHTML += `<option value="${s.id}_${s.group}">${s.id} - ${s.name}</option>`;
+            });
+        }
+    };
+
     const updateExamNames = async () => {
         const selClass = classSelect?.value;
         const selSession = sessionSelect?.value;
@@ -95,6 +150,9 @@ export async function populateMSDropdowns() {
         if (examSelect) {
             if (!selClass || !selSession) {
                 examSelect.innerHTML = '<option value="">শ্রেণি ও সেশন নির্বাচন</option>';
+                currentFilteredExams = [];
+                updateGroupDropdown();
+                updateStudentDropdown();
                 return;
             }
 
@@ -112,35 +170,19 @@ export async function populateMSDropdowns() {
             }
         }
 
-        const filtered = exams.filter(e =>
+        currentFilteredExams = exams.filter(e =>
             (!selClass || e.class === selClass) &&
             (!selSession || e.session === selSession)
         );
-        updateStudentDropdown(filtered);
+
+        updateGroupDropdown();
+        updateStudentDropdown();
     };
 
-    const updateStudentDropdown = (filteredExams) => {
-        const studentMap = new Map();
-        filteredExams.forEach(exam => {
-            if (exam.studentData) {
-                exam.studentData.forEach(s => {
-                    const key = `${s.id}_${s.group}`;
-                    if (!studentMap.has(key)) {
-                        studentMap.set(key, { id: s.id, name: s.name, group: s.group });
-                    }
-                });
-            }
-        });
-        const studentSelect = document.getElementById('msStudent');
-        if (studentSelect) {
-            studentSelect.innerHTML = '<option value="all">সকল শিক্ষার্থী</option>';
-            [...studentMap.values()].sort((a, b) => {
-                return (parseInt(convertToEnglishDigits(String(a.id))) || 0) - (parseInt(convertToEnglishDigits(String(b.id))) || 0);
-            }).forEach(s => {
-                studentSelect.innerHTML += `<option value="${s.id}_${s.group}">${s.id} - ${s.name}</option>`;
-            });
-        }
-    };
+    const msGroupEl = document.getElementById('msGroup');
+    if (msGroupEl) {
+        msGroupEl.addEventListener('change', updateStudentDropdown);
+    }
 
     if (classSelect) classSelect.addEventListener('change', updateExamNames);
     if (sessionSelect) sessionSelect.addEventListener('change', updateExamNames);
@@ -156,6 +198,7 @@ async function generateMarksheets() {
     const cls = document.getElementById('msClass')?.value;
     const session = document.getElementById('msSession')?.value;
     const examName = document.getElementById('msExamName')?.value;
+    const selectedGroup = document.getElementById('msGroup')?.value || 'all';
     const studentSelection = document.getElementById('msStudent')?.value || 'all';
 
     if (!cls || !session) {
@@ -185,12 +228,24 @@ async function generateMarksheets() {
     relevantExams.forEach(exam => {
         if (exam.studentData) {
             exam.studentData.forEach(s => {
-                const key = `${s.id}_${s.group || ''}`;
+                const sGroup = s.group || '';
+
+                // Group filtering
+                if (selectedGroup !== 'all' && sGroup !== selectedGroup) {
+                    return;
+                }
+
+                // Individual student filtering
+                const key = `${s.id}_${sGroup}`;
+                if (studentSelection !== 'all' && studentSelection !== key) {
+                    return;
+                }
+
                 if (!studentAgg.has(key)) {
                     studentAgg.set(key, {
                         id: s.id,
                         name: s.name,
-                        group: s.group || '',
+                        group: sGroup,
                         class: cls,
                         session: session,
                         subjects: {}
@@ -210,6 +265,13 @@ async function generateMarksheets() {
     });
 
     let studentsArray = [...studentAgg.values()].sort((a, b) => {
+        // Primary sort: Group Alphabetically
+        const groupA = a.group.toLowerCase();
+        const groupB = b.group.toLowerCase();
+        if (groupA < groupB) return -1;
+        if (groupA > groupB) return 1;
+
+        // Secondary sort: Roll number
         return (parseInt(convertToEnglishDigits(String(a.id))) || 0) - (parseInt(convertToEnglishDigits(String(b.id))) || 0);
     });
 

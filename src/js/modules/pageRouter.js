@@ -15,7 +15,8 @@ const NEW_PAGE_IDS = {
     'marksheet': 'marksheetPage',
     'access-requests': 'accessRequestsPage',
     'exam-config': 'examConfigPage',
-    'academic-settings': 'academicSettingsPage'
+    'academic-settings': 'academicSettingsPage',
+    'admit-card': 'admitCardPage'
 };
 
 // IDs/selectors of all dashboard-only sections to hide on other pages
@@ -124,7 +125,7 @@ export function initPageRouter(callback) {
     // Listen for hash changes (back/forward navigation, direct URL entry)
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.replace('#', '') || 'dashboard';
-        const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings'];
+        const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card'];
         if (validPages.includes(hash)) {
             // Role protection for direct hash entry
             if ((hash === 'exam-config' || hash === 'academic-settings') && state.userRole !== 'super_admin') {
@@ -140,7 +141,7 @@ export function initPageRouter(callback) {
 
     // Handle initial hash
     const currentHash = window.location.hash.replace('#', '') || 'dashboard';
-    const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings'];
+    const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card'];
     if (initialPages.includes(currentHash) && currentHash !== 'dashboard') {
         navigateTo(currentHash);
     }

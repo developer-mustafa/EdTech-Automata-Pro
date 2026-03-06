@@ -497,7 +497,7 @@ export async function getSettings() {
 }
 
 /**
- * Update app settings
+ * Update app settings (Alias for saveSettings)
  * @param {Object} settings - Settings to update
  * @returns {Promise<boolean>} - Success status
  */
@@ -513,6 +513,15 @@ export async function updateSettings(settings) {
         console.error('সেটিংস আপডেট করতে সমস্যা:', error);
         return false;
     }
+}
+
+/**
+ * Save settings (Alias for updateSettings used by admitCardManager)
+ * @param {Object} settings - Settings to update
+ * @returns {Promise<boolean>} - Success status
+ */
+export async function saveSettings(settings) {
+    return updateSettings(settings);
 }
 
 /**
