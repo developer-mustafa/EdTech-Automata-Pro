@@ -8896,7 +8896,7 @@ body.is-super-admin td.admin-only {
   background-repeat: no-repeat;
   background-position: center;
   pointer-events: none;
-  z-index: 0;
+  z-index: 10;
 }
 
 /* Decorative Border Frame */
@@ -9350,6 +9350,13 @@ body.is-super-admin td.admin-only {
   body.ms-printing .ms-page *,
   body.ms-printing .ms-watermark-bg {
     visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.ms-printing .ms-watermark-bg {
+    opacity: var(--ms-watermark-opacity, 0.1) !important;
+    display: block !important;
   }
 
   body.ms-printing .ms-page {
@@ -9385,6 +9392,13 @@ body.is-super-admin td.admin-only {
   body.ms-printing-single .ms-page.ms-single-active *,
   body.ms-printing-single .ms-watermark-bg {
     visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.ms-printing-single .ms-watermark-bg {
+    opacity: var(--ms-watermark-opacity, 0.1) !important;
+    display: block !important;
   }
 
   body.ms-printing-single .ms-page.ms-single-active {
