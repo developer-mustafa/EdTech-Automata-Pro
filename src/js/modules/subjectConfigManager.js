@@ -58,6 +58,18 @@ export function initSubjectConfigManager() {
         state.subjectConfigs = allConfigs;
         renderConfigList(allConfigs);
     });
+
+    // Auto-refresh when new exam is saved
+    window.addEventListener('examDataUpdated', async () => {
+        try {
+            const { getSavedExams } = await import('../firestoreService.js');
+            const freshExams = await getSavedExams();
+            state.savedExams = freshExams;
+            renderConfigList(allConfigs);
+        } catch (e) {
+            console.error('Failed to auto-refresh subject config list:', e);
+        }
+    });
 }
 
 function calculateLiveTotal() {
@@ -106,15 +118,38 @@ function renderConfigList(configs, searchTerm = '') {
         elements.subjectCount.innerText = countStr;
     }
 
+    // Build Subject Context from Exam Data
+    const subjectContexts = {};
+    if (Array.isArray(state.savedExams)) {
+        state.savedExams.forEach(exam => {
+            if (!exam.subject) return;
+            if (!subjectContexts[exam.subject]) {
+                subjectContexts[exam.subject] = new Set();
+            }
+            if (exam.class && exam.session) {
+                subjectContexts[exam.subject].add(`${exam.class} (${exam.session})`);
+            }
+        });
+    }
+
     elements.savedConfigsList.innerHTML = allUniqueSubjects.map(key => {
         const hasConfig = configs[key] ? true : false;
         const isActive = state.editingSubjectKey === key;
+
+        // Render Subject Context Badges
+        const contexts = Array.from(subjectContexts[key] || []);
+        let contextHtml = '';
+        if (contexts.length > 0) {
+            const badges = contexts.map(ctx => `<span style="display: inline-block; background: var(--bg-color-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px; font-size: 0.75em; margin-right: 4px; margin-top: 4px;">${ctx}</span>`).join('');
+            contextHtml = `<div style="display: flex; flex-wrap: wrap; margin-top: 2px;">${badges}</div>`;
+        }
 
         return `
             <div class="config-item ${isActive ? 'active' : ''} ${hasConfig ? 'has-config' : 'no-config'}" data-subject="${key}">
                 <div class="config-item-info">
                     <strong>${key}</strong>
                     <span>${hasConfig ? `${configs[key].total} মার্কস` : '<span style="color: var(--warning)">কনফিগার করা নেই</span>'}</span>
+                    ${contextHtml}
                 </div>
                 <i class="fas ${hasConfig ? 'fa-check-circle' : 'fa-exclamation-circle'}" 
                    style="color: ${hasConfig ? '#27ae60' : '#f59e0b'}; opacity: ${hasConfig ? '0.8' : '0.5'}"></i>
@@ -192,7 +227,13 @@ async function handleSaveConfig() {
     const success = await saveSubjectConfig(subject, config);
     if (success) {
         showNotification(`${subject} কনফিগারেশন সেভ করা হয়েছে`);
+
+        // Optimistic UI update instantly before Firestore snapshot catches up
+        allConfigs[subject] = config;
+        state.subjectConfigs[subject] = config;
+
         resetConfigForm();
+        renderConfigList(allConfigs, elements.subjectSearch?.value);
     } else {
         showNotification('সেভ করতে সমস্যা হয়েছে', 'error');
     }

@@ -360,12 +360,13 @@ export async function saveExam(examData) {
 
 /**
  * Get all saved exams (with memory caching to optimize reads)
+ * @param {boolean} forceRefresh - If true, bypass cache and fetch fresh
  * @returns {Promise<Array>} - Array of exam documents ordered by date
  */
-export async function getSavedExams() {
+export async function getSavedExams(forceRefresh = false) {
     // Return cached results if valid (to save billable reads)
     const now = Date.now();
-    if (_cache.exams && now < _cache.examsExpiry) {
+    if (!forceRefresh && _cache.exams && now < _cache.examsExpiry) {
         console.log('Returning cached exams (Read Optimization Active)');
         return _cache.exams;
     }

@@ -198,7 +198,51 @@ body {
 
 .header-main {
   flex: 1;
-  min-width: 300px;
+}
+
+/* Marksheet Settings Styles */
+.academic-item {
+  transition: all 0.3s ease;
+}
+
+.academic-item:hover {
+  transform: translateX(5px);
+  border-color: var(--primary) !important;
+  box-shadow: var(--card-shadow);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-danger:hover {
+  opacity: 0.8;
+}
+
+.btn-secondary {
+  background: var(--secondary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.dm-secondary {
+  background: var(--business) !important;
+  color: white !important;
 }
 
 .header-meta {
@@ -9108,8 +9152,10 @@ body.is-super-admin td.admin-only {
   font-weight: 600;
 }
 
-.ms-grade-fail {
+.ms-grade-fail,
+.ms-mark-fail {
   color: #dc2626 !important;
+  font-weight: 700;
 }
 
 .ms-row-total {

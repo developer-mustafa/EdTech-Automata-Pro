@@ -6,7 +6,8 @@
 
 import { getSavedExams, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
-import { showNotification, convertToEnglishDigits } from '../utils.js';
+import { currentMarksheetRules } from './marksheetRulesManager.js';
+import { showNotification, convertToEnglishDigits, determineStatus, normalizeText } from '../utils.js';
 
 let marksheetSettings = {
     institutionName: '',
@@ -66,7 +67,7 @@ async function saveMarksheetSettings(settings) {
  * Populate marksheet page dropdowns
  */
 export async function populateMSDropdowns() {
-    const exams = await getSavedExams();
+    const exams = await getSavedExams(true);
 
     const classes = [...new Set(exams.map(e => e.class).filter(Boolean))].sort();
     const sessions = [...new Set(exams.map(e => e.session).filter(Boolean))].sort().reverse();
@@ -208,7 +209,11 @@ async function generateMarksheets() {
 
     await loadMarksheetSettings();
 
-    const allExams = await getSavedExams();
+    // Ensure latest subject configs are available
+    const { getSubjectConfigs } = await import('../firestoreService.js');
+    state.subjectConfigs = await getSubjectConfigs();
+
+    const allExams = await getSavedExams(true);
     let relevantExams = allExams.filter(e => e.class === cls && e.session === session);
 
     if (examName && examName !== '__all__') {
@@ -285,10 +290,11 @@ async function generateMarksheets() {
     }
 
     const examDisplayName = examName === '__all__' ? 'সমন্বিত ফলাফল' : (examName || 'পরীক্ষা');
+    const modeOverride = document.getElementById('msPrintMode')?.value || 'default';
 
     const previewArea = document.getElementById('marksheetPreview');
     previewArea.innerHTML = studentsArray.map(student =>
-        renderSingleMarksheet(student, subjects, examDisplayName, session)
+        renderSingleMarksheet(student, subjects, examDisplayName, session, null, modeOverride)
     ).join('');
 
     // Show bulk print button
@@ -316,47 +322,282 @@ async function generateMarksheets() {
 /**
  * Render a single student's marksheet (Bangladeshi HSC professional style)
  */
-function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null) {
+function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, modeOverride = null) {
     const ms = customSettings || marksheetSettings;
+    const allRules = currentMarksheetRules || {};
+    const studentClass = student.class || 'HSC';
+
+    // Get Global Rules and Class-Specific Rules
+    const globalRules = allRules['All'] || { mode: 'single', combinedSubjects: [], optionalSubjects: {} };
+    const classRules = allRules[studentClass] || { mode: 'single', combinedSubjects: [], optionalSubjects: {} };
+
+    // Merge Rules: Class-specific takes precedence
+    let baseMode = globalRules.mode || 'single';
+    if (allRules[studentClass] && allRules[studentClass].mode) {
+        baseMode = allRules[studentClass].mode;
+    }
+
+    if (modeOverride && modeOverride !== 'default') {
+        baseMode = modeOverride;
+    }
+
+    const rules = {
+        mode: baseMode,
+        combinedSubjects: [...(globalRules.combinedSubjects || [])],
+        optionalSubjects: JSON.parse(JSON.stringify(globalRules.optionalSubjects || {})),
+        generalSubjects: [...(globalRules.generalSubjects || [])],
+        groupSubjects: JSON.parse(JSON.stringify(globalRules.groupSubjects || {}))
+    };
+
+    // Merge Combined Subjects (avoid duplicates by combinedName)
+    if (classRules.combinedSubjects && classRules.combinedSubjects.length > 0) {
+        classRules.combinedSubjects.forEach(c => {
+            const existingIdx = rules.combinedSubjects.findIndex(r => r.combinedName === c.combinedName);
+            if (existingIdx > -1) {
+                rules.combinedSubjects[existingIdx] = c;
+            } else {
+                rules.combinedSubjects.push(c);
+            }
+        });
+    }
+
+    // Merge General Subjects (unique list)
+    if (classRules.generalSubjects && classRules.generalSubjects.length > 0) {
+        rules.generalSubjects = [...new Set([...rules.generalSubjects, ...classRules.generalSubjects])];
+    }
+
+    // Merge Group Subjects (by group)
+    if (classRules.groupSubjects) {
+        for (const [group, subs] of Object.entries(classRules.groupSubjects)) {
+            if (!rules.groupSubjects[group]) rules.groupSubjects[group] = [];
+            rules.groupSubjects[group] = [...new Set([...rules.groupSubjects[group], ...subs])];
+        }
+    }
+
+    // Merge Optional Subjects (by group)
+    if (classRules.optionalSubjects) {
+        for (const [group, subs] of Object.entries(classRules.optionalSubjects)) {
+            if (!rules.optionalSubjects[group]) rules.optionalSubjects[group] = [];
+            rules.optionalSubjects[group] = [...new Set([...rules.optionalSubjects[group], ...subs])];
+        }
+    }
+
+    // Identify student context
+    const studentGroup = student.group || '';
+    const myGroupSubs = rules.groupSubjects[studentGroup] || [];
+    const myOptSubs = rules.optionalSubjects[studentGroup] || [];
+
+    // Filter input subjects based on mapping (if mapping exists)
+    const hasMapping = rules.generalSubjects.length > 0 || Object.keys(rules.groupSubjects).length > 0 || Object.keys(rules.optionalSubjects).length > 0;
+
+    let filteredSubjects = subjects;
+    if (hasMapping) {
+        filteredSubjects = subjects.filter(s =>
+            rules.generalSubjects.includes(s) ||
+            myGroupSubs.includes(s) ||
+            myOptSubs.includes(s) ||
+            (student.subjects[s] && (
+                Number(student.subjects[s].total) > 0 ||
+                (student.subjects[s].written !== undefined && student.subjects[s].written !== '')
+            ))
+        );
+    }
+
+    // Determine which subject is the student's optional subject
+    let optionalSubName = '';
+    filteredSubjects.forEach(s => {
+        if (myOptSubs.includes(s)) {
+            optionalSubName = s;
+        }
+    });
+
+    // Use filtered subjects for processing
+    const subjectsToProcess = filteredSubjects;
+
+    // Prepare processed subjects list (handle Combined Mode)
+    let processedSubjects = [];
+    if (rules.mode === 'combined' && rules.combinedSubjects.length > 0) {
+        const handledPapers = new Set();
+
+        rules.combinedSubjects.forEach(comb => {
+            const p1 = subjectsToProcess.find(s => s === comb.paper1);
+            const p2 = subjectsToProcess.find(s => s === comb.paper2);
+
+            if (p1 && p2) {
+                const d1 = student.subjects[p1] || {};
+                const d2 = student.subjects[p2] || {};
+                const c1 = getSubjectConfig(p1);
+                const c2 = getSubjectConfig(p2);
+                const options1 = {
+                    writtenPass: (c1.writtenPass !== undefined && c1.writtenPass !== '') ? Number(c1.writtenPass) : (c1.isFallback ? undefined : 0),
+                    mcqPass: (c1.mcqPass !== undefined && c1.mcqPass !== '') ? Number(c1.mcqPass) : (c1.isFallback ? undefined : 0),
+                    practicalPass: (c1.practicalPass !== undefined && c1.practicalPass !== '') ? Number(c1.practicalPass) : 0
+                };
+                const options2 = {
+                    writtenPass: (c2.writtenPass !== undefined && c2.writtenPass !== '') ? Number(c2.writtenPass) : (c2.isFallback ? undefined : 0),
+                    mcqPass: (c2.mcqPass !== undefined && c2.mcqPass !== '') ? Number(c2.mcqPass) : (c2.isFallback ? undefined : 0),
+                    practicalPass: (c2.practicalPass !== undefined && c2.practicalPass !== '') ? Number(c2.practicalPass) : 0
+                };
+
+                const s1 = determineStatus(d1, options1);
+                const s2 = determineStatus(d2, options2);
+
+                // Average marks
+                const combinedData = {
+                    written: ((parseFloat(d1.written) || 0) + (parseFloat(d2.written) || 0)) / 2,
+                    mcq: ((parseFloat(d1.mcq) || 0) + (parseFloat(d2.mcq) || 0)) / 2,
+                    practical: ((parseFloat(d1.practical) || 0) + (parseFloat(d2.practical) || 0)) / 2,
+                    total: ((parseFloat(d1.total) || 0) + (parseFloat(d2.total) || 0)) / 2,
+                    status: (s1 === 'ফেল' || s2 === 'ফেল' || s1 === 'অনুপস্থিত' || s2 === 'অনুপস্থিত') ? 'fail' : 'pass'
+                };
+
+                const maxTotal = (Number(c1.total || 100) + Number(c2.total || 100)) / 2;
+
+                processedSubjects.push({
+                    name: comb.combinedName,
+                    data: combinedData,
+                    maxTotal: maxTotal,
+                    options: {
+                        writtenPass: (options1.writtenPass + options2.writtenPass) / 2,
+                        mcqPass: (options1.mcqPass + options2.mcqPass) / 2,
+                        practicalPass: (options1.practicalPass + options2.practicalPass) / 2
+                    },
+                    isCombined: true
+                });
+
+                handledPapers.add(p1);
+                handledPapers.add(p2);
+            }
+        });
+
+        // Add remaining subjects
+        subjectsToProcess.forEach(s => {
+            if (!handledPapers.has(s)) {
+                const data = student.subjects[s] || {};
+                const config = getSubjectConfig(s);
+                const options = {
+                    writtenPass: (config.writtenPass !== undefined && config.writtenPass !== '') ? Number(config.writtenPass) : (config.isFallback ? undefined : 0),
+                    mcqPass: (config.mcqPass !== undefined && config.mcqPass !== '') ? Number(config.mcqPass) : (config.isFallback ? undefined : 0),
+                    practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0
+                };
+                processedSubjects.push({
+                    name: s,
+                    data: data,
+                    maxTotal: parseInt(config.total) || 100,
+                    options: options,
+                    isCombined: false
+                });
+            }
+        });
+    } else {
+        processedSubjects = subjectsToProcess.map(s => {
+            const data = student.subjects[s] || {};
+            const config = getSubjectConfig(s);
+
+            const options = {
+                writtenPass: (config.writtenPass !== undefined && config.writtenPass !== '') ? Number(config.writtenPass) : (config.isFallback ? undefined : 0),
+                mcqPass: (config.mcqPass !== undefined && config.mcqPass !== '') ? Number(config.mcqPass) : (config.isFallback ? undefined : 0),
+                practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0
+            };
+            const dynamicStatus = determineStatus(data, options);
+
+            return {
+                name: s,
+                data: { ...data, status: dynamicStatus },
+                maxTotal: parseInt(config.total) || 100,
+                options: options,
+                isCombined: false
+            };
+        });
+    }
 
     // Calculate per-subject grades and grand totals
     let grandTotal = 0;
     let maxGrand = 0;
     let allPassed = true;
-    let totalGradePointSum = 0;
+    let coreGPASum = 0;
+    let coreSubjectCount = 0;
+    let optionalGP = 0;
 
-    const subjectRows = subjects.map((subj, idx) => {
-        const data = student.subjects[subj] || {};
+    const subjectRows = processedSubjects.map((item, idx) => {
+        const subj = item.name;
+        const data = item.data;
         const total = data.total || 0;
-        const config = state.subjectConfigs?.[subj] || { total: 100 };
-        const maxTotal = parseInt(config.total) || 100;
+        const maxTotal = item.maxTotal;
+
         grandTotal += total;
         maxGrand += maxTotal;
 
         const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-        const grade = getLetterGrade(pct);
-        const gp = getGradePoint(pct);
-        totalGradePointSum += gp;
+        let grade = getLetterGrade(pct);
+        let gp = getGradePoint(pct);
 
-        if (grade === 'F' || data.status === 'ফেল' || data.status === 'fail') allPassed = false;
+        // GPA Logic: Identify Optional Subject
+        const isOptional = subj === optionalSubName;
+
+        // Individual Pass Consistency: Force F if status indicates failure or absence
+        const isFailed = (grade === 'F' || data.status === 'ফেল' || data.status === 'fail' || data.status === 'অনুপস্থিত');
+
+        if (isFailed) {
+            grade = 'F';
+            gp = 0;
+            // Optional Subject Logic Choice:
+            // In Combined Mode: failing optional does NOT fail the whole exam
+            // In Single Mode: failing optional DOES fail the exam (treated as mandatory)
+            if (!isOptional || rules.mode !== 'combined') {
+                allPassed = false;
+            }
+        }
+
+        if (isOptional) {
+            optionalGP = gp;
+        } else {
+            // Core subject (including ICT): include in average
+            coreGPASum += gp;
+            coreSubjectCount++;
+        }
+
+        const opts = item.options || {};
+        const isWrittenFail = (data.written !== undefined && data.written !== '' && opts.writtenPass > 0 && parseFloat(data.written) < opts.writtenPass);
+        const isMcqFail = (data.mcq !== undefined && data.mcq !== '' && opts.mcqPass > 0 && parseFloat(data.mcq) < opts.mcqPass);
+        const isPracticalFail = (data.practical !== undefined && data.practical !== '' && opts.practicalPass > 0 && parseFloat(data.practical) < opts.practicalPass);
 
         return `
             <tr>
                 <td class="ms-td-sl">${idx + 1}</td>
-                <td class="ms-td-subject">${subj}</td>
+                <td class="ms-td-subject">${subj} ${isOptional ? '<span style="font-size: 0.7em; color: var(--secondary);"> (Optional)</span>' : ''}</td>
                 <td class="ms-td-num">${maxTotal}</td>
-                <td class="ms-td-num">${data.written || '-'}</td>
-                <td class="ms-td-num">${data.mcq || '-'}</td>
-                <td class="ms-td-num">${data.practical || '-'}</td>
+                <td class="ms-td-num ${isWrittenFail ? 'ms-mark-fail' : ''}">${data.written || data.written === 0 ? data.written : '-'}</td>
+                <td class="ms-td-num ${isMcqFail ? 'ms-mark-fail' : ''}">${data.mcq || data.mcq === 0 ? data.mcq : '-'}</td>
+                <td class="ms-td-num ${isPracticalFail ? 'ms-mark-fail' : ''}">${data.practical || data.practical === 0 ? data.practical : '-'}</td>
                 <td class="ms-td-num ms-td-total">${total}</td>
                 <td class="ms-td-grade ${grade === 'F' ? 'ms-grade-fail' : ''}">${grade}</td>
                 <td class="ms-td-gp">${gp.toFixed(2)}</td>
             </tr>`;
     }).join('');
 
-    const overallPct = maxGrand > 0 ? (grandTotal / maxGrand) * 100 : 0;
-    const overallGrade = getLetterGrade(overallPct);
-    const avgGPA = subjects.length > 0 ? (totalGradePointSum / subjects.length).toFixed(2) : '0.00';
+    // Final GPA Calculation
+    // Base GPA = Core Sum / Core Count
+    let finalGPA = coreSubjectCount > 0 ? (coreGPASum / coreSubjectCount) : 0;
+
+    // Optional Subject Bonus (ONLY in Combined Mode)
+    if (rules.mode === 'combined') {
+        if (optionalGP >= 5) {
+            finalGPA += 0.50;
+        } else if (optionalGP > 2) {
+            finalGPA += (optionalGP - 2) / coreSubjectCount;
+        }
+    }
+
+    // Force Fail if any subject is F
+    if (!allPassed) finalGPA = 0;
+
+    // Cap at 5.00
+    if (finalGPA > 5) finalGPA = 5;
+
+    const displayGPA = finalGPA.toFixed(2);
+    const overallGrade = getLetterGrade((finalGPA / 5) * 100); // Approximate overall grade from GPA
+
     const resultText = allPassed ? 'পাস' : 'অকৃতকার্য';
     const resultClass = allPassed ? 'ms-result-pass' : 'ms-result-fail';
 
@@ -452,7 +693,7 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
                             <td colspan="3"></td>
                             <td class="ms-td-num ms-td-total">${grandTotal}</td>
                             <td class="ms-td-grade">${overallGrade}</td>
-                            <td class="ms-td-gp">${avgGPA}</td>
+                            <td class="ms-td-gp">${displayGPA}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -461,7 +702,7 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
                 <div class="ms-result-section">
                     <div class="ms-result-box">
                         <span class="ms-result-label">GPA</span>
-                        <span class="ms-result-value ms-gpa-value">${avgGPA}</span>
+                        <span class="ms-result-value ms-gpa-value">${displayGPA}</span>
                     </div>
                     <div class="ms-result-box">
                         <span class="ms-result-label">গ্রেড</span>
@@ -504,6 +745,27 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
             </div>
         </div>
     `;
+}
+
+/**
+ * Robust Subject Configuration Lookup
+ * Uses normalization to handle character variants
+ */
+function getSubjectConfig(subjectName) {
+    if (!subjectName) return { total: 100, isFallback: true };
+    const configs = state.subjectConfigs || {};
+
+    // Quick match
+    if (configs[subjectName]) return { ...configs[subjectName], isFallback: false };
+
+    // Fuzzy/Normalized match
+    const normalizedTarget = normalizeText(subjectName);
+    const matchedKey = Object.keys(configs).find(key =>
+        key !== 'updatedAt' && normalizeText(key) === normalizedTarget
+    );
+
+    if (matchedKey) return { ...configs[matchedKey], isFallback: false };
+    return { total: 100, isFallback: true };
 }
 
 function getLetterGrade(pct) {
@@ -975,5 +1237,14 @@ export async function initMarksheetManager() {
     }
 
     initMarksheetSettingsModal();
+
+    // Listen for data updates to refresh dropdowns
+    window.addEventListener('examDataUpdated', async () => {
+        const pageId = document.querySelector('.nav-item.active')?.dataset.page;
+        if (pageId === 'marksheet') {
+            await populateMSDropdowns();
+        }
+    });
+
     await populateMSDropdowns();
 }

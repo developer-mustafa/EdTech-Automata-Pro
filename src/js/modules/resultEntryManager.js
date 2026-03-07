@@ -5,10 +5,12 @@
  * @module resultEntryManager
  */
 
-import { getSavedExams, updateExam, saveExam, getAllStudents, getExamConfigs } from '../firestoreService.js';
+import { getSavedExams, updateExam, saveExam, getAllStudents, getExamConfigs, getClassSubjectMappings } from '../firestoreService.js';
+import { collectStudents } from './studentManager.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits, calculateStatistics } from '../utils.js';
 import { isTeacherAuthorized, getTeacherAssignmentsByUid } from './teacherAssignmentManager.js';
+import { currentMarksheetRules } from './marksheetRulesManager.js';
 
 let currentExamDoc = null;
 let originalStudentData = null; // For discard
@@ -125,7 +127,7 @@ export async function populateREDropdowns() {
     }
 
     // Subject and exam dropdowns update based on class/session selection
-    const updateSubjectAndExam = () => {
+    const updateSubjectAndExam = async () => {
         const selClass = classSelect?.value;
         const selSession = sessionSelect?.value;
 
@@ -135,8 +137,58 @@ export async function populateREDropdowns() {
             (!selSession || e.session === selSession)
         );
 
-        // --- Subjects: merge from existing exams + teacher assignments ---
-        const subjectsFromFiltered = filtered.map(e => e.subject).filter(Boolean);
+        // --- Track subjects that already have marks submitted ---
+        const subjectsWithMarks = new Set(filtered.map(e => e.subject).filter(Boolean));
+
+        // --- Build categorized subject list ---
+        let allSubjects = [];
+        let hasCategorization = false;
+
+        if (selClass && currentMarksheetRules) {
+            // Check class-specific rules first, then global "All" rules
+            const classRules = currentMarksheetRules[selClass] || {};
+            const globalRules = currentMarksheetRules['All'] || {};
+
+            // Merge general subjects
+            const generalSubs = [...new Set([
+                ...(globalRules.generalSubjects || []),
+                ...(classRules.generalSubjects || [])
+            ])];
+
+            // Merge group subjects (all groups)
+            const groupSubs = [];
+            const mergedGroupSubs = { ...(globalRules.groupSubjects || {}), ...(classRules.groupSubjects || {}) };
+            for (const [group, subs] of Object.entries(mergedGroupSubs)) {
+                if (Array.isArray(subs)) groupSubs.push(...subs);
+            }
+
+            // Merge optional subjects (all groups)
+            const optSubs = [];
+            const mergedOptSubs = { ...(globalRules.optionalSubjects || {}), ...(classRules.optionalSubjects || {}) };
+            for (const [group, subs] of Object.entries(mergedOptSubs)) {
+                if (Array.isArray(subs)) optSubs.push(...subs);
+            }
+
+            if (generalSubs.length > 0 || groupSubs.length > 0 || optSubs.length > 0) {
+                hasCategorization = true;
+                allSubjects = [...new Set([...generalSubs, ...groupSubs, ...optSubs])];
+            }
+        }
+
+        // Fallback: if no categories configured, use Class & Subject Mapping
+        if (!hasCategorization && selClass) {
+            try {
+                const mappings = await getClassSubjectMappings();
+                const classMapped = mappings[selClass];
+                if (Array.isArray(classMapped) && classMapped.length > 0) {
+                    allSubjects = [...classMapped];
+                }
+            } catch (e) {
+                console.warn('Could not fetch class subject mappings:', e);
+            }
+        }
+
+        // Also include teacher assignment subjects for teachers
         let subjectsFromTA = [];
         if (state.userRole === 'teacher') {
             subjectsFromTA = teacherAssignments
@@ -146,13 +198,25 @@ export async function populateREDropdowns() {
                 )
                 .flatMap(a => a.assignedSubjects || []);
         }
-        const subjects = [...new Set([...subjectsFromFiltered, ...subjectsFromTA])].sort();
+
+        // If still empty, fall back to existing exam subjects + TA subjects
+        if (allSubjects.length === 0) {
+            allSubjects = [...subjectsWithMarks, ...subjectsFromTA];
+        } else {
+            // Merge TA subjects into the categorized list
+            allSubjects = [...new Set([...allSubjects, ...subjectsFromTA])];
+        }
+
+        const subjects = [...new Set(allSubjects)].sort((a, b) => a.localeCompare(b, 'bn'));
 
         const subjectSelect = document.getElementById('reSubject');
         if (subjectSelect) {
             subjectSelect.innerHTML = (subjects.length === 1) ? '' : '<option value="">বিষয় নির্বাচন</option>';
             subjects.forEach(s => {
-                subjectSelect.innerHTML += `<option value="${s}">${s}</option>`;
+                const hasMarks = subjectsWithMarks.has(s);
+                const style = hasMarks ? 'style="background-color: #dbeafe; color: #1e40af; font-weight: 500;"' : '';
+                const indicator = hasMarks ? ' ✓' : '';
+                subjectSelect.innerHTML += `<option value="${s}" ${style}>${s}${indicator}</option>`;
             });
             if (subjects.length === 1) subjectSelect.value = subjects[0];
         }
@@ -262,9 +326,9 @@ async function loadExamForEntry() {
     } else {
         // --- NEW EXAM: Fetch students for this class/session ---
         isNewExam = true;
-        showNotification(`"${examName}" পরীক্ষা পাওয়া যায়নি। নতুন পরীক্ষা হিসেবে শিক্ষার্থীদের তালিকা লোড হচ্ছে...`, 'info');
+        showNotification(`${cls} শ্রেণি, ${session} সেশন, ${subject} বিষয়ের ডাটা ${examName} পরীক্ষার অধিনে নতুন ডাইনামিক এক্সাম কার্ড তৈরী হচ্ছে।`, 'info');
 
-        const allStudents = await getAllStudents();
+        const allStudents = await collectStudents();
         const filteredStudents = allStudents.filter(s =>
             s.class && s.class.toLowerCase() === cls.toLowerCase() &&
             s.session && String(s.session).trim() === String(session).trim()
