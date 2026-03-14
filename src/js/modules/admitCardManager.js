@@ -4,8 +4,8 @@ import { showNotification, convertToEnglishDigits, convertToBengaliDigits } from
 import { getRoutinesData, normalizeGroupName, fetchRoutines } from './routineManager.js';
 import { compressImage } from '../imageUtils.js';
 
-let acClassSelect, acSessionSelect, acExamNameSelect, acGroupSelect, acLayoutSelect;
-let spClassSelect, spSessionSelect, spExamNameSelect, spGroupSelect;
+let acClassSelect, acSessionSelect, acExamNameSelect, acGroupSelect, acLayoutSelect, acOrientationSelect;
+let spClassSelect, spSessionSelect, spExamNameSelect, spGroupSelect, spLayoutSelect, spOrientationSelect;
 let acGenerateBtn, spGenerateBtn, acResetBtn, spResetBtn, acPrintAllBtn, acSettingsBtn;
 let admitCardPreview, acPreviewWrapper, acEmptyStateMsg, acMainZoomInput, acMainZoomLevelTxt;
 
@@ -29,11 +29,40 @@ export function initAdmitCardManager() {
     acExamNameSelect = document.getElementById('acExamName');
     acGroupSelect = document.getElementById('acGroup');
     acLayoutSelect = document.getElementById('acLayout');
+    acOrientationSelect = document.getElementById('acOrientation');
 
     spClassSelect = document.getElementById('spClass');
     spSessionSelect = document.getElementById('spSession');
     spExamNameSelect = document.getElementById('spExamName');
     spGroupSelect = document.getElementById('spGroup');
+    spLayoutSelect = document.getElementById('spLayout');
+    spOrientationSelect = document.getElementById('spOrientation');
+
+    // Helper to sync selects bidirectionally
+    const setupSync = (elemA, elemB, eventType = 'change') => {
+        if (!elemA || !elemB) return;
+        elemA.addEventListener(eventType, () => {
+            if (elemB.value !== elemA.value) {
+                elemB.value = elemA.value;
+                elemB.dispatchEvent(new Event('change'));
+            }
+        });
+        elemB.addEventListener(eventType, () => {
+            if (elemA.value !== elemB.value) {
+                elemA.value = elemB.value;
+                elemA.dispatchEvent(new Event('change'));
+            }
+        });
+    };
+
+    // Bidirectional sync for all filters
+    setupSync(acClassSelect, spClassSelect);
+    setupSync(acSessionSelect, spSessionSelect);
+    // Exam name and Group are updated via change events, handled by the setupSync above
+    setupSync(acExamNameSelect, spExamNameSelect);
+    setupSync(acGroupSelect, spGroupSelect);
+    setupSync(acLayoutSelect, spLayoutSelect);
+    setupSync(acOrientationSelect, spOrientationSelect);
 
     acGenerateBtn = document.getElementById('acGenerateBtn');
     spGenerateBtn = document.getElementById('spGenerateBtn');
@@ -90,27 +119,6 @@ export function initAdmitCardManager() {
             pill.classList.add('active');
             const targetId = pill.getAttribute('data-target');
             document.getElementById(targetId)?.classList.add('active');
-            
-            // Auto sync class/session
-            if (targetId === 'spTabPanel') {
-                if(acClassSelect && spClassSelect && !spClassSelect.value) {
-                    spClassSelect.value = acClassSelect.value;
-                    spClassSelect.dispatchEvent(new Event('change'));
-                }
-                if(acSessionSelect && spSessionSelect && !spSessionSelect.value) {
-                    spSessionSelect.value = acSessionSelect.value;
-                    spSessionSelect.dispatchEvent(new Event('change'));
-                }
-            } else {
-                if(spClassSelect && acClassSelect && !acClassSelect.value) {
-                    acClassSelect.value = spClassSelect.value;
-                    acClassSelect.dispatchEvent(new Event('change'));
-                }
-                if(spSessionSelect && acSessionSelect && !acSessionSelect.value) {
-                    acSessionSelect.value = spSessionSelect.value;
-                    acSessionSelect.dispatchEvent(new Event('change'));
-                }
-            }
         });
     });
     if (acGenerateBtn) {
@@ -612,10 +620,10 @@ async function generateCards(type) {
     const examName = isAdmit ? acExamNameSelect?.value : spExamNameSelect?.value;
     const selectedGroup = isAdmit ? (acGroupSelect?.value || 'all') : (spGroupSelect?.value || 'all');
     
-    // Layout and orientation only apply to admit cards right now; seat plans use default/fixed layout
-    const layoutSize = isAdmit ? parseInt(acLayoutSelect?.value || '6', 10) : 6;
-    const orientationSelect = document.getElementById('acOrientation');
-    const pageOrientation = isAdmit && orientationSelect ? orientationSelect.value : 'portrait';
+    // Layout and orientation
+    const layoutSize = isAdmit ? parseInt(acLayoutSelect?.value || '2', 10) : parseInt(spLayoutSelect?.value || '2', 10);
+    const orientationSelect = isAdmit ? acOrientationSelect : spOrientationSelect;
+    const pageOrientation = orientationSelect ? orientationSelect.value : (isAdmit ? 'landscape' : 'portrait');
 
     if (!cls || !session || !examName) {
         showNotification('শ্রেণি, সেশন এবং পরীক্ষা নির্বাচন করুন', 'error');

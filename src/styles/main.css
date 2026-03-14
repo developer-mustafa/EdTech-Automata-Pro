@@ -12443,28 +12443,100 @@ input:checked + .toggle-slider:before {
 }
 
 .ac-tab-pill.active {
-    color: #8b6508; /* Royal golden text */
+    color: #634604; /* Deeper, clearer gold for visibility */
+    background: rgba(191, 149, 63, 0.12); /* Slightly more opaque for better contrast */
+    border-radius: 8px;
+    font-weight: 700; /* Bolder text for clarity */
     border-bottom-color: transparent;
+    box-shadow: 0 4px 15px rgba(191, 149, 63, 0.2);
+    transform: translateY(-1px); /* Slight lift */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.ac-tab-pill.active:hover {
+    transform: translateY(-2px) scale(1.02); /* More lift and scale on hover */
+    background: rgba(191, 149, 63, 0.18);
+    box-shadow: 0 6px 25px rgba(191, 149, 63, 0.3);
+}
+
+/* Premium "All-Around" Active State with Animated Dashed Border */
 .ac-tab-pill.active::after {
     content: '';
     position: absolute;
-    bottom: -3px; /* Match the border */
-    left: 0;
-    width: 100%;
-    height: 3px;
+    inset: -2px;
+    border-radius: 10px;
+    padding: 2px;
     background: linear-gradient(90deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+    -webkit-mask: 
+       linear-gradient(#fff 0 0) content-box, 
+       linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: 
+       linear-gradient(#fff 0 0) content-box, 
+       linear-gradient(#fff 0 0);
+    mask-composite: exclude;
     background-size: 200% 200%;
-    animation: royalGoldShine 2s linear infinite;
-    border-radius: 3px 3px 0 0;
-    box-shadow: 0 -2px 10px rgba(191, 149, 63, 0.4);
+    animation: royalGoldShine 3s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+    transition: opacity 0.3s ease;
+}
+
+.ac-tab-pill.active:hover::after {
+    animation: royalGoldShine 1.5s linear infinite; /* Speed up on hover */
+    opacity: 1;
+}
+
+/* Subtle Animated Dotted Path */
+.ac-tab-pill.active::before {
+    content: '';
+    position: absolute;
+    border: 2.5px dotted #b38728;
+    animation: pulseDots 2s ease-in-out infinite;
+    inset: -6px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.ac-tab-pill.active:hover::before {
+    inset: -8px; /* Expand dots on hover */
+    opacity: 0.8;
+}
+
+@keyframes pulseDots {
+    0%, 100% { opacity: 0.25; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.03); }
 }
 
 @keyframes royalGoldShine {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
+}
+
+/* Dark Mode Overrides for Tabs */
+.dark-mode .ac-tab-pill {
+    color: var(--text-color);
+}
+
+.dark-mode .ac-tab-pill:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .ac-tab-pill.active {
+    color: #fcf6ba; /* Lighter gold for perfect visibility in dark mode */
+    background: rgba(191, 149, 63, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 10px rgba(191, 149, 63, 0.1);
+}
+
+.dark-mode .ac-tab-pill.active:hover {
+    background: rgba(191, 149, 63, 0.25);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(191, 149, 63, 0.2);
+}
+
+.dark-mode .ac-tab-pill.active::before {
+    border-color: #fcf6ba;
+    opacity: 0.5;
 }
 
 .ac-tab-panel {
