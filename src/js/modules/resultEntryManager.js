@@ -441,33 +441,7 @@ async function loadExamForEntry() {
         recalculateStudentStatuses(currentExamDoc.studentData || [], exam.subject);
 
         // --- AUTOMATIC SORTING ---
-        // 1. Group Priority Map
-        const groupPriority = {
-            'science': 1, 'বিজ্ঞান': 1,
-            'business': 2, 'ব্যবসায়': 2, 'ব্যবসায়': 2, 'commerce': 2, 'ব্যবসায় শিক্ষা': 2,
-            'humanities': 3, 'মানবিক': 3, 'arts': 3,
-            'general': 4, 'সাধারণ': 4
-        };
-
-        const getGroupScore = (g) => {
-            if (!g) return 99;
-            const norm = g.trim().toLowerCase();
-            for (const [key, score] of Object.entries(groupPriority)) {
-                if (norm.includes(key)) return score;
-            }
-            return 90;
-        };
-
-        // 2. Apply Sort to existing exam data
-        (currentExamDoc.studentData || []).sort((a, b) => {
-            const scoreA = getGroupScore(a.group);
-            const scoreB = getGroupScore(b.group);
-            if (scoreA !== scoreB) return scoreA - scoreB;
-            const rollA = parseInt(a.id) || 0;
-            const rollB = parseInt(b.id) || 0;
-            if (rollA !== rollB) return rollA - rollB;
-            return (a.name || '').localeCompare(b.name || '', 'bn');
-        });
+        sortStudentsByGroupAndRoll(currentExamDoc.studentData || []);
 
         originalStudentData = JSON.parse(JSON.stringify(currentExamDoc.studentData || []));
         hasUnsavedChanges = false;
@@ -548,45 +522,14 @@ async function loadExamForEntry() {
         };
 
         // --- AUTOMATIC SORTING ---
-        // 1. Group Priority Map
-        const groupPriority = {
-            'science': 1, 'বিজ্ঞান': 1,
-            'business': 2, 'ব্যবসায়': 2, 'ব্যবসায়': 2, 'commerce': 2, 'ব্যবসায় শিক্ষা': 2,
-            'humanities': 3, 'মানবিক': 3, 'arts': 3,
-            'general': 4, 'সাধারণ': 4
-        };
-
-        const getGroupScore = (g) => {
-            if (!g) return 99;
-            const norm = g.trim().toLowerCase();
-            for (const [key, score] of Object.entries(groupPriority)) {
-                if (norm.includes(key)) return score;
-            }
-            return 90;
-        };
-
-        // 2. Apply Sort
-        currentExamDoc.studentData.sort((a, b) => {
-            // Sort by Group first
-            const scoreA = getGroupScore(a.group);
-            const scoreB = getGroupScore(b.group);
-            if (scoreA !== scoreB) return scoreA - scoreB;
-
-            // Then sort by Roll (numeric safe)
-            const rollA = parseInt(a.id) || 0;
-            const rollB = parseInt(b.id) || 0;
-            if (rollA !== rollB) return rollA - rollB;
-
-            // Final fallback: name
-            return (a.name || '').localeCompare(b.name || '', 'bn');
-        });
+        sortStudentsByGroupAndRoll(currentExamDoc.studentData);
 
         originalStudentData = JSON.parse(JSON.stringify(currentExamDoc.studentData));
         hasUnsavedChanges = false;
 
-        showExamInfo(currentExamDoc, studentData.length, true);
+        showExamInfo(currentExamDoc, currentExamDoc.studentData.length, true);
         const config = getSubjectConfig(subject);
-        renderRETable(studentData, config);
+        renderRETable(currentExamDoc.studentData, config);
     }
 
     // Show table, hide empty state
@@ -633,6 +576,42 @@ function cfgNum(val) {
     if (val === '' || val === null || val === undefined) return 0;
     const n = parseFloat(val);
     return isNaN(n) ? 0 : n;
+}
+
+/**
+ * Sort students by group priority and then by roll number
+ * @param {Array} studentData - Array of student mark objects
+ */
+function sortStudentsByGroupAndRoll(studentData) {
+    if (!studentData || !Array.isArray(studentData)) return;
+
+    const groupPriority = {
+        'science': 1, 'বিজ্ঞান': 1,
+        'business': 2, 'ব্যবসায়': 2, 'ব্যবসায়': 2, 'commerce': 2, 'ব্যবসায় শিক্ষা': 2,
+        'humanities': 3, 'মানবিক': 3, 'arts': 3,
+        'general': 4, 'সাধারণ': 4
+    };
+
+    const getGroupScore = (g) => {
+        if (!g) return 99;
+        const norm = g.trim().toLowerCase();
+        for (const [key, score] of Object.entries(groupPriority)) {
+            if (norm.includes(key)) return score;
+        }
+        return 90;
+    };
+
+    studentData.sort((a, b) => {
+        const scoreA = getGroupScore(a.group);
+        const scoreB = getGroupScore(b.group);
+        if (scoreA !== scoreB) return scoreA - scoreB;
+        
+        const rollA = parseInt(a.id) || 0;
+        const rollB = parseInt(b.id) || 0;
+        if (rollA !== rollB) return rollA - rollB;
+        
+        return (a.name || '').localeCompare(b.name || '', 'bn');
+    });
 }
 
 /**
