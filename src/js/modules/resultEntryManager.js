@@ -9,6 +9,8 @@ import { getSavedExams, updateExam, saveExam, getAllStudents, getExamConfigs } f
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits, calculateStatistics } from '../utils.js';
 import { isTeacherAuthorized, getTeacherAssignmentsByUid } from './teacherAssignmentManager.js';
+import { loadMarksheetRules } from './marksheetRulesManager.js';
+import { normalizeGroupName } from './routineManager.js';
 
 let currentExamDoc = null;
 let originalStudentData = null; // For discard
@@ -107,6 +109,14 @@ export async function populateREDropdowns() {
 
     const classSelect = document.getElementById('reClass');
     const sessionSelect = document.getElementById('reSession');
+    const groupSelect = document.getElementById('reGroup');
+    const subjectSelect = document.getElementById('reSubject');
+
+    if (groupSelect) {
+        const groups = state.academicStructure?.group || [];
+        groupSelect.innerHTML = '<option value="all">সকল গ্রুপ</option>' +
+            groups.map(g => `<option value="${g.value}">${g.value}</option>`).join('');
+    }
 
     if (classSelect) {
         classSelect.innerHTML = (classes.length === 1) ? '' : '<option value="">শ্রেণি নির্বাচন</option>';
@@ -124,45 +134,99 @@ export async function populateREDropdowns() {
         if (sessions.length === 1) sessionSelect.value = sessions[0];
     }
 
-    // Subject and exam dropdowns update based on class/session selection
-    const updateSubjectAndExam = () => {
+    // Subject and exam dropdowns update based on class/session/group selection
+    const updateSubjectAndExam = async () => {
         const selClass = classSelect?.value;
         const selSession = sessionSelect?.value;
+        const selGroup = groupSelect?.value || 'all';
 
-        // Filter exams by selected class/session
-        const filtered = assignedExams.filter(e =>
-            (!selClass || e.class === selClass) &&
-            (!selSession || e.session === selSession)
-        );
+        if (!selClass || !selSession) return;
 
-        // --- Subjects: merge from existing exams + teacher assignments ---
-        const subjectsFromFiltered = filtered.map(e => e.subject).filter(Boolean);
-        let subjectsFromTA = [];
-        if (state.userRole === 'teacher') {
-            subjectsFromTA = teacherAssignments
-                .filter(a =>
-                    (!selClass || a.assignedClass === selClass) &&
-                    (!selSession || a.assignedSession === selSession)
-                )
-                .flatMap(a => a.assignedSubjects || []);
-        }
-        const subjects = [...new Set([...subjectsFromFiltered, ...subjectsFromTA])].sort();
+        // --- Improved Subject Logic (Matching Routine Manager) ---
+        const subjectGroups = await getREGroupSubjects(selClass, selGroup);
+        const exams = await getSavedExams();
 
-        const subjectSelect = document.getElementById('reSubject');
-        if (subjectSelect) {
-            subjectSelect.innerHTML = (subjects.length === 1) ? '' : '<option value="">বিষয় নির্বাচন</option>';
-            subjects.forEach(s => {
-                subjectSelect.innerHTML += `<option value="${s}">${s}</option>`;
+        // Function to check submission status and return tick icon
+        const getTick = (subjectName) => {
+            const relevantExams = exams.filter(e =>
+                e.class === selClass &&
+                e.session === selSession &&
+                e.subject === subjectName
+            );
+
+            if (relevantExams.length === 0) return '';
+
+            // Check if all students in the class/session have marks for this subject
+            const isFullySubmitted = relevantExams.every(e => {
+                const data = e.studentData || [];
+                return data.length > 0 && data.every(s =>
+                    (s.written !== null && s.written !== '') ||
+                    (s.mcq !== null && s.mcq !== '') ||
+                    (s.practical !== null && s.practical !== '')
+                );
             });
-            if (subjects.length === 1) subjectSelect.value = subjects[0];
+
+            if (isFullySubmitted) return ' [✔]'; // Will be contextually understood as green/complete
+            
+            // Check if ANY data exists
+            const hasAnyData = relevantExams.some(e =>
+                (e.studentData || []).some(s =>
+                    (s.written !== null && s.written !== '') ||
+                    (s.mcq !== null && s.mcq !== '') ||
+                    (s.practical !== null && s.practical !== '')
+                )
+            );
+
+            if (hasAnyData) return ' [✔]'; // Will be contextually understood as yellow/partial
+            return '';
+        };
+
+        if (subjectSelect) {
+            let subOptions = '<option value="">বিষয় নির্বাচন</option>';
+
+            const renderSubGroup = (label, subs) => {
+                if (!subs || subs.length === 0) return '';
+                let html = `<optgroup label="${label}">`;
+                subs.forEach(s => {
+                    const relevantExams = exams.filter(e => e.class === selClass && e.session === selSession && e.subject === s);
+                    const isFull = isSubjectFullySubmitted(exams, selClass, selSession, s);
+                    const hasData = relevantExamsHasSubjectData(exams, selClass, selSession, s);
+                    
+                    let tick = '';
+                    let color = '';
+                    if (isFull) {
+                        tick = ' [✔]';
+                        color = 'green';
+                    } else if (hasData) {
+                        tick = ' [✔]';
+                        color = '#b45309'; // Dark yellow/Amber
+                    }
+                    
+                    html += `<option value="${s}" style="color: ${color}">${s}${tick}</option>`;
+                });
+                html += `</optgroup>`;
+                return html;
+            };
+
+            subOptions += renderSubGroup('সাধারণ বিষয় (General Subjects)', subjectGroups.general);
+            subOptions += renderSubGroup('গ্রুপ ভিত্তিক বিষয় (Group Subjects)', subjectGroups.groupBased);
+            subOptions += renderSubGroup('ঐচ্ছিক বিষয় (Optional Subjects)', subjectGroups.optional);
+
+            // Fallback for subjects not in rules
+            const groupedSubjectNames = new Set([...subjectGroups.general, ...subjectGroups.groupBased, ...subjectGroups.optional]);
+            const otherSubjects = [...new Set([
+                ...assignedExams.filter(e => e.class === selClass && e.session === selSession).map(e => e.subject),
+                ...(state.userRole === 'teacher' ? teacherAssignments.filter(a => a.assignedClass === selClass && a.assignedSession === selSession).flatMap(a => a.assignedSubjects || []) : [])
+            ])].filter(s => s && !groupedSubjectNames.has(s)).sort();
+
+            subOptions += renderSubGroup('অন্যান্য (Others)', otherSubjects);
+
+            subjectSelect.innerHTML = subOptions;
         }
 
         // --- Exam Names from Global Exam Configs ---
         const updateExamList = async () => {
-            const selClass = classSelect?.value;
-            const selSession = sessionSelect?.value;
             const examSelect = document.getElementById('reExam');
-
             if (!examSelect) return;
 
             if (!selClass || !selSession) {
@@ -171,8 +235,6 @@ export async function populateREDropdowns() {
             }
 
             examSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
-
-            // Fetch global configs for the selected class & session
             const configs = await getExamConfigs(selClass, selSession);
             const examNames = configs.map(c => c.examName);
 
@@ -186,25 +248,102 @@ export async function populateREDropdowns() {
             }
         };
 
-        if (classSelect) {
-            classSelect.removeEventListener('change', updateExamList);
-            classSelect.addEventListener('change', updateExamList);
-        }
-        if (sessionSelect) {
-            sessionSelect.removeEventListener('change', updateExamList);
-            sessionSelect.addEventListener('change', updateExamList);
-        }
-        // Also call once immediately if class/session are already selected
         updateExamList();
     };
 
     if (classSelect) classSelect.addEventListener('change', updateSubjectAndExam);
     if (sessionSelect) sessionSelect.addEventListener('change', updateSubjectAndExam);
+    if (groupSelect) groupSelect.addEventListener('change', updateSubjectAndExam);
 
     // Auto-trigger cascading dropdowns if class/session are pre-selected
     if (classSelect?.value || sessionSelect?.value) {
         updateSubjectAndExam();
     }
+}
+
+/**
+ * Helper to check if a subject has ANY data saved
+ */
+function relevantExamsHasSubjectData(exams, cls, session, subject) {
+    return exams.some(e =>
+        e.class === cls &&
+        e.session === session &&
+        e.subject === subject &&
+        (e.studentData || []).some(s => (s.written !== null && s.written !== '') || (s.mcq !== null && s.mcq !== '') || (s.practical !== null && s.practical !== ''))
+    );
+}
+
+/**
+ * Helper to check if a subject is FULLY submitted (all students have marks)
+ */
+function isSubjectFullySubmitted(exams, cls, session, subject) {
+    const relevant = exams.filter(e => e.class === cls && e.session === session && e.subject === subject);
+    if (relevant.length === 0) return false;
+    return relevant.every(e => {
+        const data = e.studentData || [];
+        return data.length > 0 && data.every(s =>
+            (s.written !== null && s.written !== '') ||
+            (s.mcq !== null && s.mcq !== '') ||
+            (s.practical !== null && s.practical !== '')
+        );
+    });
+}
+
+/**
+ * Get categorized subjects for a class and group (Matching routineManager logic)
+ */
+async function getREGroupSubjects(cls, group) {
+    let subjectGroups = { general: [], groupBased: [], optional: [] };
+    try {
+        const allRules = await loadMarksheetRules();
+        const rules = allRules[cls] || allRules['All'] || {};
+        subjectGroups.general = rules.generalSubjects || [];
+        const groupSubsMapping = rules.groupSubjects || {};
+        const optionalSubsMapping = rules.optionalSubjects || {};
+
+        if (group === 'all') {
+            Object.values(groupSubsMapping).forEach(subs => subjectGroups.groupBased.push(...subs));
+            Object.values(optionalSubsMapping).forEach(subs => subjectGroups.optional.push(...subs));
+        } else {
+            const matchGroup = (mapping) => {
+                const keys = Object.keys(mapping);
+                const gValue = group.trim().toLowerCase();
+                const GROUP_TRANSLATIONS = {
+                    'science': ['বিজ্ঞান', 'science', 'sci', 'sc.'],
+                    'humanities': ['মানবিক', 'humanities', 'arts', 'hum', 'arts group'],
+                    'business': ['ব্যবসায়', 'ব্যবসায়', 'ব্যবসায় শিক্ষা', 'ব্যবসায় শিক্ষা', 'business', 'commerce', 'com', 'bus'],
+                    'arts': ['মানবিক', 'arts', 'humanities']
+                };
+                let foundKey = keys.find(k => k.trim().toLowerCase() === gValue) ||
+                               keys.find(k => gValue.includes(k.toLowerCase()) || k.toLowerCase().includes(gValue));
+                if (!foundKey) {
+                    for (const [eng, bns] of Object.entries(GROUP_TRANSLATIONS)) {
+                        if (bns.some(b => gValue.includes(b)) || gValue.includes(eng)) {
+                            foundKey = keys.find(k => {
+                                const kLow = k.toLowerCase();
+                                return kLow.includes(eng) || bns.some(b => kLow.includes(b));
+                            });
+                            if (foundKey) break;
+                        }
+                    }
+                }
+                return foundKey ? mapping[foundKey] : [];
+            };
+            subjectGroups.groupBased = matchGroup(groupSubsMapping);
+            subjectGroups.optional = matchGroup(optionalSubsMapping);
+            const generalOptKey = Object.keys(optionalSubsMapping).find(k => k.toLowerCase().includes('general') || k.includes('সাধারণ'));
+            if (generalOptKey && group !== generalOptKey) {
+                subjectGroups.optional = [...new Set([...subjectGroups.optional, ...(optionalSubsMapping[generalOptKey] || [])])];
+            }
+        }
+    } catch (e) {
+        console.error("Error fetching rules for subjects:", e);
+    }
+    const bnSort = (a, b) => a.localeCompare(b, 'bn');
+    subjectGroups.general = [...new Set(subjectGroups.general.filter(Boolean))].sort(bnSort);
+    subjectGroups.groupBased = [...new Set(subjectGroups.groupBased.filter(Boolean))].sort(bnSort);
+    subjectGroups.optional = [...new Set(subjectGroups.optional.filter(Boolean))].sort(bnSort);
+    return subjectGroups;
 }
 
 
@@ -219,6 +358,7 @@ export async function populateREDropdowns() {
 async function loadExamForEntry() {
     const cls = document.getElementById('reClass')?.value;
     const session = document.getElementById('reSession')?.value;
+    const group = document.getElementById('reGroup')?.value || 'all';
     const subject = document.getElementById('reSubject')?.value;
     const examName = document.getElementById('reExam')?.value?.trim();
 
@@ -226,9 +366,9 @@ async function loadExamForEntry() {
         showNotification('সব ফিল্ড পূরণ করুন', 'error');
         return;
     }
-
+    
     // Authorization check for teachers
-    if (state.userRole === 'teacher') {
+    if (state.userRole === 'teacher' && state.userRole !== 'super-admin') {
         const uid = state.currentUser?.uid;
         const authorized = await isTeacherAuthorized(uid, cls, session, subject);
         if (!authorized) {
@@ -242,7 +382,8 @@ async function loadExamForEntry() {
         e.class === cls &&
         e.session === session &&
         e.subject === subject &&
-        e.name === examName
+        e.name === examName &&
+        (group === 'all' || (e.group || 'all') === group)
     );
 
     if (exam) {
@@ -267,7 +408,8 @@ async function loadExamForEntry() {
         const allStudents = await getAllStudents();
         const filteredStudents = allStudents.filter(s =>
             s.class && s.class.toLowerCase() === cls.toLowerCase() &&
-            s.session && String(s.session).trim() === String(session).trim()
+            s.session && String(s.session).trim() === String(session).trim() &&
+            (group === 'all' || s.group === group)
         );
 
         if (filteredStudents.length === 0) {
@@ -660,6 +802,7 @@ async function saveMarks() {
                 subject: currentExamDoc.subject,
                 class: currentExamDoc.class,
                 session: currentExamDoc.session,
+                group: document.getElementById('reGroup')?.value || 'all',
                 date: new Date().toLocaleDateString('bn-BD'),
                 studentData: currentExamDoc.studentData,
                 studentCount: currentExamDoc.studentData.length,
