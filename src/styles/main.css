@@ -10760,7 +10760,7 @@ body.is-super-admin td.admin-only {
 
 .config-preview-panel {
   flex: 1.5;
-  background: #f8fafc;
+  background: var(--bg-color, #f8fafc);
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -10770,7 +10770,8 @@ body.is-super-admin td.admin-only {
 
 .preview-header {
   padding: 12px 20px;
-  background: white;
+  background: var(--container-bg, white);
+  color: var(--text-color);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
@@ -10787,10 +10788,11 @@ body.is-super-admin td.admin-only {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f1f5f9;
+  background: var(--bg-color, #f1f5f9);
   padding: 5px 12px;
   border-radius: 20px;
-  color: #64748b;
+  color: var(--text-color, #64748b);
+  opacity: 0.8;
   font-size: 0.8rem;
 }
 

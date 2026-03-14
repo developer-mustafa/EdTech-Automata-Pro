@@ -6,7 +6,7 @@ import { compressImage } from '../imageUtils.js';
 
 let acClassSelect, acSessionSelect, acExamNameSelect, acGroupSelect, acLayoutSelect, acOrientationSelect;
 let spClassSelect, spSessionSelect, spExamNameSelect, spGroupSelect, spLayoutSelect, spOrientationSelect;
-let acGenerateBtn, spGenerateBtn, acResetBtn, spResetBtn, acPrintAllBtn, acSettingsBtn;
+let acGenerateBtn, spGenerateBtn, acResetBtn, spResetBtn, acPrintAllBtn, spPrintAllBtn, acSettingsBtn;
 let admitCardPreview, acPreviewWrapper, acEmptyStateMsg, acMainZoomInput, acMainZoomLevelTxt;
 
 // Settings Modal Elements
@@ -69,6 +69,7 @@ export function initAdmitCardManager() {
     acResetBtn = document.getElementById('acResetBtn');
     spResetBtn = document.getElementById('spResetBtn');
     acPrintAllBtn = document.getElementById('acPrintAllBtn');
+    spPrintAllBtn = document.getElementById('spPrintAllBtn');
     acSettingsBtn = document.getElementById('acSettingsBtn');
 
     admitCardPreview = document.getElementById('admitCardPreview');
@@ -133,7 +134,8 @@ export function initAdmitCardManager() {
         admitCardPreview.innerHTML = '';
         acPreviewWrapper.style.display = 'none';
         acEmptyStateMsg.style.display = 'flex';
-        acPrintAllBtn.style.display = 'none';
+        if (acPrintAllBtn) acPrintAllBtn.style.display = 'none';
+        if (spPrintAllBtn) spPrintAllBtn.style.display = 'none';
     };
 
     if (acResetBtn) {
@@ -149,6 +151,31 @@ export function initAdmitCardManager() {
             const orientation = orientationSelect ? orientationSelect.value : 'portrait';
 
             // Dynamically inject @page style for reliable printing orientation
+            let printStyle = document.getElementById('acPrintStyle');
+            if (!printStyle) {
+                printStyle = document.createElement('style');
+                printStyle.id = 'acPrintStyle';
+                document.head.appendChild(printStyle);
+            }
+            printStyle.innerHTML = `@page { size: A4 ${orientation}; margin: 0; }`;
+
+            document.body.classList.add('ac-printing');
+            document.body.classList.add(`ac-print-${orientation}`);
+
+            window.print();
+
+            setTimeout(() => {
+                document.body.classList.remove('ac-printing');
+                document.body.classList.remove(`ac-print-${orientation}`);
+            }, 500);
+        });
+    }
+
+    if (spPrintAllBtn) {
+        spPrintAllBtn.addEventListener('click', () => {
+            const orientationSelect = document.getElementById('spOrientation');
+            const orientation = orientationSelect ? orientationSelect.value : 'landscape';
+
             let printStyle = document.getElementById('acPrintStyle');
             if (!printStyle) {
                 printStyle = document.createElement('style');
@@ -786,7 +813,13 @@ async function generateCards(type) {
 
     acPreviewWrapper.style.display = 'block';
     acEmptyStateMsg.style.display = 'none';
-    if (acPrintAllBtn) acPrintAllBtn.style.display = 'inline-flex';
+    if (type === 'admit') {
+        if (acPrintAllBtn) acPrintAllBtn.style.display = 'inline-flex';
+        if (spPrintAllBtn) spPrintAllBtn.style.display = 'none';
+    } else {
+        if (spPrintAllBtn) spPrintAllBtn.style.display = 'inline-flex';
+        if (acPrintAllBtn) acPrintAllBtn.style.display = 'none';
+    }
 
     showNotification(`${studentsArray.length} জন শিক্ষার্থীর ${type === 'admit' ? 'এডমিট কার্ড' : 'সীট প্ল্যান'} তৈরি হয়েছে ✅`);
 
