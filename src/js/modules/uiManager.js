@@ -189,6 +189,12 @@ export function updateProfileUI(user, isAdmin, isSuperAdmin, role) {
     } else {
         document.body.classList.remove('is-super-admin');
     }
+
+    if (role === 'teacher') {
+        document.body.classList.add('is-teacher');
+    } else {
+        document.body.classList.remove('is-teacher');
+    }
 }
 
 export function initDOMReferences() {

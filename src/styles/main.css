@@ -12662,3 +12662,7 @@ input:checked + .toggle-slider:before {
         justify-content: center;
     }
 }
+
+/* Teacher Specific UI Restrictions */
+body.is-teacher #reGroupContainer {
+}

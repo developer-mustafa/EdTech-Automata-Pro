@@ -186,6 +186,11 @@ async function init() {
                 updateNavVisibility();
                 updateViews();
                 renderSavedExams();
+                
+                // Refresh dynamic dropdowns if active on those pages
+                const currentHash = window.location.hash.replace('#', '') || 'dashboard';
+                if (currentHash === 'result-entry') populateREDropdowns();
+                if (currentHash === 'marksheet') populateMSDropdowns();
             }
         });
 

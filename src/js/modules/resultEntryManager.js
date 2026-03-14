@@ -5,9 +5,9 @@
  * @module resultEntryManager
  */
 
-import { getSavedExams, updateExam, saveExam, getAllStudents, getExamConfigs } from '../firestoreService.js';
+import { getSavedExams, updateExam, saveExam, getAllStudents, getUnifiedStudents, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
-import { showNotification, convertToEnglishDigits, calculateStatistics } from '../utils.js';
+import { showNotification, convertToEnglishDigits, calculateStatistics, normalizeText, normalizeSession } from '../utils.js';
 import { isTeacherAuthorized, getTeacherAssignmentsByUid } from './teacherAssignmentManager.js';
 import { loadMarksheetRules } from './marksheetRulesManager.js';
 import { normalizeGroupName } from './routineManager.js';
@@ -98,24 +98,47 @@ export async function populateREDropdowns() {
     }
 
     // --- Build unique classes and sessions ---
-    // For teachers: include both classes from existing exams AND from assignments
-    const classesFromExams = assignedExams.map(e => e.class).filter(Boolean);
-    const classesFromAssignments = teacherAssignments.map(a => a.assignedClass).filter(Boolean);
-    const classes = [...new Set([...classesFromExams, ...classesFromAssignments])].sort();
+    let classes = [];
+    let sessions = [];
 
-    const sessionsFromExams = assignedExams.map(e => e.session).filter(Boolean);
-    const sessionsFromAssignments = teacherAssignments.map(a => a.assignedSession).filter(Boolean);
-    const sessions = [...new Set([...sessionsFromExams, ...sessionsFromAssignments])].sort().reverse();
+    if (state.userRole === 'teacher' && !state.isAdmin && !state.isSuperAdmin) {
+        // Teachers: only see assigned Class/Session
+        classes = [...new Set(teacherAssignments.map(a => a.assignedClass).filter(Boolean))].sort();
+        sessions = [...new Set(teacherAssignments.map(a => a.assignedSession).filter(Boolean))].sort().reverse();
+    } else {
+        // Admins/Super Admins: See everything from exams or academic structure
+        const classesFromExams = exams.map(e => e.class).filter(Boolean);
+        const classesFromStructure = (state.academicStructure?.class || []).map(c => c.value).filter(Boolean);
+        classes = [...new Set([...classesFromExams, ...classesFromStructure])].sort();
+
+        const sessionsFromExams = exams.map(e => e.session).filter(Boolean);
+        const sessionsFromStructure = (state.academicStructure?.session || []).map(s => s.value).filter(Boolean);
+        sessions = [...new Set([...sessionsFromExams, ...sessionsFromStructure])].sort().reverse();
+    }
 
     const classSelect = document.getElementById('reClass');
     const sessionSelect = document.getElementById('reSession');
     const groupSelect = document.getElementById('reGroup');
     const subjectSelect = document.getElementById('reSubject');
 
+    // Hide Group filter for teachers
     if (groupSelect) {
-        const groups = state.academicStructure?.group || [];
-        groupSelect.innerHTML = '<option value="all">সকল গ্রুপ</option>' +
-            groups.map(g => `<option value="${g.value}">${g.value}</option>`).join('');
+        // Target .selector-group (from index.html) or .dm-input-group (generic)
+        const groupContainer = groupSelect.closest('.selector-group') || groupSelect.closest('.dm-input-group') || groupSelect.parentElement;
+        const isTeacherOnly = state.userRole === 'teacher' && !state.isAdmin && !state.isSuperAdmin;
+        
+        if (isTeacherOnly) {
+            if (groupContainer) {
+                groupContainer.style.display = 'none';
+                // Also ensure the value is 'all' if hidden
+                groupSelect.value = 'all';
+            }
+        } else {
+            if (groupContainer) groupContainer.style.display = 'block';
+            const groups = state.academicStructure?.group || [];
+            groupSelect.innerHTML = '<option value="all">সকল গ্রুপ</option>' +
+                groups.map(g => `<option value="${g.value}">${g.value}</option>`).join('');
+        }
     }
 
     if (classSelect) {
@@ -143,7 +166,20 @@ export async function populateREDropdowns() {
         if (!selClass || !selSession) return;
 
         // --- Improved Subject Logic (Matching Routine Manager) ---
-        const subjectGroups = await getREGroupSubjects(selClass, selGroup);
+        let subjectGroups = await getREGroupSubjects(selClass, selGroup);
+
+        // Teacher Restriction: Only show assigned subjects
+        if (state.userRole === 'teacher' && !state.isAdmin && !state.isSuperAdmin) {
+            const assignedForThisClass = teacherAssignments
+                .filter(a => a.assignedClass === selClass && a.assignedSession === selSession)
+                .flatMap(a => a.assignedSubjects || []);
+            const assignedSet = new Set(assignedForThisClass);
+
+            subjectGroups.general = subjectGroups.general.filter(s => assignedSet.has(s));
+            subjectGroups.groupBased = subjectGroups.groupBased.filter(s => assignedSet.has(s));
+            subjectGroups.optional = subjectGroups.optional.filter(s => assignedSet.has(s));
+        }
+
         const exams = await getSavedExams();
 
         // Function to check submission status and return tick icon
@@ -366,23 +402,35 @@ async function loadExamForEntry() {
     }
     
     // Authorization check for teachers
-    if (state.userRole === 'teacher' && state.userRole !== 'super-admin') {
+    if (state.userRole === 'teacher' && !state.isAdmin && !state.isSuperAdmin) {
         const uid = state.currentUser?.uid;
         const authorized = await isTeacherAuthorized(uid, cls, session, subject);
         if (!authorized) {
-            showNotification('আপনি এই বিষয়ে মার্কস এন্ট্রি করার অনুমতি নেই', 'error');
+            showNotification('আপনার এই বিষয়ে মার্কস এন্ট্রি করার অনুমতি নেই', 'error');
             return;
         }
     }
 
+    const normCls = normalizeText(cls);
+    const normSession = normalizeSession(session);
+    const normGroup = group !== 'all' ? normalizeText(group) : 'all';
+
     const exams = await getSavedExams();
-    let exam = exams.find(e =>
-        e.class === cls &&
-        e.session === session &&
-        e.subject === subject &&
-        e.name === examName &&
-        (group === 'all' || (e.group || 'all') === group)
-    );
+    let exam = exams.find(e => {
+        const eCls = normalizeText(e.class || '');
+        const eSess = normalizeSession(e.session || '');
+        const eGroup = normalizeText(e.group || '');
+        
+        const classMatch = eCls === normCls;
+        const sessionMatch = eSess === normSession;
+        const groupMatch = normGroup === 'all' || eGroup === normGroup || 
+                          (eGroup.includes(normGroup)) || (normGroup.includes(eGroup));
+
+        return classMatch && sessionMatch && 
+               e.subject === subject &&
+               e.name === examName &&
+               groupMatch;
+    });
 
     if (exam) {
         // --- EXISTING EXAM ---
@@ -403,15 +451,29 @@ async function loadExamForEntry() {
         isNewExam = true;
         showNotification(`"${examName}" পরীক্ষা পাওয়া যায়নি। নতুন পরীক্ষা হিসেবে শিক্ষার্থীদের তালিকা লোড হচ্ছে...`, 'info');
 
-        const allStudents = await getAllStudents();
-        const filteredStudents = allStudents.filter(s =>
-            s.class && s.class.toLowerCase() === cls.toLowerCase() &&
-            s.session && String(s.session).trim() === String(session).trim() &&
-            (group === 'all' || s.group === group)
-        );
+        // Use getUnifiedStudents instead of getAllStudents to discover students from all exams & collection
+        const allStudents = await getUnifiedStudents();
+        const normCls = normalizeText(cls);
+        const normSession = normalizeSession(session);
+        const normGroup = group !== 'all' ? normalizeText(group) : 'all';
+
+        const filteredStudents = allStudents.filter(s => {
+            const sCls = normalizeText(s.class || '');
+            const sSess = normalizeSession(s.session || '');
+            const sGroup = normalizeText(s.group || '');
+
+            const classMatch = sCls === normCls;
+            const sessionMatch = sSess === normSession;
+            
+            // Check for group match: exact find or keywords
+            const groupMatch = normGroup === 'all' || sGroup === normGroup || 
+                             (sGroup.includes(normGroup)) || (normGroup.includes(sGroup));
+
+            return classMatch && sessionMatch && groupMatch;
+        });
 
         if (filteredStudents.length === 0) {
-            showNotification(`${cls} শ্রেণি, ${session} সেশনে কোনো শিক্ষার্থী পাওয়া যায়নি। আগে শিক্ষার্থী যোগ করুন।`, 'warning');
+            showNotification(`${cls} শ্রেণি, ${session} সেশনে কোনো শিক্ষার্থী পাওয়া যায়নি। আগে শিক্ষার্থী যোগ করুন।`, 'warning');
             return;
         }
 
@@ -791,6 +853,21 @@ function onMarkChanged(input) {
  */
 async function saveMarks() {
     if (!currentExamDoc) return;
+
+    // Authorization check for teachers
+    if (state.userRole === 'teacher' && !state.isAdmin && !state.isSuperAdmin) {
+        const uid = state.currentUser?.uid;
+        const authorized = await isTeacherAuthorized(
+            uid,
+            currentExamDoc.class,
+            currentExamDoc.session,
+            currentExamDoc.subject
+        );
+        if (!authorized) {
+            showNotification('আপনার এই বিষয়ে মার্কস সেভ করার অনুমতি নেই', 'error');
+            return;
+        }
+    }
 
     try {
         if (isNewExam) {

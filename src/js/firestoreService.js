@@ -75,6 +75,61 @@ export async function getAllStudents() {
 }
 
 /**
+ * Get unified list of students from both 'students' collection and existing exams
+ * @returns {Promise<Array>} Unified student list
+ */
+export async function getUnifiedStudents() {
+    // 1. Get explicit students from 'students' collection
+    const explicitStudents = await getAllStudents();
+    const studentMap = new Map();
+
+    explicitStudents.forEach(s => {
+        const key = generateStudentDocId(s);
+        studentMap.set(key, {
+            docId: s.docId,
+            id: s.id,
+            name: s.name,
+            group: s.group || '',
+            class: s.class || '',
+            session: s.session || '',
+            _examDocIds: []
+        });
+    });
+
+    // 2. Discover students from all saved exams
+    const exams = await getSavedExams();
+    exams.forEach(exam => {
+        if (exam.studentData && Array.isArray(exam.studentData)) {
+            exam.studentData.forEach(s => {
+                const studentDataForId = {
+                    id: s.id,
+                    group: s.group,
+                    class: exam.class || s.class,
+                    session: exam.session || s.session
+                };
+                const key = generateStudentDocId(studentDataForId);
+
+                if (studentMap.has(key)) {
+                    const existing = studentMap.get(key);
+                    if (exam.docId && !existing._examDocIds.includes(exam.docId)) {
+                        existing._examDocIds.push(exam.docId);
+                    }
+                } else {
+                    studentMap.set(key, {
+                        ...studentDataForId,
+                        name: s.name,
+                        _examDocIds: exam.docId ? [exam.docId] : [],
+                        _isFromExamOnly: true
+                    });
+                }
+            });
+        }
+    });
+
+    return Array.from(studentMap.values());
+}
+
+/**
  * Get a single student by document ID
  * @param {string} docId - Firestore document ID
  * @returns {Promise<Object|null>} - Student data or null
