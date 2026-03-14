@@ -5,18 +5,15 @@
  * @module resultEntryManager
  */
 
-import { getSavedExams, updateExam, saveExam, getAllStudents, getExamConfigs, getClassSubjectMappings } from '../firestoreService.js';
-import { collectStudents } from './studentManager.js';
+import { getSavedExams, updateExam, saveExam, getAllStudents, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
-import { showNotification, convertToEnglishDigits, calculateStatistics, normalizeText } from '../utils.js';
+import { showNotification, convertToEnglishDigits, calculateStatistics } from '../utils.js';
 import { isTeacherAuthorized, getTeacherAssignmentsByUid } from './teacherAssignmentManager.js';
-import { currentMarksheetRules } from './marksheetRulesManager.js';
 
 let currentExamDoc = null;
 let originalStudentData = null; // For discard
 let hasUnsavedChanges = false;
 let isNewExam = false; // Flag: are we creating a new exam?
-let isREDropdownsInitialized = false; // Guard for event listeners
 
 // ==========================================
 // LOCAL STORAGE DRAFT HELPERS
@@ -128,7 +125,7 @@ export async function populateREDropdowns() {
     }
 
     // Subject and exam dropdowns update based on class/session selection
-    const updateSubjectAndExam = async () => {
+    const updateSubjectAndExam = () => {
         const selClass = classSelect?.value;
         const selSession = sessionSelect?.value;
 
@@ -138,115 +135,26 @@ export async function populateREDropdowns() {
             (!selSession || e.session === selSession)
         );
 
-        // --- Track subjects that already have marks submitted ---
-        const subjectsWithMarks = new Set(filtered.map(e => e.subject).filter(Boolean));
-
-        // --- Build categorized subject list ---
-        const reGroup = document.getElementById('reGroup');
-        const selGroup = reGroup?.value || 'all';
-
-        // Helper for robust group matching (Bengali <-> English)
-        const groupMapping = {
-            'science': ['science', 'বিজ্ঞান গ্রুপ', 'বিজ্ঞান'],
-            'business': ['business', 'ব্যবসায় গ্রুপ', 'ব্যবসায় শিক্ষা', 'ব্যবসায়', 'ব্যবসায়', 'commerce'],
-            'humanities': ['humanities', 'মানবিক গ্রুপ', 'মানবিক', 'humanities group', 'arts']
-        };
-
-        const isGroupMatch = (ruleGroup, targetGroup) => {
-            if (targetGroup === 'all') return true;
-            const normRule = normalizeText(ruleGroup).toLowerCase();
-            const normTarget = normalizeText(targetGroup).toLowerCase();
-            if (normRule === normTarget) return true;
-
-            for (const [key, aliases] of Object.entries(groupMapping)) {
-                const normAliases = aliases.map(a => normalizeText(a).toLowerCase());
-                if (normAliases.includes(normRule) && normAliases.includes(normTarget)) return true;
-            }
-            return false;
-        };
-
-        let generalSubs = [];
-        let groupSubs = [];
-        let optSubs = [];
-        let hasCategorization = false;
-
-        if (selClass && currentMarksheetRules) {
-            // Check class-specific rules first, then global "All" rules
-            const classRules = currentMarksheetRules[selClass] || {};
-            const globalRules = currentMarksheetRules['All'] || {};
-
-            // 1. General Subjects
-            generalSubs = [...new Set([
-                ...(globalRules.generalSubjects || []),
-                ...(classRules.generalSubjects || [])
-            ])].sort((a, b) => a.localeCompare(b, 'bn'));
-
-            // 2. Group Subjects (filtered by selected group)
-            const mergedGroupSubs = { ...(globalRules.groupSubjects || {}), ...(classRules.groupSubjects || {}) };
-            for (const [groupName, subs] of Object.entries(mergedGroupSubs)) {
-                if (isGroupMatch(groupName, selGroup)) {
-                    if (Array.isArray(subs)) groupSubs.push(...subs);
-                }
-            }
-            groupSubs = [...new Set(groupSubs)].sort((a, b) => a.localeCompare(b, 'bn'));
-
-            // 3. Optional Subjects (filtered by group + General)
-            const mergedOptSubs = { ...(globalRules.optionalSubjects || {}), ...(classRules.optionalSubjects || {}) };
-            for (const [groupName, subs] of Object.entries(mergedOptSubs)) {
-                if (selGroup === 'all' || isGroupMatch(groupName, selGroup) || normalizeText(groupName).toLowerCase() === 'general') {
-                    if (Array.isArray(subs)) optSubs.push(...subs);
-                }
-            }
-            optSubs = [...new Set(optSubs)].sort((a, b) => a.localeCompare(b, 'bn'));
-
-            if (generalSubs.length > 0 || groupSubs.length > 0 || optSubs.length > 0) {
-                hasCategorization = true;
-            }
-        }
-
-        let finalSubjects = [];
-        if (hasCategorization) {
-            // Priority: General -> Group -> Optional
-            finalSubjects = [...new Set([...generalSubs, ...groupSubs, ...optSubs])];
-        } else if (selClass) {
-            // Fallback: if no categories configured, use Class & Subject Mapping
-            try {
-                const mappings = await getClassSubjectMappings();
-                const classMapped = mappings[selClass];
-                if (Array.isArray(classMapped) && classMapped.length > 0) {
-                    finalSubjects = [...classMapped].sort((a, b) => a.localeCompare(b, 'bn'));
-                }
-            } catch (e) {
-                console.warn('Could not fetch class subject mappings:', e);
-            }
-        }
-
-        // Also include teacher assignment subjects for teachers (if not already present)
+        // --- Subjects: merge from existing exams + teacher assignments ---
+        const subjectsFromFiltered = filtered.map(e => e.subject).filter(Boolean);
+        let subjectsFromTA = [];
         if (state.userRole === 'teacher') {
-            const subjectsFromTA = teacherAssignments
+            subjectsFromTA = teacherAssignments
                 .filter(a =>
                     (!selClass || a.assignedClass === selClass) &&
                     (!selSession || a.assignedSession === selSession)
                 )
                 .flatMap(a => a.assignedSubjects || []);
-            finalSubjects = [...new Set([...finalSubjects, ...subjectsFromTA])];
         }
-
-        // Final fallback: existing exam subjects
-        if (finalSubjects.length === 0) {
-            finalSubjects = [...new Set([...subjectsWithMarks])].sort((a, b) => a.localeCompare(b, 'bn'));
-        }
+        const subjects = [...new Set([...subjectsFromFiltered, ...subjectsFromTA])].sort();
 
         const subjectSelect = document.getElementById('reSubject');
         if (subjectSelect) {
-            subjectSelect.innerHTML = (finalSubjects.length === 1) ? '' : '<option value="">বিষয় নির্বাচন</option>';
-            finalSubjects.forEach(s => {
-                const hasMarks = subjectsWithMarks.has(s);
-                const style = hasMarks ? 'style="background-color: #dbeafe; color: #1e40af; font-weight: 500;"' : '';
-                const indicator = hasMarks ? ' ✓' : '';
-                subjectSelect.innerHTML += `<option value="${s}" ${style}>${s}${indicator}</option>`;
+            subjectSelect.innerHTML = (subjects.length === 1) ? '' : '<option value="">বিষয় নির্বাচন</option>';
+            subjects.forEach(s => {
+                subjectSelect.innerHTML += `<option value="${s}">${s}</option>`;
             });
-            if (finalSubjects.length === 1) subjectSelect.value = finalSubjects[0];
+            if (subjects.length === 1) subjectSelect.value = subjects[0];
         }
 
         // --- Exam Names from Global Exam Configs ---
@@ -288,57 +196,10 @@ export async function populateREDropdowns() {
         }
         // Also call once immediately if class/session are already selected
         updateExamList();
-
-        // --- NEW: Populate Group Dropdown ---
-        const updateGroupDropdown = async () => {
-            const reGroup = document.getElementById('reGroup');
-            if (!reGroup) return;
-
-            const currentVal = reGroup.value;
-            reGroup.innerHTML = '<option value="all">সকল গ্রুপ</option>';
-
-            if (!selClass || !selSession) return;
-
-            const allStudents = await collectStudents();
-            const filteredStudents = allStudents.filter(s =>
-                s.class && s.class.toLowerCase() === selClass.toLowerCase() &&
-                s.session && String(s.session).trim() === String(selSession).trim()
-            );
-
-            // Use a Map to keep track of already added groups (normalized)
-            const groupMap = new Map();
-            filteredStudents.forEach(s => {
-                const rawGroup = (s.group || '').trim();
-                if (!rawGroup) return;
-                const norm = normalizeText(rawGroup);
-                if (!groupMap.has(norm)) {
-                    groupMap.set(norm, rawGroup); // Store original (trimmed) for display
-                }
-            });
-
-            const sortedGroups = [...groupMap.values()].sort();
-            let optionsHtml = '<option value="all">সকল গ্রুপ</option>';
-            sortedGroups.forEach(g => {
-                const selected = g === currentVal ? 'selected' : '';
-                optionsHtml += `<option value="${g}" ${selected}>${g}</option>`;
-            });
-            reGroup.innerHTML = optionsHtml;
-        };
-
-        updateGroupDropdown();
     };
 
-    if (!isREDropdownsInitialized) {
-        if (classSelect) classSelect.addEventListener('change', updateSubjectAndExam);
-        if (sessionSelect) sessionSelect.addEventListener('change', updateSubjectAndExam);
-
-        const reGroup = document.getElementById('reGroup');
-        if (reGroup) {
-            reGroup.addEventListener('change', updateSubjectAndExam);
-        }
-
-        isREDropdownsInitialized = true;
-    }
+    if (classSelect) classSelect.addEventListener('change', updateSubjectAndExam);
+    if (sessionSelect) sessionSelect.addEventListener('change', updateSubjectAndExam);
 
     // Auto-trigger cascading dropdowns if class/session are pre-selected
     if (classSelect?.value || sessionSelect?.value) {
@@ -358,7 +219,6 @@ export async function populateREDropdowns() {
 async function loadExamForEntry() {
     const cls = document.getElementById('reClass')?.value;
     const session = document.getElementById('reSession')?.value;
-    const group = document.getElementById('reGroup')?.value || 'all';
     const subject = document.getElementById('reSubject')?.value;
     const examName = document.getElementById('reExam')?.value?.trim();
 
@@ -396,19 +256,15 @@ async function loadExamForEntry() {
         originalStudentData = JSON.parse(JSON.stringify(currentExamDoc.studentData || []));
         hasUnsavedChanges = false;
 
-        const studentDataToRender = (group === 'all')
-            ? (currentExamDoc.studentData || [])
-            : (currentExamDoc.studentData || []).filter(s => normalizeText(s.group) === normalizeText(group));
-
-        showExamInfo(exam, studentDataToRender.length, false, group);
+        showExamInfo(exam, (currentExamDoc.studentData || []).length);
         const config = getSubjectConfig(exam.subject);
-        renderRETable(studentDataToRender, config);
+        renderRETable(currentExamDoc.studentData || [], config);
     } else {
         // --- NEW EXAM: Fetch students for this class/session ---
         isNewExam = true;
-        showNotification(`${cls} শ্রেণি, ${session} সেশন, ${subject} বিষয়ের ডাটা ${examName} পরীক্ষার অধিনে নতুন ডাইনামিক এক্সাম কার্ড তৈরী হচ্ছে।`, 'info');
+        showNotification(`"${examName}" পরীক্ষা পাওয়া যায়নি। নতুন পরীক্ষা হিসেবে শিক্ষার্থীদের তালিকা লোড হচ্ছে...`, 'info');
 
-        const allStudents = await collectStudents();
+        const allStudents = await getAllStudents();
         const filteredStudents = allStudents.filter(s =>
             s.class && s.class.toLowerCase() === cls.toLowerCase() &&
             s.session && String(s.session).trim() === String(session).trim()
@@ -462,13 +318,9 @@ async function loadExamForEntry() {
         originalStudentData = JSON.parse(JSON.stringify(studentData));
         hasUnsavedChanges = false;
 
-        const studentDataToRender = (group === 'all')
-            ? studentData
-            : studentData.filter(s => normalizeText(s.group) === normalizeText(group));
-
-        showExamInfo(currentExamDoc, studentDataToRender.length, true, group);
+        showExamInfo(currentExamDoc, studentData.length, true);
         const config = getSubjectConfig(subject);
-        renderRETable(studentDataToRender, config);
+        renderRETable(studentData, config);
     }
 
     // Show table, hide empty state
@@ -480,7 +332,7 @@ async function loadExamForEntry() {
 /**
  * Show exam info bar
  */
-function showExamInfo(exam, count, isNew = false, group = 'all') {
+function showExamInfo(exam, count, isNew = false) {
     const infoEl = document.getElementById('reExamInfo');
     if (infoEl) {
         infoEl.innerHTML = `
@@ -488,7 +340,6 @@ function showExamInfo(exam, count, isNew = false, group = 'all') {
             <span><i class="fas fa-book"></i> ${exam.subject}</span>
             <span><i class="fas fa-file-alt"></i> ${exam.name}</span>
             <span><i class="fas fa-school"></i> ${exam.class} | ${exam.session}</span>
-            ${group !== 'all' ? `<span><i class="fas fa-users"></i> ${group}</span>` : ''}
             <span><i class="fas fa-users"></i> ${count} জন শিক্ষার্থী</span>
         `;
     }
@@ -570,13 +421,6 @@ function renderRETable(students, config) {
     if (!tbody) return;
 
     const sorted = [...students].sort((a, b) => {
-        // Primary sort: Group (Bengali alphabetical)
-        const groupA = String(a.group || '').trim();
-        const groupB = String(b.group || '').trim();
-        const groupComp = groupA.localeCompare(groupB, 'bn');
-        if (groupComp !== 0) return groupComp;
-
-        // Secondary sort: Roll ID (numeric)
         const idA = parseInt(convertToEnglishDigits(String(a.id))) || 0;
         const idB = parseInt(convertToEnglishDigits(String(b.id))) || 0;
         return idA - idB;

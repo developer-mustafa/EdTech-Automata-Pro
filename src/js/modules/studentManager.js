@@ -14,7 +14,11 @@ let filteredStudents = [];
 let currentPage = 1;
 const PER_PAGE = 20;
 
-export async function collectStudents() {
+/**
+ * Collect unique students from all saved exams
+ * @returns {Array} Unique student list
+ */
+async function collectStudents() {
     const { getAllStudents, getSavedExams } = await import('../firestoreService.js');
 
     // 1. Get explicit students from 'students' collection

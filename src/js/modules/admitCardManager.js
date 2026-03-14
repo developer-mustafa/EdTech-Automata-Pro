@@ -1,6 +1,8 @@
 import { getSavedExams, getExamConfigs, getSettings, saveSettings } from '../firestoreService.js';
 import { state } from './state.js';
-import { showNotification, convertToEnglishDigits } from '../utils.js';
+import { showNotification, convertToEnglishDigits, convertToBengaliDigits } from '../utils.js';
+import { getRoutinesData, normalizeGroupName, fetchRoutines } from './routineManager.js';
+import { compressImage } from '../imageUtils.js';
 
 let acClassSelect, acSessionSelect, acExamNameSelect, acGroupSelect, acLayoutSelect;
 let acGenerateBtn, spGenerateBtn, acResetBtn, acPrintAllBtn, acSettingsBtn;
@@ -11,10 +13,13 @@ let acSettingsModal, closeAcSettingsBtn, acSaveSettingsBtn;
 let acInstNameInput, acInstAddressInput;
 let acLogoUpload, acWatermarkUpload, acClearLogoBtn, acClearWatermarkBtn;
 let acBaseFontSizeSelect, acTitleFontSizeSelect, acTableFontSizeSelect, acThemeSelect;
+let acShowRoutine;
 
 let acCurrentSettings = {
     logoUrl: '',
-    watermarkUrl: ''
+    watermarkUrl: '',
+    signatures: [],
+    showRoutine: true
 };
 
 export function initAdmitCardManager() {
@@ -50,6 +55,7 @@ export function initAdmitCardManager() {
     acTitleFontSizeSelect = document.getElementById('acTitleFontSize');
     acTableFontSizeSelect = document.getElementById('acTableFontSize');
     acThemeSelect = document.getElementById('acTheme');
+    acShowRoutine = document.getElementById('acShowRoutine');
 
     // Tab Switching Logic
     const acMenuItems = document.querySelectorAll('#acSettingsModal .config-menu-item');
@@ -88,6 +94,15 @@ export function initAdmitCardManager() {
         acPrintAllBtn.addEventListener('click', () => {
             const orientationSelect = document.getElementById('acOrientation');
             const orientation = orientationSelect ? orientationSelect.value : 'portrait';
+
+            // Dynamically inject @page style for reliable printing orientation
+            let printStyle = document.getElementById('acPrintStyle');
+            if (!printStyle) {
+                printStyle = document.createElement('style');
+                printStyle.id = 'acPrintStyle';
+                document.head.appendChild(printStyle);
+            }
+            printStyle.innerHTML = `@page { size: A4 ${orientation}; margin: 0; }`;
 
             document.body.classList.add('ac-printing');
             document.body.classList.add(`ac-print-${orientation}`);
@@ -133,14 +148,30 @@ export function initAdmitCardManager() {
     if (acClearWatermarkBtn) {
         acClearWatermarkBtn.addEventListener('click', () => clearImage('watermarkUrl', 'acWatermarkPreview', acWatermarkUpload));
     }
-    if (acSaveSettingsBtn) {
-        acSaveSettingsBtn.addEventListener('click', saveACSettings);
+    const acSettingsForm = document.getElementById('acSettingsForm');
+    if (acSettingsForm) {
+        acSettingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveACSettings();
+        });
+    }
+
+    // Add Signature Slot Button
+    const addSlotBtn = document.getElementById('acAddSignatureSlotBtn');
+    if (addSlotBtn) {
+        addSlotBtn.addEventListener('click', () => {
+            if (!acCurrentSettings.signatures) acCurrentSettings.signatures = [];
+            acCurrentSettings.signatures.push({ label: '', url: '' });
+            renderAcSignatureSlots();
+            updateACLivePreview();
+        });
     }
 
     // Live Preview Listeners
     const settingsInputs = [
         acInstNameInput, acInstAddressInput,
-        acBaseFontSizeSelect, acTitleFontSizeSelect, acTableFontSizeSelect, acThemeSelect
+        acBaseFontSizeSelect, acTitleFontSizeSelect, acTableFontSizeSelect, acThemeSelect,
+        acShowRoutine
     ];
     settingsInputs.forEach(input => {
         if (input) {
@@ -195,12 +226,18 @@ async function openSettingsModal() {
     if (acTitleFontSizeSelect) acTitleFontSizeSelect.value = acConfig.titleFontSize || '22px';
     if (acTableFontSizeSelect) acTableFontSizeSelect.value = acConfig.tableFontSize || '13px';
     if (acThemeSelect) acThemeSelect.value = acConfig.theme || 'modern';
+    if (acShowRoutine) acShowRoutine.checked = acConfig.showRoutine !== false; // handle both true and undefined as true
 
     acCurrentSettings.logoUrl = acConfig.logoUrl || '';
     acCurrentSettings.watermarkUrl = acConfig.watermarkUrl || '';
+    acCurrentSettings.signatures = acConfig.signatures || [
+        { label: 'শ্রেণি শিক্ষক', url: '' },
+        { label: 'অধ্যক্ষ / পরীক্ষা নিয়ন্ত্রক', url: '' }
+    ];
 
     updateImagePreview('acLogoPreview', acCurrentSettings.logoUrl);
     updateImagePreview('acWatermarkPreview', acCurrentSettings.watermarkUrl);
+    renderAcSignatureSlots();
 
     if (acSettingsModal) {
         acSettingsModal.classList.add('active');
@@ -212,9 +249,16 @@ function handleImageUpload(e, settingKey, previewId) {
     const file = e.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = (ev) => {
-            acCurrentSettings[settingKey] = ev.target.result;
-            updateImagePreview(previewId, ev.target.result);
+        reader.onload = async (ev) => {
+            let base64 = ev.target.result;
+            // Compress image to keep Firestore document size small
+            try {
+                base64 = await compressImage(base64, 800, 800, 0.7);
+            } catch (err) {
+                console.warn("Compression failed, using original", err);
+            }
+            acCurrentSettings[settingKey] = base64;
+            updateImagePreview(previewId, base64);
             updateACLivePreview();
         };
         reader.readAsDataURL(file);
@@ -239,6 +283,76 @@ function updateImagePreview(previewId, url) {
     }
 }
 
+function renderAcSignatureSlots() {
+    const container = document.getElementById('acSignatureSlotsContainer');
+    if (!container) return;
+
+    if (!acCurrentSettings.signatures || acCurrentSettings.signatures.length === 0) {
+        acCurrentSettings.signatures = [
+            { label: 'শ্রেণি শিক্ষক', url: '' },
+            { label: 'অধ্যক্ষ / পরীক্ষা নিয়ন্ত্রক', url: '' }
+        ];
+    }
+
+    container.innerHTML = acCurrentSettings.signatures.map((sig, index) => `
+        <div class="sig-slot-card" data-index="${index}" data-url="${sig.url || ''}">
+            <div class="sig-input-wrapper">
+                <input type="text" class="form-control sig-label-input" value="${sig.label}" placeholder="পদের নাম (উদাঃ অধ্যক্ষ)">
+            </div>
+            <div class="sig-previews" style="display: flex; align-items: center; gap: 8px;">
+                <div class="sig-preview-thumb">
+                    ${sig.url ? `<img src="${sig.url}" alt="Signature">` : '<i class="fas fa-image" style="opacity: 0.2;"></i>'}
+                </div>
+                <label class="sig-upload-btn" title="স্বাক্ষর আপলোড">
+                    <i class="fas fa-upload"></i>
+                    <input type="file" accept="image/*" class="sig-file-input" style="display: none;">
+                </label>
+            </div>
+            <i class="fas fa-trash-alt btn-remove-sig" title="মুছে ফেলুন"></i>
+        </div>
+    `).join('');
+
+    // Add Event Listeners to Slots
+    container.querySelectorAll('.sig-slot-card').forEach(card => {
+        const index = card.dataset.index;
+        const fileInput = card.querySelector('.sig-file-input');
+        const removeBtn = card.querySelector('.btn-remove-sig');
+        const labelInput = card.querySelector('.sig-label-input');
+
+        labelInput.addEventListener('input', (e) => {
+            acCurrentSettings.signatures[index].label = e.target.value;
+            updateACLivePreview();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    let url = ev.target.result;
+                    // Compress signature image
+                    try {
+                        url = await compressImage(url, 500, 300, 0.7);
+                    } catch (err) {
+                        console.warn("Signature compression failed", err);
+                    }
+                    card.dataset.url = url;
+                    acCurrentSettings.signatures[index].url = url;
+                    card.querySelector('.sig-preview-thumb').innerHTML = `<img src="${url}" alt="Signature">`;
+                    updateACLivePreview();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeBtn.addEventListener('click', () => {
+            acCurrentSettings.signatures.splice(index, 1);
+            renderAcSignatureSlots();
+            updateACLivePreview();
+        });
+    });
+}
+
 function updateACLivePreview() {
     const acPreviewContainer = document.getElementById('acSettingsLivePreview');
     const spPreviewContainer = document.getElementById('spSettingsLivePreview');
@@ -252,7 +366,9 @@ function updateACLivePreview() {
         baseFontSize: acBaseFontSizeSelect?.value || '14px',
         titleFontSize: acTitleFontSizeSelect?.value || '22px',
         tableFontSize: acTableFontSizeSelect?.value || '13px',
-        theme: acThemeSelect?.value || 'modern'
+        theme: acThemeSelect?.value || 'modern',
+        signatures: acCurrentSettings.signatures || [],
+        showRoutine: acShowRoutine ? acShowRoutine.checked : true
     };
 
     const mockStudent = {
@@ -293,6 +409,18 @@ function updateACLivePreview() {
 }
 
 async function saveACSettings() {
+    // Re-gather signatures from DOM to ensure they are current
+    const sigCards = document.querySelectorAll('#acSignatureSlotsContainer .sig-slot-card');
+    const signatures = [];
+    sigCards.forEach(card => {
+        const label = card.querySelector('.sig-label-input').value.trim();
+        const url = card.dataset.url || '';
+        if (label) {
+            signatures.push({ label, url });
+        }
+    });
+    acCurrentSettings.signatures = signatures;
+
     const btn = acSaveSettingsBtn;
     if (!btn) return;
     const originalText = btn.innerHTML;
@@ -311,7 +439,9 @@ async function saveACSettings() {
                 baseFontSize: acBaseFontSizeSelect?.value || '14px',
                 titleFontSize: acTitleFontSizeSelect?.value || '22px',
                 tableFontSize: acTableFontSizeSelect?.value || '13px',
-                theme: acThemeSelect?.value || 'modern'
+                theme: acThemeSelect?.value || 'modern',
+                signatures: acCurrentSettings.signatures || [],
+                showRoutine: acShowRoutine ? acShowRoutine.checked : true
             }
         };
 
@@ -425,6 +555,9 @@ async function generateCards(type) {
         return;
     }
 
+    // Refresh routine data to ensure latest and handles normalization fixes
+    await fetchRoutines();
+
     const allExams = await getSavedExams();
     const relevantExams = allExams.filter(e => e.class === cls && e.session === session && e.name === examName);
 
@@ -482,6 +615,21 @@ async function generateCards(type) {
     // Fetch Settings
     const settings = await getSettings() || {};
     const acConfig = settings.admitCard || {};
+    
+    // Dynamic Layout Switching: 
+    // - If routine is OFF, default to 4 per page if currently 2
+    // - If routine is ON, default to 2 per page if currently 4
+    let effectiveLayoutSize = layoutSize;
+    if (type === 'seat') {
+        effectiveLayoutSize = 2; // Always 2x2 for seat plan = 4 per page
+    } else if (acConfig.showRoutine === false && effectiveLayoutSize === 2) {
+        effectiveLayoutSize = 4;
+        if (acLayoutSelect) acLayoutSelect.value = "4";
+    } else if (acConfig.showRoutine !== false && effectiveLayoutSize === 4) {
+        effectiveLayoutSize = 2;
+        if (acLayoutSelect) acLayoutSelect.value = "2";
+    }
+
     const institutionName = acConfig.instName || 'প্রতিষ্ঠান এর নাম';
     const institutionAddress = acConfig.instAddress || '';
     const logoUrl = acConfig.logoUrl || '';
@@ -493,31 +641,72 @@ async function generateCards(type) {
     const theme = acConfig.theme || 'modern';
 
     // Pass configuration pack to render functions
-    const configPack = { institutionName, institutionAddress, logoUrl, watermarkUrl, baseFontSize, titleFontSize, tableFontSize, theme };
+    const configPack = { 
+        institutionName, 
+        institutionAddress, 
+        logoUrl, 
+        watermarkUrl, 
+        baseFontSize, 
+        titleFontSize, 
+        tableFontSize, 
+        theme,
+        signatures: acConfig.signatures || [],
+        showRoutine: acConfig.showRoutine !== false
+    };
 
-    // Chunking logic based on layoutSize
-    const cardsPerPage = type === 'admit' ? layoutSize : layoutSize * 2;
+    // Chunking logic based on effectiveLayoutSize
+    const cardsPerPage = type === 'admit' ? effectiveLayoutSize : effectiveLayoutSize * 2;
     const totalPages = Math.ceil(studentsArray.length / cardsPerPage);
-    let pagesHTML = '';
-    for (let i = 0; i < totalPages; i++) {
-        const slice = studentsArray.slice(i * cardsPerPage, (i + 1) * cardsPerPage);
-        const cardsHtml = slice.map(student => {
-            if (type === 'admit') return renderAdmitCard(student, subjects, examName, configPack);
-            return renderSeatPlan(student, examName, configPack);
-        }).join('');
+    
+    // Helper to generate HTML for all pages
+    const generatePagesHTML = (orientation) => {
+        let pagesHTML = '';
+        
+        // Dynamic Row Count Logic to prevent stretching on partially filled pages
+        const getColumnCount = (layout, orient) => {
+            if (orient === 'landscape') {
+                if (layout === 1) return 1;
+                if (layout === 2) return 2;
+                if (layout === 4) return 2;
+                if (layout === 6) return 3;
+                if (layout === 8) return 4;
+                if (layout === 10) return 5;
+                if (layout === 12) return 4;
+                return 2;
+            } else {
+                if (layout === 12) return 3;
+                if (layout === 1 || layout === 2) return 1;
+                return 2;
+            }
+        };
 
-        pagesHTML += `
-            <div class="ac-page ac-layout-${layoutSize} ac-theme-${configPack.theme} ac-page-${pageOrientation}" 
-                 style="--ac-watermark-url: url('${configPack.watermarkUrl}');
-                        --ac-base-font-size: ${configPack.baseFontSize};
-                        --ac-title-font-size: ${configPack.titleFontSize};
-                        --ac-table-font-size: ${configPack.tableFontSize};">
-                ${cardsHtml}
-            </div>
-        `;
-    }
+        const cols = getColumnCount(effectiveLayoutSize, orientation);
+        const totalCardsPerPage = type === 'admit' ? effectiveLayoutSize : effectiveLayoutSize * 2;
+        const rowCount = Math.ceil(totalCardsPerPage / cols);
 
-    admitCardPreview.innerHTML = pagesHTML;
+        for (let i = 0; i < totalPages; i++) {
+            const slice = studentsArray.slice(i * cardsPerPage, (i + 1) * cardsPerPage);
+            const cardsHtml = slice.map(student => {
+                if (type === 'admit') return renderAdmitCard(student, subjects, examName, configPack);
+                return renderSeatPlan(student, examName, configPack);
+            }).join('');
+
+            pagesHTML += `
+                <div class="ac-page ac-layout-${effectiveLayoutSize} ac-theme-${configPack.theme} ac-page-${orientation} ${type === 'seat' ? 'ac-page-seat' : ''}" 
+                     style="--ac-watermark-url: url('${configPack.watermarkUrl}');
+                            --ac-base-font-size: ${configPack.baseFontSize};
+                            --ac-title-font-size: ${configPack.titleFontSize};
+                            --ac-table-font-size: ${configPack.tableFontSize};
+                            --ac-rows: ${rowCount};">
+                    ${cardsHtml}
+                </div>`.trim(); // Trim each page block
+        }
+        return pagesHTML.trim(); // Trim final combined string
+    };
+
+    // Initial render
+    admitCardPreview.innerHTML = generatePagesHTML(pageOrientation);
+
     admitCardPreview.classList.remove('seat-plan-mode');
     if (type === 'seat') admitCardPreview.classList.add('seat-plan-mode');
 
@@ -532,18 +721,109 @@ async function generateCards(type) {
 }
 
 function renderAdmitCard(student, subjects, examName, config) {
-    const subjectsList = subjects.length > 0 ?
-        `<div class="ac-subjects-box">
-            <strong>বিষয়সমূহ:</strong>
-            <div class="ac-subjects-grid">${subjects.map(sub => `<span>${sub}</span>`).join('')}</div>
-        </div>` : '';
+    const routineData = getRoutinesData();
+    const cleanExamName = (examName || '').trim();
+    const studentGroupRaw = (student.group || 'all').trim();
+    const studentGroupNorm = normalizeGroupName(studentGroupRaw);
+    const studentClass = (student.class || '').trim();
+    const studentSession = (student.session || '').trim();
+    
+    // Attempt specific normalized, then specific raw, then all normalized
+    const keySpecificNorm = `${studentClass}_${studentSession}_${cleanExamName}_${studentGroupNorm}`;
+    const keySpecificRaw = `${studentClass}_${studentSession}_${cleanExamName}_${studentGroupRaw}`;
+    const keyAll = `${studentClass}_${studentSession}_${cleanExamName}_all`;
+    
+    // Robust lookup: try with exact keys
+    let routineRows = routineData[keySpecificNorm] || routineData[keySpecificRaw] || routineData[keyAll] || [];
+
+    // Second level fallback: Fuzzy matching for exam name
+    if (routineRows.length === 0) {
+        const allKeys = Object.keys(routineData);
+        // Better fuzzy logic: matches class, session, group exactly; matches exam partially
+        const fuzzyKey = allKeys.find(k => {
+            const parts = k.split('_');
+            if (parts.length < 4) return false;
+            
+            const kGrp = parts.pop();
+            const kExam = parts.slice(2).join('_'); // handle case where exam name itself had underscores (though unlikely)
+            const kSess = parts[1];
+            const kCls = parts[0];
+
+            const groupMatches = kGrp === studentGroupNorm || kGrp === studentGroupRaw || kGrp === 'all';
+            const examMatches = cleanExamName === kExam || cleanExamName.includes(kExam) || kExam.includes(cleanExamName);
+            
+            return kCls === studentClass && kSess === studentSession && groupMatches && examMatches;
+        });
+        if (fuzzyKey) routineRows = routineData[fuzzyKey] || [];
+        if (routineRows.rows) routineRows = routineRows.rows; // Handle older structure if wrapped in {rows:[]}
+    } else if (routineRows.rows) {
+        routineRows = routineRows.rows; // Handle wrapped structure
+    }
+    
+    let subjectsList = '';
+    
+    // Check if routine should be shown based on toggle
+    if (config.showRoutine !== false) {
+        if (routineRows && routineRows.length > 0) {
+            // Render Routine Table if found
+            subjectsList = `
+                <div class="ac-routine-box">
+                    <div class="ac-section-title">পরীক্ষার সময়সূচী (Exam Routine)</div>
+                    <table class="ac-routine-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 8%;">নং</th>
+                                <th style="width: 20%;">তারিখ</th>
+                                <th style="width: 15%;">বার</th>
+                                <th style="width: 37%;">বিষয়</th>
+                                <th style="width: 20%;">সময়</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${routineRows.map((row, idx) => {
+                                let formattedDate = row.date || '';
+                                if (formattedDate.includes('-')) {
+                                    const [y, m, d] = formattedDate.split('-');
+                                    formattedDate = `${d}/${m}/${y}`;
+                                }
+                                const seq = row.seq || (idx + 1);
+                                return `
+                                <tr>
+                                    <td style="text-align:center;">${convertToBengaliDigits(seq)}</td>
+                                    <td>${convertToBengaliDigits(formattedDate)}</td>
+                                    <td style="text-align:center;">${row.day || ''}</td>
+                                    <td>${row.subject || ''}</td>
+                                    <td style="text-align:center;">${convertToBengaliDigits(row.time || '')}</td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+        } else {
+            // Updated Fallback: Show professional message if routine is ON but not found
+            subjectsList = `
+                <div class="ac-routine-box ac-no-routine" style="padding: 15px; text-align: center; border: 1px dashed var(--ac-primary-color); border-radius: 8px; margin: 10px 0;">
+                    <p style="margin: 0; color: #64748b; font-style: italic;">এক্সাম রুটিন সেট করা নেই</p>
+                </div>`;
+        }
+    }
+
+    // Determine group-specific theme class
+    let groupClass = 'ac-grp-default';
+    if (studentGroupNorm === 'science' || studentGroupRaw.includes('বিজ্ঞান')) {
+        groupClass = 'ac-grp-science';
+    } else if (studentGroupNorm === 'business' || studentGroupRaw.includes('ব্যবসায়')) {
+        groupClass = 'ac-grp-business';
+    } else if (studentGroupNorm === 'humanities' || studentGroupRaw.includes('মানবিক')) {
+        groupClass = 'ac-grp-humanities';
+    }
 
     // Logo block
     const logoHtml = config.logoUrl ? `<img src="${config.logoUrl}" class="ac-logo" alt="Logo">` : '';
     const addressHtml = config.institutionAddress ? `<div class="ac-address">${config.institutionAddress}</div>` : '';
 
     return `
-        <div class="ac-card ${config.watermarkUrl ? 'ac-has-watermark' : ''}">
+        <div class="ac-card ${groupClass} ${config.watermarkUrl ? 'ac-has-watermark' : ''}">
             <div class="ac-card-inner">
                 <div class="ac-header">
                     <div class="ac-logo-container">${logoHtml}</div>
@@ -553,11 +833,12 @@ function renderAdmitCard(student, subjects, examName, config) {
                     </div>
                 </div>
                 
-                <div class="ac-title-wrapper">
-                    <div class="ac-title">প্রবেশপত্র</div>
+                <div class="ac-pill-header-container">
+                    <div class="ac-pill-header">
+                        <div class="ac-pill-left">প্রবেশপত্র</div>
+                        <div class="ac-pill-right">${examName} - ${student.session}</div>
+                    </div>
                 </div>
-                
-                <div class="ac-exam-name">${examName} - ${student.session}</div>
                 
                 <div class="ac-body">
                     <div class="ac-info-section">
@@ -565,9 +846,8 @@ function renderAdmitCard(student, subjects, examName, config) {
                             <tr><th>শিক্ষার্থীর নাম</th><td>: <strong>${student.name}</strong></td></tr>
                             <tr><th>রোল নম্বর</th><td>: <strong>${student.id}</strong></td></tr>
                             <tr><th>শ্রেণি</th><td>: ${student.class}</td></tr>
-                            <tr><th>বিভাগ/গ্রুপ</th><td>: ${student.group || 'প্রযোজ্য নয়'}</td></tr>
+                            <tr class="ac-highlight-grp-row"><th>বিভাগ/গ্রুপ</th><td>: <span class="ac-grp-highlight">${student.group || 'প্রযোজ্য নয়'}</span></td></tr>
                         </table>
-                        ${subjectsList}
                     </div>
                     <div class="ac-photo-section">
                         <div class="ac-photo-box">
@@ -575,14 +855,19 @@ function renderAdmitCard(student, subjects, examName, config) {
                         </div>
                     </div>
                 </div>
+
+                ${subjectsList}
                 
                 <div class="ac-footer">
-                    <div class="ac-footer-left">
-                        <div class="ac-sig">শ্রেণি শিক্ষক</div>
-                    </div>
-                    <div class="ac-footer-right">
-                        <div class="ac-sig">অধ্যক্ষ / পরীক্ষা নিয়ন্ত্রক</div>
-                    </div>
+                    ${(config.signatures && config.signatures.length > 0 ? config.signatures : [
+                        { label: 'শ্রেণি শিক্ষক', url: '' },
+                        { label: 'অধ্যক্ষ / পরীক্ষা নিয়ন্ত্রক', url: '' }
+                    ]).map(sig => `
+                        <div class="ac-sig-block">
+                            ${sig.url ? `<img src="${sig.url}" class="ac-sig-img" alt="Signature">` : '<div class="ac-sig-space"></div>'}
+                            <div class="ac-sig-label">${sig.label}</div>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         </div>
@@ -590,26 +875,53 @@ function renderAdmitCard(student, subjects, examName, config) {
 }
 
 function renderSeatPlan(student, examName, config) {
-    const logoHtml = config.logoUrl ? `<img src="${config.logoUrl}" class="sp-logo" alt="Logo">` : '';
+    const studentGroupRaw = (student.group || 'all').trim();
+    const studentGroupNorm = normalizeGroupName(studentGroupRaw);
+
+    // Determine group-specific theme class
+    let groupClass = 'ac-grp-default';
+    if (studentGroupNorm === 'science' || studentGroupRaw.includes('বিজ্ঞান')) {
+        groupClass = 'ac-grp-science';
+    } else if (studentGroupNorm === 'business' || studentGroupRaw.includes('ব্যবসায়')) {
+        groupClass = 'ac-grp-business';
+    } else if (studentGroupNorm === 'humanities' || studentGroupRaw.includes('মানবিক')) {
+        groupClass = 'ac-grp-humanities';
+    }
+
+    // Determine group-specific background prefix
+    let bgPrefix = '';
+    if (groupClass === 'ac-grp-science') bgPrefix = 'S-';
+    else if (groupClass === 'ac-grp-business') bgPrefix = 'B-';
+    else if (groupClass === 'ac-grp-humanities') bgPrefix = 'A-';
+    else bgPrefix = 'R-';
+
+    const logoHtml = config.logoUrl ? `<img src="${config.logoUrl}" class="ac-logo" alt="Logo">` : '';
 
     return `
-        <div class="sp-card ${config.watermarkUrl ? 'sp-has-watermark' : ''}">
+        <div class="sp-card ${groupClass} ${config.watermarkUrl ? 'sp-has-watermark' : ''}">
             <div class="sp-card-inner">
-                <div class="sp-header">
-                    ${logoHtml}
-                    <div class="sp-header-text">
-                        <div class="sp-inst-name">${config.institutionName}</div>
-                        <div class="sp-exam">${examName} - ${student.session}</div>
+                <div class="ac-header">
+                    <div class="ac-logo-container">${logoHtml}</div>
+                    <div class="ac-header-text">
+                        <h3>${config.institutionName}</h3>
+                    </div>
+                </div>
+                
+                <div class="ac-pill-header-container">
+                    <div class="ac-pill-header">
+                        <div class="ac-pill-left">পরীক্ষার সিট</div>
+                        <div class="ac-pill-right">${examName}</div>
                     </div>
                 </div>
                 
                 <div class="sp-body">
                     <table class="sp-table">
-                        <tr><th>নাম</th><td>: ${student.name}</td></tr>
-                        <tr><th>রোল</th><td class="sp-highlight-roll">: ${student.id}</td></tr>
+                        <tr><th>নাম</th><td>: <strong>${student.name}</strong></td></tr>
+                        <tr><th>রোল</th><td class="sp-highlight-roll">: <strong>${student.id}</strong></td></tr>
                         <tr><th>শ্রেণি</th><td>: ${student.class}</td></tr>
-                        <tr><th>গ্রুপ</th><td>: ${student.group || 'N/A'}</td></tr>
+                        <tr><th>গ্রুপ</th><td>: <span class="ac-grp-highlight">${student.group || 'প্রযোজ্য নয়'}</span></td></tr>
                     </table>
+                    <div class="sp-watermark-roll">${bgPrefix}${student.id}</div>
                 </div>
             </div>
         </div>

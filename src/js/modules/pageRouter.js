@@ -7,19 +7,17 @@
 import { state } from './state.js';
 import { loadTeacherAssignmentData } from './teacherAssignmentManager.js';
 import { loadAccessRequests, initAccessRequestUI } from './accessRequestManager.js';
-import { populateMSDropdowns } from './marksheetManager.js';
-import { populateMarksheetSettingsDropdowns, refreshMarksheetRulesUI } from './marksheetRulesManager.js';
 
 const NEW_PAGE_IDS = {
     'teacher-assignment': 'teacherAssignmentPage',
     'students': 'studentsPage',
     'result-entry': 'resultEntryPage',
     'marksheet': 'marksheetPage',
+    'marksheet-settings': 'marksheetSettingsPage',
     'access-requests': 'accessRequestsPage',
     'exam-config': 'examConfigPage',
     'academic-settings': 'academicSettingsPage',
-    'admit-card': 'admitCardPage',
-    'marksheet-settings': 'marksheetSettingsPage'
+    'admit-card': 'admitCardPage'
 };
 
 // IDs/selectors of all dashboard-only sections to hide on other pages
@@ -93,12 +91,6 @@ export function navigateTo(pageId) {
     } else if (pageId === 'access-requests') {
         initAccessRequestUI();
         loadAccessRequests();
-    } else if (pageId === 'marksheet-settings') {
-        populateMarksheetSettingsDropdowns().then(() => {
-            refreshMarksheetRulesUI();
-        });
-    } else if (pageId === 'marksheet') {
-        populateMSDropdowns();
     }
 
     // Callback for lazy-loading page content

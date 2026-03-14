@@ -43,8 +43,6 @@ export async function deleteExam(docId) {
         const success = await firestoreDeleteExam(docId);
         if (success) {
             showNotification('পরীক্ষাটি সফলভাবে মুছে ফেলা হয়েছে');
-            // Notify dashboard to refresh exam cards
-            window.dispatchEvent(new CustomEvent('examDataUpdated'));
             return true;
         }
     } catch (error) {
@@ -77,8 +75,6 @@ export async function updateExamDetails(docId, updates) {
         const success = await firestoreUpdateExam(docId, updates);
         if (success) {
             showNotification('পরীক্ষার তথ্য আপডেট করা হয়েছে');
-            // Notify dashboard to refresh exam cards
-            window.dispatchEvent(new CustomEvent('examDataUpdated'));
             return true;
         }
     } catch (error) {
@@ -291,8 +287,6 @@ export async function handleSaveExam(examData) {
         const success = await firestoreSaveExam(fullExamData);
         if (success) {
             showNotification('পরীক্ষার ফলাফল সফলভাবে সংরক্ষণ করা হয়েছে!');
-            // Notify dashboard to refresh exam cards
-            window.dispatchEvent(new CustomEvent('examDataUpdated'));
             return true;
         }
     } catch (error) {

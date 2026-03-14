@@ -136,11 +136,11 @@
       <button class="page-nav-btn super-admin-only" data-page="exam-config" style="display: none;">
         <i class="fas fa-cogs"></i> <span>এক্সাম কনফিগ</span>
       </button>
+      <button class="page-nav-btn super-admin-only" data-page="marksheet-settings" style="display: none;">
+        <i class="fas fa-cog"></i> <span>মার্কশীট সেটিংস</span>
+      </button>
       <button class="page-nav-btn super-admin-only" data-page="academic-settings" style="display: none;">
         <i class="fas fa-university"></i> <span>একাডেমিক সেটিংস</span>
-      </button>
-      <button class="page-nav-btn super-admin-only" data-page="marksheet-settings" style="display: none;">
-        <i class="fas fa-sliders-h"></i> <span>মার্কশীট সেটিংস</span>
       </button>
 
       <style>
@@ -592,12 +592,6 @@
             <select id="reSession" class="form-control" data-dynamic="session"></select>
           </div>
           <div class="selector-group">
-            <label>গ্রুপ/বিভাগ</label>
-            <select id="reGroup" class="form-control">
-              <option value="all">সকল গ্রুপ</option>
-            </select>
-          </div>
-          <div class="selector-group">
             <label>বিষয়</label>
             <select id="reSubject" class="form-control"></select>
           </div>
@@ -640,6 +634,127 @@
         <div id="reEmptyState" class="empty-state-msg">
           <i class="fas fa-clipboard-list" style="font-size: 2rem; opacity: 0.3;"></i>
           <p>উপরের ড্রপডাউন থেকে শ্রেণি, সেশন, বিষয় ও পরীক্ষা নির্বাচন করুন।</p>
+        </div>
+      </div>
+    </div>
+
+      </div>
+    </div>
+
+    <!-- ========== PAGE: MARKSHEET SETTINGS (RECONFIGURED) ========== -->
+    <div id="marksheetSettingsPage" class="app-page" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="header-main-unified">
+            <h2 class="card-title"><i class="fas fa-cogs"></i> মার্কশীট সেটিংস (Marksheet Configuration)</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Class Selector for Settings -->
+          <div class="ms-settings-section-card" style="margin-bottom: 20px; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; background: var(--bg-secondary);">
+            <div class="selector-group" style="margin-bottom: 0;">
+              <label style="font-weight: 600; font-size: 1.1rem; color: var(--primary);">কনফিগারেশনের জন্য ক্লাস নির্বাচন করুন</label>
+              <select id="msSetClass" class="form-control" style="max-width: 400px;"></select>
+            </div>
+          </div>
+
+          <div class="ms-settings-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            
+            <!-- Calculation Mode Card -->
+            <div class="card ms-settings-card">
+              <div class="card-header" style="background: rgba(var(--primary-rgb), 0.1);">
+                <h4 style="margin:0; font-size: 1rem;"><i class="fas fa-calculator"></i> মার্কশীট ক্যালকুলেশন মোড</h4>
+              </div>
+              <div class="card-body">
+                <div class="form-group" style="margin-bottom: 15px;">
+                  <label>রিপোর্ট কার্ড মোড</label>
+                  <select id="msSetMode" class="form-control">
+                    <option value="single">সিঙ্গেল পেপার (Single Paper)</option>
+                    <option value="combined">কম্বাইন্ড (Combined/Both Paper)</option>
+                  </select>
+                </div>
+                <button id="msSetModeSaveBtn" class="dm-btn dm-save" style="width: 100%;">
+                  <i class="fas fa-save"></i> সেভ করুন
+                </button>
+              </div>
+            </div>
+
+            <!-- General Subjects Card -->
+            <div class="card ms-settings-card">
+              <div class="card-header" style="background: rgba(var(--secondary-rgb), 0.1);">
+                <h4 style="margin:0; font-size: 1rem;"><i class="fas fa-book"></i> সাধারণ বিষয় (General Subjects)</h4>
+              </div>
+              <div class="card-body">
+                <div class="input-group" style="display:flex; gap: 8px; margin-bottom: 15px;">
+                  <select id="msSetGenSubject" class="form-control"></select>
+                  <button id="msSetGenAddBtn" class="dm-btn dm-save"><i class="fas fa-plus"></i></button>
+                </div>
+                <div id="msSetGenList" class="ms-settings-list" style="max-height: 200px; overflow-y: auto;"></div>
+              </div>
+            </div>
+
+            <!-- Group Subjects Card -->
+            <div class="card ms-settings-card">
+              <div class="card-header" style="background: rgba(67, 160, 71, 0.1);">
+                <h4 style="margin:0; font-size: 1rem;"><i class="fas fa-layer-group"></i> গ্রুপ ভিত্তিক বিষয় (Group Subjects)</h4>
+              </div>
+              <div class="card-body">
+                <div class="form-group" style="margin-bottom: 10px;">
+                  <select id="msSetGroupSubGroup" class="form-control"></select>
+                </div>
+                <div class="input-group" style="display:flex; gap: 8px; margin-bottom: 15px;">
+                  <select id="msSetGroupSubSubject" class="form-control"></select>
+                  <button id="msSetGroupSubAddBtn" class="dm-btn dm-save"><i class="fas fa-plus"></i></button>
+                </div>
+                <div id="msSetGroupSubList" class="ms-settings-list" style="max-height: 200px; overflow-y: auto;"></div>
+              </div>
+            </div>
+
+            <!-- Optional Subjects Card -->
+            <div class="card ms-settings-card">
+              <div class="card-header" style="background: rgba(255, 152, 0, 0.1);">
+                <h4 style="margin:0; font-size: 1rem;"><i class="fas fa-star"></i> ঐচ্ছিক বিষয় (Optional Subjects)</h4>
+              </div>
+              <div class="card-body">
+                <div class="form-group" style="margin-bottom: 10px;">
+                  <select id="msSetOptGroup" class="form-control"></select>
+                </div>
+                <div class="input-group" style="display:flex; gap: 8px; margin-bottom: 15px;">
+                  <select id="msSetOptSubject" class="form-control"></select>
+                  <button id="msSetOptAddBtn" class="dm-btn dm-save"><i class="fas fa-plus"></i></button>
+                </div>
+                <div id="msSetOptList" class="ms-settings-list" style="max-height: 200px; overflow-y: auto;"></div>
+              </div>
+            </div>
+
+            <!-- Paper Mapping Card -->
+            <div class="card ms-settings-card" style="grid-column: 1 / -1;">
+              <div class="card-header" style="background: rgba(33, 150, 243, 0.1);">
+                <h4 style="margin:0; font-size: 1rem;"><i class="fas fa-link"></i> উভয় পত্র ম্যাপিং (Combined Paper Mapping)</h4>
+              </div>
+              <div class="card-body">
+                <div class="mapping-inputs" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; margin-bottom: 20px;">
+                  <div class="m-input">
+                    <label style="font-size: 0.8rem; display:block;">প্রথম পত্র (Paper 1)</label>
+                    <select id="msSetCombPaper1" class="form-control"></select>
+                  </div>
+                  <div class="m-input">
+                    <label style="font-size: 0.8rem; display:block;">দ্বিতীয় পত্র (Paper 2)</label>
+                    <select id="msSetCombPaper2" class="form-control"></select>
+                  </div>
+                  <div class="m-input">
+                    <label style="font-size: 0.8rem; display:block;">সম্মিলিত নাম (Combined Name)</label>
+                    <input type="text" id="msSetCombCombinedName" class="form-control" placeholder="উদা: বাংলা বা ইংরেজি">
+                  </div>
+                  <div class="m-input" style="display: flex; align-items: flex-end;">
+                    <button id="msSetCombAddBtn" class="dm-btn dm-save" style="height: 38px;"><i class="fas fa-plus"></i> যোগ করুন</button>
+                  </div>
+                </div>
+                <div id="msSetCombList" class="mapping-list-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;"></div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
@@ -1390,6 +1505,9 @@
           <div class="header-main-unified">
             <h2 class="card-title"><i class="fas fa-id-card"></i> এডমিট কার্ড ও সীট প্ল্যান</h2>
             <div class="ms-header-actions">
+              <button id="acRoutineBtn" class="dm-btn dm-save" title="পরীক্ষার রুটিন ম্যানেজমেন্ট">
+                <i class="fas fa-calendar-alt"></i> এডমিট কার্ড রুটিন
+              </button>
               <button id="acSettingsBtn" class="dm-btn dm-report" title="এডমিট কার্ড ও সীট প্ল্যান সেটিংস">
                 <i class="fas fa-cog"></i> ডিজাইন সেটিংস
               </button>
@@ -1420,17 +1538,13 @@
             <div class="selector-group">
               <label>লেআউট</label>
               <select id="acLayout" class="form-control">
+                <option value="2">২টি প্রতি পেজ</option>
                 <option value="4">৪টি প্রতি পেজ</option>
-                <option value="6">৬টি প্রতি পেজ</option>
-                <option value="8">৮টি প্রতি পেজ</option>
-                <option value="10">১০টি প্রতি পেজ</option>
-                <option value="12">১২টি প্রতি পেজ</option>
               </select>
             </div>
             <div class="selector-group">
               <label>পৃষ্ঠার ধরণ</label>
               <select id="acOrientation" class="form-control">
-                <option value="portrait">A4 Portrait (খাড়া)</option>
                 <option value="landscape">A4 Landscape (আড়াআড়ি)</option>
               </select>
             </div>
@@ -1815,132 +1929,6 @@
       </div>
     </div>
 
-    <!-- ========== PAGE: MARKSHEET SETTINGS ========== -->
-    <div id="marksheetSettingsPage" class="app-page" style="display: none;">
-      <div class="card ms-settings-main-card">
-        <h2 class="section-title"><i class="fas fa-sliders-h"></i> মার্কশীট সেটিংস (Marksheet Configuration)</h2>
-        <div class="ms-settings-container">
-          <!-- Class Selector -->
-          <div class="ms-settings-group ms-settings-class-selector">
-            <label><strong>কনফিগারেশন এর জন্য ক্লাস নির্বাচন করুন</strong></label>
-            <select id="msSetClass" class="form-control">
-              <option value="All">সকল ক্লাস (All Classes)</option>
-              <option value="HSC">HSC (আলিম)</option>
-              <option value="SSC">SSC (দাখিল/দশম)</option>
-              <option value="Class 9">নবম শ্রেণি</option>
-              <option value="Class 8">অষ্টম শ্রেণি</option>
-              <option value="Class 7">সপ্তম শ্রেণি</option>
-              <option value="Class 6">ষষ্ঠ শ্রেণি</option>
-            </select>
-            <p class="ms-settings-help-text">* প্রতিটি ক্লাসের জন্য আলাদাভাবে অথবা সকল ক্লাসের জন্য একসাথে সেটিংস
-              সংরক্ষণ করা যাবে।</p>
-          </div>
-
-          <!-- Mode Toggle -->
-          <div class="ms-settings-group ms-settings-mode-card">
-            <label><strong>মার্কশীট ক্যালকুলেশন মোড</strong></label>
-            <div class="ms-settings-mode-controls">
-              <select id="msSetMode" class="form-control">
-                <option value="single">সিঙ্গেল পেপার মোড</option>
-                <option value="combined">উভয় পত্র মোড</option>
-              </select>
-              <button class="btn-primary" id="msSetModeSaveBtn">সেভ করুন</button>
-            </div>
-          </div>
-
-          <div class="ms-settings-grid">
-            <!-- Category: General (Core) Subjects -->
-            <div class="ms-settings-card">
-              <h3 class="ms-settings-card-title ms-text-primary"><i class="fas fa-star"></i> সাধারণ বিষয় (General
-                Subjects)</h3>
-              <p class="ms-settings-help-text">সকল শিক্ষার্থীর জন আবশ্যক বিষয়গুলো (উদা: বাংলা, ইংরেজি) এখানে যুক্ত করুন।
-              </p>
-              <div class="form-group">
-                <label>বিষয় নির্বাচন করুন</label>
-                <select id="msSetGenSubject" class="form-control"></select>
-              </div>
-              <button class="btn-primary w-full" id="msSetGenAddBtn"><i class="fas fa-plus"></i> যোগ করুন</button>
-              <div id="msSetGenList" class="ms-settings-list"></div>
-            </div>
-
-            <!-- Category: Group-based Subjects -->
-            <div class="ms-settings-card">
-              <h3 class="ms-settings-card-title ms-text-secondary"><i class="fas fa-users"></i> গ্রুপ ভিত্তিক বিষয়
-                (Group Subjects)</h3>
-              <p class="ms-settings-help-text">গ্রুপ অনুযায়ী সাধারণ বিষয় ছাড়া অন্য বিষয়গুলো এখানে যুক্ত করুন।</p>
-              <div class="form-group">
-                <label>গ্রুপ</label>
-                <select id="msSetGroupSubGroup" class="form-control">
-                  <option value="">গ্রুপ নির্বাচন করুন</option>
-                  <option value="Science">বিজ্ঞান (Science)</option>
-                  <option value="Humanities">মানবিক (Humanities)</option>
-                  <option value="Business">ব্যবসায় শিক্ষা (Business)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>বিষয়</label>
-                <select id="msSetGroupSubSubject" class="form-control"></select>
-              </div>
-              <button class="btn-primary w-full ms-bg-secondary" id="msSetGroupSubAddBtn"><i class="fas fa-plus"></i>
-                যোগ করুন</button>
-              <div id="msSetGroupSubList" class="ms-settings-list"></div>
-            </div>
-
-            <!-- Category: Optional Subjects -->
-            <div class="ms-settings-card">
-              <h3 class="ms-settings-card-title ms-text-warning"><i class="fas fa-book-open"></i> ঐচ্ছিক বিষয় (Optional
-                Subjects)</h3>
-              <p class="ms-settings-help-text">যে বিষয়গুলো থেকে চতুর্থ বিষয় হিসেবে একটি নির্বাচন করতে হয় তা এখানে যুক্ত
-                করুন।</p>
-              <div class="form-group">
-                <label>গ্রুপ</label>
-                <select id="msSetOptGroup" class="form-control">
-                  <option value="">গ্রুপ নির্বাচন করুন</option>
-                  <option value="Science">বিজ্ঞান (Science)</option>
-                  <option value="Humanities">মানবিক (Humanities)</option>
-                  <option value="Business">ব্যবসায় শিক্ষা (Business)</option>
-                  <option value="General">সাধারণ (General)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>বিষয়</label>
-                <select id="msSetOptSubject" class="form-control"></select>
-              </div>
-              <button class="btn-primary w-full ms-bg-warning" id="msSetOptAddBtn"><i class="fas fa-plus"></i> যোগ
-                করুন</button>
-              <div id="msSetOptList" class="ms-settings-list"></div>
-            </div>
-          </div>
-
-          <div class="ms-settings-mapping-section">
-            <!-- Combined Subject Mapping -->
-            <div class="ms-settings-card ms-settings-wide-card">
-              <h3 class="ms-settings-card-title ms-text-primary"><i class="fas fa-layer-group"></i> উভয় পত্র সাবজেক্ট
-                ম্যাপিং (সমন্বিত ফলাফল)</h3>
-              <div class="ms-settings-mapping-grid">
-                <div class="form-group">
-                  <label>১ম পত্র</label>
-                  <select id="msSetCombPaper1" class="form-control"></select>
-                </div>
-                <div class="form-group">
-                  <label>২য় পত্র</label>
-                  <select id="msSetCombPaper2" class="form-control"></select>
-                </div>
-                <div class="form-group">
-                  <label>সম্মিলিত নাম (উদা: বাংলা)</label>
-                  <input type="text" id="msSetCombCombinedName" class="form-control">
-                </div>
-                <div class="ms-settings-action">
-                  <button class="btn-primary" id="msSetCombAddBtn"><i class="fas fa-plus"></i> ম্যাপিং যোগ করুন</button>
-                </div>
-              </div>
-              <div id="msSetCombList" class="ms-settings-mapping-list"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Login Modal -->
     <div id="loginModal" class="modal">
       <div class="modal-content" style="max-width: 400px; padding: 25px;">
@@ -2037,6 +2025,12 @@
               </div>
               <div class="config-menu-item" data-tab="ac-appearance">
                 <i class="fas fa-palette"></i> অ্যাপিয়ারেন্স (Appearance)
+              </div>
+              <div class="config-menu-item" data-tab="ac-signature">
+                <i class="fas fa-signature"></i> ডিজিটাল স্বাক্ষর
+              </div>
+              <div class="config-menu-item" data-tab="ac-routine-toggle">
+                <i class="fas fa-calendar-alt"></i> পরীক্ষার রুটিন
               </div>
             </div>
           </div>
@@ -2153,6 +2147,43 @@
                   </div>
                 </div>
 
+                <!-- Signature Settings -->
+                <div class="config-tab-content" id="ac-signature">
+                  <div class="signature-manager-premium">
+                    <div class="sig-manager-header">
+                      <label><i class="fas fa-file-signature"></i> স্বাক্ষরসমূহ (Signatures)</label>
+                      <button type="button" id="acAddSignatureSlotBtn" class="dm-btn dm-report btn-sm">
+                        <i class="fas fa-plus"></i> নতুন স্লট
+                      </button>
+                    </div>
+                    <div id="acSignatureSlotsContainer" class="sig-slots-grid">
+                      <!-- Signature slots will be injected here -->
+                    </div>
+                    <p class="sig-help-text">প্রতিটি পদের জন্য আলাদা স্বাক্ষর ছবি আপলোড করতে পারেন।</p>
+                  </div>
+                </div>
+
+                <!-- Routine Toggle Settings -->
+                <div class="config-tab-content" id="ac-routine-toggle">
+                  <div class="form-header">
+                    <h3><i class="fas fa-calendar-check"></i> পরীক্ষার রুটিন নিয়ন্ত্রণ</h3>
+                    <p>এডমিট কার্ডে রুটিন সেকশনটি দেখাবেন কি না তা নির্ধারণ করুন</p>
+                  </div>
+                  
+                  <div style="background: rgba(var(--primary-rgb), 0.05); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color); margin-top: 10px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 1rem; color: var(--heading-color);">রুটিন প্রদর্শন করুন</h4>
+                            <p style="margin: 5px 0 0; font-size: 0.85rem; color: var(--text-secondary);">এটি বন্ধ করলে এডমিট কার্ডে কোনো রুটিন বা বিষয় তালিকা দেখা যাবে না।</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="acShowRoutine" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Save Container -->
                 <div
                   style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
@@ -2198,6 +2229,73 @@
 
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admit Card Routine Modal -->
+    <div id="acRoutineModal" class="modal">
+      <div class="modal-content landscape-modal marksheet-config-modal" style="max-width: 900px;">
+        <div class="modal-header">
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+            <h2><i class="fas fa-calendar-alt"></i> পরীক্ষার রুটিন ম্যানেজমেন্ট (Admit Card Routine)</h2>
+            <span class="close" id="closeAcRoutineBtn">&times;</span>
+          </div>
+        </div>
+        <div class="modal-body" style="padding: 20px 20px 0 20px; max-height: calc(80vh - 80px); overflow-y: auto;">
+          <!-- Routine Filters -->
+          <div class="routine-header-filters" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px;">
+            <div class="form-group" style="margin:0;">
+              <label>শ্রেণি</label>
+              <select id="rtClass" class="form-control" data-dynamic="class"></select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>সেশন</label>
+              <select id="rtSession" class="form-control" data-dynamic="session"></select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>পরীক্ষা</label>
+              <select id="rtExamName" class="form-control"></select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>গ্রুপ/বিভাগ</label>
+              <select id="rtGroup" class="form-control">
+                <option value="all">সকল গ্রুপ</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Routine Table -->
+          <div class="routine-table-wrapper" style="margin-bottom: 20px; padding-bottom: 120px;">
+            <table class="data-table" id="routineTable">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">নং</th>
+                  <th style="width: 130px;">তারিখ</th>
+                  <th style="width: 100px;">বার</th>
+                  <th>বিষয়</th>
+                  <th style="width: 120px;">সময়</th>
+                  <th style="width: 60px;">অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="routineTableBody">
+                <!-- Rows will be added here -->
+              </tbody>
+            </table>
+            <button id="addRoutineRowBtn" class="dm-btn dm-report" style="margin-top: 10px; width: 100%; border-style: dashed;">
+              <i class="fas fa-plus"></i> নতুন সারি যোগ করুন
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Buttons Footer -->
+        <div class="modal-footer" style="display: flex; gap: 15px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding: 15px 20px;">
+          <button id="printRoutineBtn" class="dm-btn dm-report">
+            <i class="fas fa-print"></i> রুটিন প্রিন্ট করুন
+          </button>
+          <button id="saveRoutineBtn" class="dm-btn dm-save">
+            <i class="fas fa-save"></i> রুটিন সেভ করুন
+          </button>
         </div>
       </div>
     </div>

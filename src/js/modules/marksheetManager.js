@@ -6,8 +6,8 @@
 
 import { getSavedExams, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
-import { currentMarksheetRules } from './marksheetRulesManager.js';
-import { showNotification, convertToEnglishDigits, determineStatus, normalizeText } from '../utils.js';
+import { showNotification, convertToEnglishDigits } from '../utils.js';
+import { compressImage } from '../imageUtils.js';
 
 let marksheetSettings = {
     institutionName: '',
@@ -67,7 +67,7 @@ async function saveMarksheetSettings(settings) {
  * Populate marksheet page dropdowns
  */
 export async function populateMSDropdowns() {
-    const exams = await getSavedExams(true);
+    const exams = await getSavedExams();
 
     const classes = [...new Set(exams.map(e => e.class).filter(Boolean))].sort();
     const sessions = [...new Set(exams.map(e => e.session).filter(Boolean))].sort().reverse();
@@ -209,15 +209,7 @@ async function generateMarksheets() {
 
     await loadMarksheetSettings();
 
-    // Ensure latest rules are loaded from database before generation
-    const { loadMarksheetRules } = await import('./marksheetRulesManager.js');
-    await loadMarksheetRules();
-
-    // Ensure latest subject configs are available
-    const { getSubjectConfigs } = await import('../firestoreService.js');
-    state.subjectConfigs = await getSubjectConfigs();
-
-    const allExams = await getSavedExams(true);
+    const allExams = await getSavedExams();
     let relevantExams = allExams.filter(e => e.class === cls && e.session === session);
 
     if (examName && examName !== '__all__') {
@@ -294,11 +286,10 @@ async function generateMarksheets() {
     }
 
     const examDisplayName = examName === '__all__' ? 'সমন্বিত ফলাফল' : (examName || 'পরীক্ষা');
-    const modeOverride = document.getElementById('msPrintMode')?.value || 'default';
 
     const previewArea = document.getElementById('marksheetPreview');
     previewArea.innerHTML = studentsArray.map(student =>
-        renderSingleMarksheet(student, subjects, examDisplayName, session, null, modeOverride)
+        renderSingleMarksheet(student, subjects, examDisplayName, session)
     ).join('');
 
     // Show bulk print button
@@ -326,405 +317,47 @@ async function generateMarksheets() {
 /**
  * Render a single student's marksheet (Bangladeshi HSC professional style)
  */
-function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, modeOverride = null) {
+function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null) {
     const ms = customSettings || marksheetSettings;
-    const allRules = currentMarksheetRules || {};
-    const studentClass = student.class || 'HSC';
-
-    // Get Global Rules and Class-Specific Rules
-    const globalRules = allRules['All'] || { mode: 'single', combinedSubjects: [], optionalSubjects: {} };
-    const classRules = allRules[studentClass] || { mode: 'single', combinedSubjects: [], optionalSubjects: {} };
-
-    // Merge Rules: Class-specific takes precedence
-    let baseMode = globalRules.mode || 'single';
-    if (allRules[studentClass] && allRules[studentClass].mode) {
-        baseMode = allRules[studentClass].mode;
-    }
-
-    if (modeOverride && modeOverride !== 'default') {
-        baseMode = modeOverride;
-    }
-
-    const rules = {
-        mode: baseMode,
-        combinedSubjects: [...(globalRules.combinedSubjects || [])],
-        optionalSubjects: JSON.parse(JSON.stringify(globalRules.optionalSubjects || {})),
-        generalSubjects: [...(globalRules.generalSubjects || [])],
-        groupSubjects: JSON.parse(JSON.stringify(globalRules.groupSubjects || {}))
-    };
-
-    // Merge Combined Subjects (avoid duplicates by combinedName)
-    if (classRules.combinedSubjects && classRules.combinedSubjects.length > 0) {
-        classRules.combinedSubjects.forEach(c => {
-            const existingIdx = rules.combinedSubjects.findIndex(r => r.combinedName === c.combinedName);
-            if (existingIdx > -1) {
-                rules.combinedSubjects[existingIdx] = c;
-            } else {
-                rules.combinedSubjects.push(c);
-            }
-        });
-    }
-
-    // Merge General Subjects (unique list)
-    if (classRules.generalSubjects && classRules.generalSubjects.length > 0) {
-        rules.generalSubjects = [...new Set([...rules.generalSubjects, ...classRules.generalSubjects])];
-    }
-
-    // Merge Group Subjects (by group)
-    if (classRules.groupSubjects) {
-        for (const [group, subs] of Object.entries(classRules.groupSubjects)) {
-            if (!rules.groupSubjects[group]) rules.groupSubjects[group] = [];
-            rules.groupSubjects[group] = [...new Set([...rules.groupSubjects[group], ...subs])];
-        }
-    }
-
-    // Merge Optional Subjects (by group)
-    if (classRules.optionalSubjects) {
-        for (const [group, subs] of Object.entries(classRules.optionalSubjects)) {
-            if (!rules.optionalSubjects[group]) rules.optionalSubjects[group] = [];
-            rules.optionalSubjects[group] = [...new Set([...rules.optionalSubjects[group], ...subs])];
-        }
-    }
-
-    // Identify student context
-    const studentGroup = student.group || '';
-
-    // Helper to find matching keys handling both English and Bengali variants
-    const findGroupKey = (rulesObj, targetGroup) => {
-        // Remove trailing "group", "groups", "গ্রুপ", "শাখা" words and normalize Spaces
-        const cleanGroup = (str) => normalizeText(str).replace(/\b(group|groups|গ্রুপ|শাখা)\b/g, '').trim();
-
-        const normTarget = cleanGroup(targetGroup);
-        return Object.keys(rulesObj).find(k => {
-            const normK = cleanGroup(k);
-
-            // Direct Match after cleaning
-            if (normK === normTarget) return true;
-
-            // Science variations
-            if ((normTarget.includes('বিজ্ঞান') || normTarget.includes('science')) &&
-                (normK.includes('বিজ্ঞান') || normK.includes('science'))) {
-                return true;
-            }
-            // Humanities variations (including arts)
-            const isHumanities = (s) => s.includes('মানবিক') || s.includes('humanities') || s.includes('arts') || s.includes('আর্টস');
-            if (isHumanities(normTarget) && isHumanities(normK)) {
-                return true;
-            }
-            // Business variations
-            if ((normTarget.includes('ব্যবসায়') || normTarget.includes('business')) &&
-                (normK.includes('ব্যবসায়') || normK.includes('business'))) {
-                return true;
-            }
-
-            return false;
-        });
-    };
-
-    const groupKeyGroupSubs = findGroupKey(rules.groupSubjects, studentGroup) || studentGroup;
-    const groupKeyOptSubs = findGroupKey(rules.optionalSubjects, studentGroup) || studentGroup;
-
-    const myGroupSubs = rules.groupSubjects[groupKeyGroupSubs] || [];
-    const myOptSubs = rules.optionalSubjects[groupKeyOptSubs] || [];
-
-    // Filter input subjects based on mapping (if mapping exists)
-    const hasMapping = rules.generalSubjects.length > 0 || Object.keys(rules.groupSubjects).length > 0 || Object.keys(rules.optionalSubjects).length > 0;
-
-    let filteredSubjects = subjects;
-    if (hasMapping) {
-        filteredSubjects = subjects.filter(s =>
-            rules.generalSubjects.includes(s) ||
-            myGroupSubs.includes(s) ||
-            myOptSubs.includes(s) ||
-            (student.subjects[s] && (
-                Number(student.subjects[s].total) > 0 ||
-                (student.subjects[s].written !== undefined && student.subjects[s].written !== '')
-            ))
-        );
-    }
-
-    // Determine which subjects are the student's optional subjects
-    let optionalSubNames = [];
-    filteredSubjects.forEach(s => {
-        if (myOptSubs.includes(s)) {
-            optionalSubNames.push(s);
-        }
-    });
-
-    // Handle specific Combined papers mismatch (e.g. if myOptSubs has "উচ্চতর গণিত ১ম ও ২য় পত্র" but student subjects are separate papers or combined)
-    // We do a robust check taking the 'normalizeText' strategy into account against the filtered subjects.
-
-    // Additional mapping logic: check if the subject matches any optional subject config ignoring last paper tags.
-    const normalizedOptSubs = myOptSubs.map(s => normalizeText(s));
-    filteredSubjects.forEach(s => {
-        const normS = normalizeText(s);
-        if (!optionalSubNames.includes(s) && normalizedOptSubs.some(opt => opt.includes(normS) || normS.includes(opt))) {
-            optionalSubNames.push(s);
-        }
-    });
-
-    console.log('--- DEBUG INFO ---');
-    console.log('Student:', student.name, 'Group:', studentGroup);
-    console.log('Group Key Resolved For Opt Subs:', groupKeyOptSubs);
-    console.log('My Group Subs:', myGroupSubs);
-    console.log('My Opt Subs:', myOptSubs);
-    console.log('Optional Sub Names:', optionalSubNames);
-
-    // Use filtered subjects for processing
-    const subjectsToProcess = filteredSubjects;
-
-    // Prepare processed subjects list (handle Combined Mode)
-    let processedSubjects = [];
-    if (rules.mode === 'combined' && rules.combinedSubjects.length > 0) {
-        const handledPapers = new Set();
-
-        rules.combinedSubjects.forEach(comb => {
-            const p1 = subjectsToProcess.find(s => s === comb.paper1);
-            const p2 = subjectsToProcess.find(s => s === comb.paper2);
-
-            if (p1 && p2) {
-                const d1 = student.subjects[p1] || {};
-                const d2 = student.subjects[p2] || {};
-                const c1 = getSubjectConfig(p1);
-                const c2 = getSubjectConfig(p2);
-                const options1 = {
-                    writtenPass: (c1.writtenPass !== undefined && c1.writtenPass !== '') ? Number(c1.writtenPass) : (c1.isFallback ? undefined : 0),
-                    mcqPass: (c1.mcqPass !== undefined && c1.mcqPass !== '') ? Number(c1.mcqPass) : (c1.isFallback ? undefined : 0),
-                    practicalPass: (c1.practicalPass !== undefined && c1.practicalPass !== '') ? Number(c1.practicalPass) : 0
-                };
-                const options2 = {
-                    writtenPass: (c2.writtenPass !== undefined && c2.writtenPass !== '') ? Number(c2.writtenPass) : (c2.isFallback ? undefined : 0),
-                    mcqPass: (c2.mcqPass !== undefined && c2.mcqPass !== '') ? Number(c2.mcqPass) : (c2.isFallback ? undefined : 0),
-                    practicalPass: (c2.practicalPass !== undefined && c2.practicalPass !== '') ? Number(c2.practicalPass) : 0
-                };
-
-                const s1 = determineStatus(d1, options1);
-                const s2 = determineStatus(d2, options2);
-
-                // Average marks
-                const combinedData = {
-                    written: ((parseFloat(d1.written) || 0) + (parseFloat(d2.written) || 0)) / 2,
-                    mcq: ((parseFloat(d1.mcq) || 0) + (parseFloat(d2.mcq) || 0)) / 2,
-                    practical: ((parseFloat(d1.practical) || 0) + (parseFloat(d2.practical) || 0)) / 2,
-                    total: ((parseFloat(d1.total) || 0) + (parseFloat(d2.total) || 0)) / 2,
-                    status: (s1 === 'ফেল' || s2 === 'ফেল' || s1 === 'অনুপস্থিত' || s2 === 'অনুপস্থিত') ? 'fail' : 'pass'
-                };
-
-                const maxTotal = (Number(c1.total || 100) + Number(c2.total || 100)) / 2;
-
-                const isOpt = optionalSubNames.includes(p1) || optionalSubNames.includes(p2);
-                let priority = 4;
-                if (isOpt) priority = 3;
-                else if (myGroupSubs.includes(p1) || myGroupSubs.includes(p2)) priority = 2;
-                else if (rules.generalSubjects.includes(p1) || rules.generalSubjects.includes(p2)) priority = 1;
-
-                processedSubjects.push({
-                    name: comb.combinedName,
-                    data: combinedData,
-                    maxTotal: maxTotal,
-                    options: {
-                        writtenPass: (options1.writtenPass + options2.writtenPass) / 2,
-                        mcqPass: (options1.mcqPass + options2.mcqPass) / 2,
-                        practicalPass: (options1.practicalPass + options2.practicalPass) / 2
-                    },
-                    isCombined: true,
-                    isOptional: isOpt,
-                    _typePriority: priority,
-                    _baseName: comb.combinedName
-                });
-                console.log('Combined Subject Processed:', comb.combinedName, 'isOptional:', optionalSubNames.includes(p1) || optionalSubNames.includes(p2));
-
-                handledPapers.add(p1);
-                handledPapers.add(p2);
-            }
-        });
-
-        // Add remaining subjects
-        subjectsToProcess.forEach(s => {
-            if (!handledPapers.has(s)) {
-                const data = student.subjects[s] || {};
-                const config = getSubjectConfig(s);
-                const options = {
-                    writtenPass: (config.writtenPass !== undefined && config.writtenPass !== '') ? Number(config.writtenPass) : (config.isFallback ? undefined : 0),
-                    mcqPass: (config.mcqPass !== undefined && config.mcqPass !== '') ? Number(config.mcqPass) : (config.isFallback ? undefined : 0),
-                    practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0
-                };
-                const isOpt = optionalSubNames.includes(s);
-                let priority = 4;
-                if (isOpt) priority = 3;
-                else if (myGroupSubs.includes(s)) priority = 2;
-                else if (rules.generalSubjects.includes(s)) priority = 1;
-
-                processedSubjects.push({
-                    name: s,
-                    data: data,
-                    maxTotal: parseInt(config.total) || 100,
-                    options: options,
-                    isCombined: false,
-                    isOptional: isOpt,
-                    _typePriority: priority,
-                    _baseName: s.replace(/১ম পত্র|২য় পত্র|১ম ও ২য় পত্র|1st paper|2nd paper|1st \& 2nd paper/gi, '').trim()
-                });
-            }
-        });
-    } else {
-        processedSubjects = subjectsToProcess.map(s => {
-            const data = student.subjects[s] || {};
-            const config = getSubjectConfig(s);
-
-            const options = {
-                writtenPass: (config.writtenPass !== undefined && config.writtenPass !== '') ? Number(config.writtenPass) : (config.isFallback ? undefined : 0),
-                mcqPass: (config.mcqPass !== undefined && config.mcqPass !== '') ? Number(config.mcqPass) : (config.isFallback ? undefined : 0),
-                practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0
-            };
-            const dynamicStatus = determineStatus(data, options);
-
-            const isOpt = optionalSubNames.includes(s);
-            let priority = 4;
-            if (isOpt) priority = 3;
-            else if (myGroupSubs.includes(s)) priority = 2;
-            else if (rules.generalSubjects.includes(s)) priority = 1;
-
-            return {
-                name: s,
-                data: { ...data, status: dynamicStatus },
-                maxTotal: parseInt(config.total) || 100,
-                options: options,
-                isCombined: false,
-                isOptional: isOpt,
-                _typePriority: priority,
-                _baseName: s.replace(/১ম পত্র|২য় পত্র|১ম ও ২য় পত্র|1st paper|2nd paper|1st \& 2nd paper/gi, '').trim()
-            };
-        });
-    }
-
-    // Sort processed subjects based on Subject Type and Name
-    // 1: Core/General, 2: Group, 3: Optional, 4: Other
-    processedSubjects.sort((a, b) => {
-        if (a._typePriority !== b._typePriority) {
-            return a._typePriority - b._typePriority;
-        }
-
-        // If same priority, sort by Base Name to keep 1st and 2nd papers together
-        if (a._baseName !== b._baseName) {
-            return a._baseName.localeCompare(b._baseName, 'bn');
-        }
-
-        // If exact same base name, sort by original name (naturally handles "১ম" vs "২য়")
-        return a.name.localeCompare(b.name, 'bn');
-    });
 
     // Calculate per-subject grades and grand totals
     let grandTotal = 0;
     let maxGrand = 0;
     let allPassed = true;
-    let coreGPASum = 0;
-    let coreSubjectCount = 0;
-    let optionalGP = 0;
+    let totalGradePointSum = 0;
 
-    const subjectRows = processedSubjects.map((item, idx) => {
-        const subj = item.name;
-        const data = item.data;
+    const subjectRows = subjects.map((subj, idx) => {
+        const data = student.subjects[subj] || {};
         const total = data.total || 0;
-        const maxTotal = item.maxTotal;
-
+        const config = state.subjectConfigs?.[subj] || { total: 100 };
+        const maxTotal = parseInt(config.total) || 100;
         grandTotal += total;
         maxGrand += maxTotal;
 
         const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-        let grade = getLetterGrade(pct);
-        let gp = getGradePoint(pct);
+        const grade = getLetterGrade(pct);
+        const gp = getGradePoint(pct);
+        totalGradePointSum += gp;
 
-        // GPA Logic: Identify Optional Subject
-        const isOptional = item.isOptional;
-
-        console.log('Subject Row:', subj, 'Total:', total, 'Grade:', grade, 'Status:', data.status, 'Is Optional:', isOptional);
-
-        // Individual Pass Consistency: Force F if status indicates failure or absence
-        const isFailed = (grade === 'F' || data.status === 'ফেল' || data.status === 'fail' || data.status === 'অনুপস্থিত');
-
-        if (isFailed) {
-            grade = 'F';
-            gp = 0;
-            // Optional Subject Logic Choice:
-            // In Combined Mode: failing optional does NOT fail the whole exam
-            // In Single Mode: failing optional DOES fail the exam (treated as mandatory)
-            if (!isOptional || rules.mode !== 'combined') {
-                allPassed = false;
-            }
-        }
-
-        if (isOptional) {
-            optionalGP = gp;
-        } else {
-            // Core subject (including ICT): include in average
-            coreGPASum += gp;
-            coreSubjectCount++;
-        }
-
-        const opts = item.options || {};
-        const isWrittenFail = (data.written !== undefined && data.written !== '' && opts.writtenPass > 0 && parseFloat(data.written) < opts.writtenPass);
-        const isMcqFail = (data.mcq !== undefined && data.mcq !== '' && opts.mcqPass > 0 && parseFloat(data.mcq) < opts.mcqPass);
-        const isPracticalFail = (data.practical !== undefined && data.practical !== '' && opts.practicalPass > 0 && parseFloat(data.practical) < opts.practicalPass);
-
-        const failStyle = 'font-weight: bold; color: #dc2626;';
+        if (grade === 'F' || data.status === 'ফেল' || data.status === 'fail') allPassed = false;
 
         return `
             <tr>
                 <td class="ms-td-sl">${idx + 1}</td>
-                <td class="ms-td-subject">${subj} ${isOptional ? '<span style="font-size: 0.7em; color: var(--secondary);"> (Optional)</span>' : ''}</td>
+                <td class="ms-td-subject">${subj}</td>
                 <td class="ms-td-num">${maxTotal}</td>
-                <td class="ms-td-num ${isWrittenFail ? 'ms-mark-fail' : ''}" style="${isWrittenFail ? failStyle : ''}">${data.written || data.written === 0 ? data.written : '-'}</td>
-                <td class="ms-td-num ${isMcqFail ? 'ms-mark-fail' : ''}" style="${isMcqFail ? failStyle : ''}">${data.mcq || data.mcq === 0 ? data.mcq : '-'}</td>
-                <td class="ms-td-num ${isPracticalFail ? 'ms-mark-fail' : ''}" style="${isPracticalFail ? failStyle : ''}">${data.practical || data.practical === 0 ? data.practical : '-'}</td>
-                <td class="ms-td-num ms-td-total" style="${isFailed ? failStyle : ''}">${total}</td>
-                <td class="ms-td-grade ${grade === 'F' ? 'ms-grade-fail' : ''}" style="${grade === 'F' ? failStyle : ''}">${grade}</td>
-                <td class="ms-td-gp" style="${gp === 0 ? failStyle : ''}">${gp.toFixed(2)}</td>
+                <td class="ms-td-num">${data.written || '-'}</td>
+                <td class="ms-td-num">${data.mcq || '-'}</td>
+                <td class="ms-td-num">${data.practical || '-'}</td>
+                <td class="ms-td-num ms-td-total">${total}</td>
+                <td class="ms-td-grade ${grade === 'F' ? 'ms-grade-fail' : ''}">${grade}</td>
+                <td class="ms-td-gp">${gp.toFixed(2)}</td>
             </tr>`;
     }).join('');
 
-    // Final GPA Calculation
-    // Base GPA = Core Sum / Core Count
-    let baseGPA = coreSubjectCount > 0 ? (coreGPASum / coreSubjectCount) : 0;
-    let finalGPA = baseGPA;
-    let optionalBonus = 0;
-
-    // Optional Subject Bonus (ONLY in Combined Mode)
-    if (rules.mode === 'combined') {
-        if (optionalGP >= 5) {
-            optionalBonus = 0.50;
-        } else if (optionalGP > 2) {
-            optionalBonus = (optionalGP - 2) / coreSubjectCount;
-        }
-    }
-
-    finalGPA += optionalBonus;
-
-    // Force Fail if any subject is F
-    if (!allPassed) {
-        baseGPA = 0;
-        finalGPA = 0;
-    }
-
-    if (finalGPA > 5.0) finalGPA = 5.0;
-    if (baseGPA > 5.0) baseGPA = 5.0;
-
-    const displayGPA = finalGPA.toFixed(2);
-    const overallGrade = getLetterGrade((finalGPA / 5) * 100);
-
-    // Decide what text to show for the GPA area based on mode
-    let gpaDisplayHtml = '';
-    if (rules.mode === 'combined' && optionalGP > 0) {
-        gpaDisplayHtml = `
-            <div style="font-size: 0.7em; margin-bottom: 2px;">Without Optional GPA:<br/>${baseGPA.toFixed(2)}</div>
-            <div style="font-size: 0.9em;">With Optional GPA:<br/><strong>${displayGPA}</strong></div>
-        `;
-    } else {
-        gpaDisplayHtml = `<strong>${displayGPA}</strong>`;
-    }
-
-    // Dynamic Comments GPA
-
+    const overallPct = maxGrand > 0 ? (grandTotal / maxGrand) * 100 : 0;
+    const overallGrade = getLetterGrade(overallPct);
+    const avgGPA = subjects.length > 0 ? (totalGradePointSum / subjects.length).toFixed(2) : '0.00';
     const resultText = allPassed ? 'পাস' : 'অকৃতকার্য';
     const resultClass = allPassed ? 'ms-result-pass' : 'ms-result-fail';
 
@@ -739,20 +372,12 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
     ).join('');
 
     const watermarkHtml = ms.watermarkUrl ?
-        `<img class="ms-watermark-bg" src="${ms.watermarkUrl}" style="opacity: ${ms.watermarkOpacity || 0.1};">` : '';
+        `<div class="ms-watermark-bg" style="background-image: url('${ms.watermarkUrl}'); opacity: ${ms.watermarkOpacity || 0.1};"></div>` : '';
 
     const todayDate = new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' });
 
     return `
-        <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" 
-             id="ms_page_${student.id}_${student.group}" 
-             data-student-id="${student.id}"
-             data-student-name="${student.name}"
-             data-student-group="${student.group || ''}"
-             data-student-class="${student.class || ''}"
-             data-student-session="${selectedSession || ''}"
-             data-exam-name="${examDisplayName || ''}"
-             style="--ms-primary: ${ms.primaryColor || '#4361ee'}; --ms-watermark-opacity: ${ms.watermarkOpacity || 0.1}; display: flex; flex-direction: column;">
+        <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" id="ms_page_${student.id}_${student.group}" style="--ms-primary: ${ms.primaryColor || '#4361ee'}; --ms-watermark-opacity: ${ms.watermarkOpacity || 0.1};">
             ${watermarkHtml}
             
             <div class="ms-actions-float no-print">
@@ -762,80 +387,44 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
             </div>
 
             <!-- Decorative Border -->
-            <div class="ms-border-frame" style="display: flex; flex-direction: column; flex-grow: 1;">
-                
-                <!-- Main Content Wrapper to push footer down -->
-                <div style="flex-grow: 1;">
+            <div class="ms-border-frame">
                 
                 <!-- Header Section -->
-                <div class="ms-header-section" style="padding-top: 5px;">
-                    <div class="ms-emblem" style="margin-bottom: 5px;">
+                <div class="ms-header-section">
+                    <div class="ms-emblem">
                         <i class="fas fa-graduation-cap"></i>
                     </div>
-                    <h1 class="ms-inst-name" style="margin-bottom: 2px;">${ms.institutionName || 'প্রতিষ্ঠানের নাম'}</h1>
-                    ${ms.institutionAddress ? `<p class="ms-inst-address" style="margin-top: 2px;">${ms.institutionAddress}</p>` : ''}
-                    <div class="ms-title-divider" style="margin: 8px auto;"></div>
-                    
-                    <!-- Royal Badge Container -->
-                    <div style="display: flex; justify-content: center; align-items: center; margin: 10px auto 20px auto; width: max-content; 
-                                border: 2px solid #b8860b; border-radius: 8px; 
-                                background: linear-gradient(180deg, rgba(255,250,230,0.8) 0%, rgba(255,255,255,1) 100%);
-                                padding: 10px 25px; box-shadow: 0 4px 6px rgba(184, 134, 11, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.8);">
-                                
-                        <!-- Left side: Marksheet Title -->
-                        <h2 class="ms-title-main" style="margin: 0; font-size: 1.35em; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; border: none !important; padding: 0 15px 0 0;">
-                            ${ms.headerLine1 || 'পরীক্ষার ফলাফল মার্কশীট'}
-                        </h2>
-                        
-                        <!-- Right side: Dynamic Exam Name highlighted in Blue -->
-                        <p class="ms-exam-name-display" style="margin: 0; font-size: 1.35em; font-weight: 800; color: #1d4ed8; letter-spacing: 0.5px; text-shadow: 0px 1px 1px rgba(29, 78, 216, 0.1); border: none !important; padding: 0 0 0 15px;">
-                            ${examDisplayName}
-                        </p>
-                    </div>
+                    <h1 class="ms-inst-name">${ms.institutionName || 'প্রতিষ্ঠানের নাম'}</h1>
+                    ${ms.institutionAddress ? `<p class="ms-inst-address">${ms.institutionAddress}</p>` : ''}
+                    <div class="ms-title-divider"></div>
+                    <h2 class="ms-title-main">${ms.headerLine1 || 'পরীক্ষার ফলাফল পত্র'}</h2>
+                    <p class="ms-title-sub">শিক্ষাবর্ষ: ${selectedSession}</p>
+                    <p class="ms-exam-name-display">${examDisplayName}</p>
                 </div>
 
                 <!-- Student Info Section -->
-                <div class="ms-student-section" style="margin-bottom: 12px; font-size: 0.95em;">
-                    
-                    <!-- Top Row: Roll and Name -->
-                    <div style="display: flex; gap: 20px; font-size: 1.1em; font-weight: 600; margin-bottom: 8px;">
-                        <div>
-                            রোল: <span style="color: var(--primary);">${student.id}</span>
+                <div class="ms-student-section">
+                    <div class="ms-info-grid">
+                        <div class="ms-info-item">
+                            <span class="ms-info-label">শিক্ষার্থীর নাম</span>
+                            <span class="ms-info-value ms-info-name">${student.name}</span>
                         </div>
-                        <div>
-                            নাম: <span style="color: var(--primary);">${student.name}</span>
+                        <div class="ms-info-item">
+                            <span class="ms-info-label">রোল নম্বর</span>
+                            <span class="ms-info-value">${student.id}</span>
                         </div>
-                    </div>
-                    
-                    <!-- Bottom Row: Class, Group, Session, GPA -->
-                    <div style="display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: center; border-top: 2px solid var(--border); border-bottom: 2px solid var(--border); padding: 8px 0; margin-top: 5px;">
-                        
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                             <span style="color: var(--text-secondary); font-weight: 500;">শ্রেণি:</span> 
-                             <span style="font-weight: 600; color: var(--text-main);">${student.class}</span>
+                        <div class="ms-info-item">
+                            <span class="ms-info-label">শ্রেণি</span>
+                            <span class="ms-info-value">${student.class}</span>
                         </div>
-
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                             <span style="color: var(--text-secondary); font-weight: 500;">বিভাগ:</span> 
-                             <span style="font-weight: 600; color: var(--text-main);">${student.group || '-'}</span>
+                        <div class="ms-info-item">
+                            <span class="ms-info-label">বিভাগ</span>
+                            <span class="ms-info-value">${student.group || '-'}</span>
                         </div>
-
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                             <span style="color: var(--text-secondary); font-weight: 500;">শিক্ষাবর্ষ:</span> 
-                             <span style="font-weight: 600; color: var(--text-main);">${student.session}</span>
+                        <div class="ms-info-item">
+                            <span class="ms-info-label">শিক্ষাবর্ষ</span>
+                            <span class="ms-info-value">${student.session}</span>
                         </div>
-
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            ${rules.mode === 'combined' && optionalGP > 0
-            ? `<span style="color: var(--text-secondary); font-weight: 500; font-size: 0.8em; line-height: 1.1;">Without<br/>Optional GPA:</span> 
-                                   <span style="font-weight: 600; margin-right: 10px;">${baseGPA.toFixed(2)}</span>
-                                   <span style="color: var(--text-secondary); font-weight: 500; font-size: 0.8em; line-height: 1.1;">With<br/>Optional GPA:</span> 
-                                   <span style="color: var(--primary); font-weight: 700; font-size: 1.1em;">${displayGPA}</span>`
-            : `<span style="color: var(--text-secondary); font-weight: 500;">GPA:</span> 
-                                   <span style="color: var(--primary); font-weight: 700; font-size: 1.1em;">${displayGPA}</span>`
-        }
-                        </div>
-
                     </div>
                 </div>
 
@@ -864,17 +453,16 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
                             <td colspan="3"></td>
                             <td class="ms-td-num ms-td-total">${grandTotal}</td>
                             <td class="ms-td-grade">${overallGrade}</td>
-                            <td class="ms-td-gp">${displayGPA}</td>
+                            <td class="ms-td-gp">${avgGPA}</td>
                         </tr>
                     </tfoot>
                 </table>
 
                 <!-- Result Summary -->
                 <div class="ms-result-section">
-                    <div class="ms-result-box" style="padding: 5px 10px;">
-                        <span class="ms-result-value ms-gpa-value" style="font-size: 1em; line-height: 1.2;">
-                            ${gpaDisplayHtml}
-                        </span>
+                    <div class="ms-result-box">
+                        <span class="ms-result-label">GPA</span>
+                        <span class="ms-result-value ms-gpa-value">${avgGPA}</span>
                     </div>
                     <div class="ms-result-box">
                         <span class="ms-result-label">গ্রেড</span>
@@ -903,11 +491,9 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
                         <span>F (০-৩২) = ০.০০</span>
                     </div>
                 </div>
-                
-                </div> <!-- END Flexible Main Content Area -->
 
-                <!-- Signatures pinned at bottom -->
-                <div class="ms-signatures-section" style="margin-top: auto; padding-top: 15px;">
+                <!-- Signatures -->
+                <div class="ms-signatures-section">
                     ${signatureHtml}
                 </div>
 
@@ -919,27 +505,6 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
             </div>
         </div>
     `;
-}
-
-/**
- * Robust Subject Configuration Lookup
- * Uses normalization to handle character variants
- */
-function getSubjectConfig(subjectName) {
-    if (!subjectName) return { total: 100, isFallback: true };
-    const configs = state.subjectConfigs || {};
-
-    // Quick match
-    if (configs[subjectName]) return { ...configs[subjectName], isFallback: false };
-
-    // Fuzzy/Normalized match
-    const normalizedTarget = normalizeText(subjectName);
-    const matchedKey = Object.keys(configs).find(key =>
-        key !== 'updatedAt' && normalizeText(key) === normalizedTarget
-    );
-
-    if (matchedKey) return { ...configs[matchedKey], isFallback: false };
-    return { total: 100, isFallback: true };
 }
 
 function getLetterGrade(pct) {
@@ -1193,10 +758,16 @@ function initMarksheetSettingsModal() {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (ev) => {
-                    marksheetSettings.watermarkUrl = ev.target.result;
+                reader.onload = async (ev) => {
+                    let base64 = ev.target.result;
+                    try {
+                        base64 = await compressImage(base64, 800, 800, 0.7);
+                    } catch (err) {
+                        console.warn("Watermark compression failed", err);
+                    }
+                    marksheetSettings.watermarkUrl = base64;
                     const preview = document.getElementById('msWatermarkPreview');
-                    if (preview) preview.innerHTML = `<img src="${ev.target.result}" style="max-width:80px; opacity:0.3; border-radius:6px;">`;
+                    if (preview) preview.innerHTML = `<img src="${base64}" style="max-width:80px; opacity:0.3; border-radius:6px;">`;
                     updateSettingsLivePreview(); // Update preview after upload
                 };
                 reader.readAsDataURL(file);
@@ -1292,8 +863,13 @@ function renderSignatureSlots() {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const url = ev.target.result;
+                reader.onload = async (ev) => {
+                    let url = ev.target.result;
+                    try {
+                        url = await compressImage(url, 500, 300, 0.7);
+                    } catch (err) {
+                        console.warn("Signature compression failed", err);
+                    }
                     card.dataset.url = url;
                     marksheetSettings.signatures[index].url = url;
                     card.querySelector('.sig-preview-thumb').innerHTML = `<img src="${url}" alt="Signature">`;
@@ -1318,29 +894,23 @@ window.printSingleMarksheet = function (containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
 
-    // Save current title and construct new title for PDF filename
-    const originalTitle = document.title;
-    const id = el.dataset.studentId || '';
-    const name = el.dataset.studentName || '';
-    const group = el.dataset.studentGroup || '';
-    const cls = el.dataset.studentClass || '';
-    const session = el.dataset.studentSession || '';
-    const exam = el.dataset.examName || '';
-    
-    // Format: Roll_Group_Name(Class-Session)_ExamName
-    document.title = `${id}_${group}_${name}(${cls}-${session})_${exam}`;
-
-    // Trigger printing classes
+    // We use a temporary class to hide everything except THIS specific marksheet
     document.body.classList.add('ms-printing-single');
     el.classList.add('ms-single-active');
+
+    // Hide all other ms-pages temporarily
+    const allPages = document.querySelectorAll('.ms-page');
+    allPages.forEach(p => {
+        if (p.id !== containerId) p.style.display = 'none';
+    });
 
     window.print();
 
     // Restoration
     const restore = () => {
-        document.title = originalTitle;
         document.body.classList.remove('ms-printing-single');
         el.classList.remove('ms-single-active');
+        allPages.forEach(p => p.style.display = '');
         window.removeEventListener('afterprint', restore);
     };
 
@@ -1353,33 +923,16 @@ window.printSingleMarksheet = function (containerId) {
  * Bulk Print - opens print dialog with only marksheets
  */
 function bulkPrint() {
-    const originalTitle = document.title;
-    
-    const cls = document.getElementById('msClass')?.value || '';
-    const session = document.getElementById('msSession')?.value || '';
-    const group = document.getElementById('msGroup')?.value || '';
-    const exam = document.getElementById('msExamName')?.value || 'Combined';
-    
-    // Construct bulk name: ক্লাস_সেশন_বিভাগ_পরীক্ষার নাম
-    const groupText = group === 'all' ? 'AllGroups' : group;
-    const examText = exam === '__all__' ? 'Combined' : exam;
-    
-    document.title = `${cls}_${session}_${groupText}_${examText}`;
-
     document.body.classList.add('ms-printing');
-
     window.print();
-
     // Remove class after print dialog closes
-    const restoreBulk = () => {
-        document.title = originalTitle;
+    window.addEventListener('afterprint', () => {
         document.body.classList.remove('ms-printing');
-        window.removeEventListener('afterprint', restoreBulk);
-    };
-
-    window.addEventListener('afterprint', restoreBulk, { once: true });
+    }, { once: true });
     // Fallback for browsers that don't fire afterprint
-    setTimeout(restoreBulk, 3000);
+    setTimeout(() => {
+        document.body.classList.remove('ms-printing');
+    }, 3000);
 }
 
 /**
@@ -1434,14 +987,5 @@ export async function initMarksheetManager() {
     }
 
     initMarksheetSettingsModal();
-
-    // Listen for data updates to refresh dropdowns
-    window.addEventListener('examDataUpdated', async () => {
-        const pageId = document.querySelector('.nav-item.active')?.dataset.page;
-        if (pageId === 'marksheet') {
-            await populateMSDropdowns();
-        }
-    });
-
     await populateMSDropdowns();
 }

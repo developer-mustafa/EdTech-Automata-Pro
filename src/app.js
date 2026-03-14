@@ -52,10 +52,11 @@ import { initAccessRequestUI, loadAccessRequests, initAccessRequestNotifications
 import { initStudentManager, loadStudents } from './js/modules/studentManager.js';
 import { initResultEntryManager, populateREDropdowns } from './js/modules/resultEntryManager.js';
 import { initMarksheetManager, populateMSDropdowns } from './js/modules/marksheetManager.js';
+import { initMarksheetRulesManager, populateMarksheetSettingsDropdowns } from './js/modules/marksheetRulesManager.js';
 import { initExamConfigManager, loadExamConfigs, populateExamNameDropdown } from './js/modules/examConfigManager.js';
 import { initAcademicSettingsManager } from './js/modules/academicSettingsManager.js';
 import { initAdmitCardManager, populateACDropdowns } from './js/modules/admitCardManager.js';
-import { initMarksheetRulesManager } from './js/modules/marksheetRulesManager.js';
+import { initRoutineManager } from './js/modules/routineManager.js';
 
 /**
  * Recalculate student grades/statuses using CURRENT subject config.
@@ -64,26 +65,17 @@ import { initMarksheetRulesManager } from './js/modules/marksheetRulesManager.js
 function recalculateStudentData(studentData, subjectName) {
     if (!studentData || studentData.length === 0) return studentData;
 
-    const subjects = state.subjectConfigs || {};
-    let subjectConfig = subjects[subjectName];
-    let isFallback = false;
-
+    let subjectConfig = state.subjectConfigs?.[subjectName] || {};
     if (!subjectConfig || Object.keys(subjectConfig).length === 0) {
-        // Fuzzy match using normalization
+        // Fuzzy match
         const normalizedName = normalizeText(subjectName);
-        const matchedKey = Object.keys(subjects).find(key =>
-            key !== 'updatedAt' && normalizeText(key) === normalizedName
-        );
-        if (matchedKey) {
-            subjectConfig = subjects[matchedKey];
-        } else {
-            subjectConfig = {};
-            isFallback = true;
-        }
+        const matchedKey = Object.keys(state.subjectConfigs || {})
+            .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedName);
+        subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
     }
 
     const cfgVal = (v) => {
-        if (v === null || v === undefined || v === '' || isNaN(Number(v))) return null;
+        if (v === null || v === undefined || v === '' || isNaN(Number(v))) return 0;
         return Number(v);
     };
 
@@ -93,9 +85,9 @@ function recalculateStudentData(studentData, subjectName) {
 
     // Build options for determineStatus
     const statusOptions = {
-        writtenPass: writtenPass !== null ? writtenPass : (isFallback ? FAILING_THRESHOLD.written : 0),
-        mcqPass: mcqPass !== null ? mcqPass : (isFallback ? FAILING_THRESHOLD.mcq : 0),
-        practicalPass: practicalPass !== null ? practicalPass : 0,
+        writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : FAILING_THRESHOLD.written,
+        mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : FAILING_THRESHOLD.mcq,
+        practicalPass: (subjectConfig.practicalPass !== undefined && subjectConfig.practicalPass !== '') ? Number(subjectConfig.practicalPass) : 0,
     };
 
     studentData.forEach(s => {
@@ -246,6 +238,7 @@ async function init() {
             if (pageId === 'result-entry') await populateREDropdowns();
             if (pageId === 'marksheet') await populateMSDropdowns();
             if (pageId === 'exam-config') await loadExamConfigs();
+            if (pageId === 'marksheet-settings') await populateMarksheetSettingsDropdowns();
             if (pageId === 'admit-card') await populateACDropdowns();
         });
         initTeacherAssignmentUI();
@@ -253,9 +246,10 @@ async function init() {
         initStudentManager();
         initResultEntryManager();
         initMarksheetManager();
+        initMarksheetRulesManager();
         initExamConfigManager();
         initAdmitCardManager();
-        initMarksheetRulesManager();
+        initRoutineManager();
 
         // Listen for exam data updates from Result Entry
         window.addEventListener('examDataUpdated', async () => {
@@ -263,10 +257,10 @@ async function init() {
             await fetchExams();
             renderSavedExams();
 
-            // If the currently loaded exam (or default exam) was updated, refresh dashboard views too
-            const targetExamId = localStorage.getItem('loadedExamId') || state.defaultExamId;
-            if (targetExamId) {
-                const updatedExam = state.savedExams.find(e => e.docId === targetExamId);
+            // If the currently loaded exam was updated, refresh dashboard views too
+            const loadedExamId = localStorage.getItem('loadedExamId');
+            if (loadedExamId) {
+                const updatedExam = state.savedExams.find(e => e.docId === loadedExamId);
                 if (updatedExam) {
                     state.studentData = updatedExam.studentData || [];
                     updateViews();
@@ -287,31 +281,20 @@ async function init() {
 function updateViews() {
     if (state.isLoading) return;
 
-    const subjects = state.subjectConfigs || {};
-    let subjectConfig = subjects[state.currentSubject]; // Exact match first
-    let isFallback = false;
-
+    let subjectConfig = state.subjectConfigs[state.currentSubject]; // Exact match first
     if (!subjectConfig) {
         // Fuzzy match using centralized normalizeText
         const normalizedCurrent = normalizeText(state.currentSubject);
-        const matchedKey = Object.keys(subjects).find(key =>
-            key !== 'updatedAt' && normalizeText(key) === normalizedCurrent
-        );
-        if (matchedKey) {
-            subjectConfig = subjects[matchedKey];
-        } else {
-            subjectConfig = {};
-            isFallback = true;
-        }
+        const matchedKey = Object.keys(state.subjectConfigs)
+            .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
+        subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
     }
 
-    const optVal = (v, defaultVal) => (v !== undefined && v !== '' && v !== null) ? Number(v) : defaultVal;
-
     const subjectOptions = {
-        writtenPass: optVal(subjectConfig.writtenPass, isFallback ? FAILING_THRESHOLD.written : 0),
-        mcqPass: optVal(subjectConfig.mcqPass, isFallback ? FAILING_THRESHOLD.mcq : 0),
-        practicalPass: optVal(subjectConfig.practicalPass, 0),
-        totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : (isFallback ? FAILING_THRESHOLD.total : 0),
+        writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : FAILING_THRESHOLD.written,
+        mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : FAILING_THRESHOLD.mcq,
+        practicalPass: (subjectConfig.practicalPass !== undefined && subjectConfig.practicalPass !== '') ? Number(subjectConfig.practicalPass) : 0,
+        totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : FAILING_THRESHOLD.total,
         criteria: state.currentChartType
     };
 
@@ -702,30 +685,18 @@ function initEventListeners() {
         }
     });
     elements.printBtn?.addEventListener('click', () => {
-        const subjects = state.subjectConfigs || {};
-        let subjectConfig = subjects[state.currentSubject];
-        let isFallback = false;
-
+        let subjectConfig = state.subjectConfigs[state.currentSubject];
         if (!subjectConfig) {
             const normalizedCurrent = normalizeText(state.currentSubject);
-            const matchedKey = Object.keys(subjects).find(key =>
-                key !== 'updatedAt' && normalizeText(key) === normalizedCurrent
-            );
-            if (matchedKey) {
-                subjectConfig = subjects[matchedKey];
-            } else {
-                subjectConfig = {};
-                isFallback = true;
-            }
+            const matchedKey = Object.keys(state.subjectConfigs)
+                .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
+            subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
         }
-
-        const optVal = (v, defaultVal) => (v !== undefined && v !== '' && v !== null) ? Number(v) : defaultVal;
-
         const subjectOptions = {
-            writtenPass: optVal(subjectConfig.writtenPass, isFallback ? FAILING_THRESHOLD.written : 0),
-            mcqPass: optVal(subjectConfig.mcqPass, isFallback ? FAILING_THRESHOLD.mcq : 0),
-            practicalPass: optVal(subjectConfig.practicalPass, 0),
-            totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : (isFallback ? FAILING_THRESHOLD.total : 0),
+            writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : FAILING_THRESHOLD.written,
+            mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : FAILING_THRESHOLD.mcq,
+            practicalPass: (subjectConfig.practicalPass !== undefined && subjectConfig.practicalPass !== '') ? Number(subjectConfig.practicalPass) : 0,
+            totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : FAILING_THRESHOLD.total,
         };
         printAllStudents(filterStudentData(state.studentData, {
             group: state.currentGroupFilter,
@@ -755,30 +726,18 @@ function initEventListeners() {
 
     // Print Failed Students
     document.getElementById('printFailedBtn')?.addEventListener('click', () => {
-        const subjects = state.subjectConfigs || {};
-        let subjectConfig = subjects[state.currentSubject];
-        let isFallback = false;
-
+        let subjectConfig = state.subjectConfigs[state.currentSubject];
         if (!subjectConfig) {
             const normalizedCurrent = normalizeText(state.currentSubject);
-            const matchedKey = Object.keys(subjects).find(key =>
-                key !== 'updatedAt' && normalizeText(key) === normalizedCurrent
-            );
-            if (matchedKey) {
-                subjectConfig = subjects[matchedKey];
-            } else {
-                subjectConfig = {};
-                isFallback = true;
-            }
+            const matchedKey = Object.keys(state.subjectConfigs)
+                .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
+            subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
         }
-
-        const optVal = (v, defaultVal) => (v !== undefined && v !== '' && v !== null) ? Number(v) : defaultVal;
-
         const subjectOptions = {
-            writtenPass: optVal(subjectConfig.writtenPass, isFallback ? FAILING_THRESHOLD.written : 0),
-            mcqPass: optVal(subjectConfig.mcqPass, isFallback ? FAILING_THRESHOLD.mcq : 0),
-            practicalPass: optVal(subjectConfig.practicalPass, 0),
-            totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : (isFallback ? FAILING_THRESHOLD.total : 0),
+            writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : FAILING_THRESHOLD.written,
+            mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : FAILING_THRESHOLD.mcq,
+            practicalPass: (subjectConfig.practicalPass !== undefined && subjectConfig.practicalPass !== '') ? Number(subjectConfig.practicalPass) : 0,
+            totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : FAILING_THRESHOLD.total,
         };
         printFailedStudents(filterStudentData(state.studentData, {
             group: state.currentGroupFilter,

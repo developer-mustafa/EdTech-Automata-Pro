@@ -71,7 +71,7 @@ function renderUsers(users) {
     }).join('');
 
     // Attach listeners to selects
-    elements.userListBody.querySelectorAll('.role-select-premium').forEach(select => {
+    elements.userListBody.querySelectorAll('.role-select').forEach(select => {
         select.addEventListener('change', async (e) => {
             const uid = e.target.dataset.uid;
             const userName = e.target.dataset.name;
