@@ -296,31 +296,52 @@ const AccessControlManager = {
                     row.classList.toggle('is-inactive', !active);
                 }
 
-                const success = await toggleTeacherPermission(uid, !active);
+                const success = await this.toggleTeacherPermission(uid, !active);
                 if (success) {
-                    showToast(active ? 'পারমিশন সক্রিয় করা হয়েছে' : 'পারমিশন নিস্ক্রিয় করা হয়েছে', 'success');
-                    // Update stats counters
-                    if (statActive) statActive.textContent = parseInt(statActive.textContent) + (active ? 1 : -1);
-                    if (statInactive) statInactive.textContent = parseInt(statInactive.textContent) + (active ? -1 : 1);
+                    showNotification(active ? 'পারমিশন সক্রিয় করা হয়েছে' : 'পারমিশন নিস্ক্রিয় করা হয়েছে', 'success');
+                    // Update state and refresh UI for perfect accuracy
+                    if (state.accessControl.teacherPermissions[uid]) {
+                        state.accessControl.teacherPermissions[uid].disabled = !active;
+                    } else {
+                        state.accessControl.teacherPermissions[uid] = { disabled: !active };
+                    }
+                    
+                    // Re-calculate and update stats UI immediately
+                    const currentStatsSource = this.allTeachers || teachers;
+                    const reActive = currentStatsSource.filter(t => !state.accessControl.teacherPermissions[t.uid]?.disabled).length;
+                    const reInactive = currentStatsSource.length - reActive;
+
+                    if (statActive) statActive.textContent = reActive;
+                    if (statInactive) statInactive.textContent = reInactive;
                 } else {
-                    e.target.checked = !active; // Revert
+                    e.target.checked = !active; // Revert checkbox
                     if (row) {
                         row.classList.toggle('is-active', !active);
                         row.classList.toggle('is-inactive', active);
                     }
-                    showToast('পারমিশন আপডেট করতে সমস্যা হয়েছে', 'error');
+                    showNotification('পারমিশন আপডেট করতে সমস্যা হয়েছে', 'error');
                 }
             });
         });
     },
 
     async toggleTeacherPermission(uid, disabled) {
-        const updatedPermissions = {
-            ...state.accessControl.teacherPermissions,
-            [uid]: { disabled }
-        };
-        await updateAccessControlSettings({ teacherPermissions: updatedPermissions });
-        showNotification('শিক্ষকের অনুমতি আপডেট করা হয়েছে');
+        try {
+            const updatedPermissions = {
+                ...(state.accessControl.teacherPermissions || {}),
+                [uid]: { disabled }
+            };
+            await updateAccessControlSettings({ teacherPermissions: updatedPermissions });
+            
+            // Sync local state immediately
+            if (!state.accessControl.teacherPermissions) state.accessControl.teacherPermissions = {};
+            state.accessControl.teacherPermissions[uid] = { disabled };
+            
+            return true;
+        } catch (error) {
+            console.error('Toggle permission error:', error);
+            return false;
+        }
     },
 
     filterTeachers(query) {

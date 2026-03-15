@@ -1114,7 +1114,7 @@ function checkMarkEntryPermission() {
 
     // 3. Individual Teacher Permission
     if (state.userRole === 'teacher' && state.currentUser) {
-        const teacherPerm = ac.teacherPermissions[state.currentUser.uid];
+        const teacherPerm = (ac.teacherPermissions || {})[state.currentUser.uid];
         if (teacherPerm && teacherPerm.disabled) {
             return { 
                 allowed: false, 
