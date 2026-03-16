@@ -792,7 +792,7 @@
             <h2 class="card-title"><i class="fas fa-file-alt"></i> ডাইনামিক মার্কশীট</h2>
             <div class="header-actions-group">
               <button id="marksheetSettingsBtn" class="dm-btn dm-report super-admin-only" style="display:none;">
-                <i class="fas fa-cog"></i> <span class="dm-btn-text">সেটিংস</span>
+                <i class="fas fa-cog"></i> <span class="dm-btn-text">মার্কশীট ভিউ সেটিংস</span>
               </button>
             </div>
           </div>
@@ -1647,7 +1647,12 @@
         <div class="modal-header">
           <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
             <h2><i class="fas fa-file-invoice"></i> মার্কশীট কনফিগারেশন</h2>
-            <span class="close" id="closeMarksheetSettingsModal">&times;</span>
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <button id="toggleMSPreviewMode" class="dm-btn dm-report btn-sm" title="ইনস্ট্যান্ট প্রিভিউ দেখুন/বন্ধ করুন">
+                <i class="fas fa-eye"></i> পূর্ণাঙ্গ প্রিভিউ
+              </button>
+              <span class="close" id="closeMarksheetSettingsModal">&times;</span>
+            </div>
           </div>
         </div>
 

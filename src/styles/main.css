@@ -10797,7 +10797,7 @@ body.is-super-admin td.admin-only {
 }
 
 .config-main {
-  flex: 1.2;
+  flex: 2; /* Expanded to take more space when preview is hidden */
   background: white;
   padding: 30px;
   border-right: 1px solid var(--border-color);
@@ -10807,13 +10807,34 @@ body.is-super-admin td.admin-only {
 }
 
 .config-preview-panel {
-  flex: 1.5;
+  display: none; /* Hidden by default */
+  flex: 1;
   background: var(--bg-color, #f8fafc);
-  display: flex;
   flex-direction: column;
   padding: 0;
   max-height: 80vh;
   overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Instant Preview Mode Styles - Refined */
+.preview-mode-active .config-sidebar,
+.preview-mode-active .config-main {
+  display: none !important;
+}
+
+.preview-mode-active .config-preview-panel {
+  display: flex !important; /* Show only when active */
+  width: 100%;
+  max-height: 85vh;
+}
+
+.preview-mode-active #msSettingsLivePreview {
+  --ms-preview-scale: 0.9 !important; /* Larger scale for full-screen mode */
+}
+
+.preview-mode-active .preview-container-inner {
+  padding: 30px;
 }
 
 .preview-header {

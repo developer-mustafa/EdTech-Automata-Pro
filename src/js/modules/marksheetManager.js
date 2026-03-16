@@ -837,6 +837,29 @@ function initMarksheetSettingsModal() {
         });
     }
 
+    // Instant Preview Toggle Logic
+    const togglePreviewBtn = document.getElementById('toggleMSPreviewMode');
+    if (togglePreviewBtn) {
+        togglePreviewBtn.addEventListener('click', () => {
+            const isPreviewActive = modal.classList.toggle('preview-mode-active');
+            
+            // Update button text and icon
+            if (isPreviewActive) {
+                togglePreviewBtn.innerHTML = '<i class="fas fa-edit"></i> কনফিগারেশনে ফিরুন';
+                togglePreviewBtn.classList.remove('dm-report');
+                togglePreviewBtn.classList.add('dm-secondary');
+                // Ensure preview is updated when entering preview mode
+                updateSettingsLivePreview();
+            } else {
+                togglePreviewBtn.innerHTML = '<i class="fas fa-eye"></i> পূর্ণাঙ্গ প্রিভিউ';
+                togglePreviewBtn.classList.remove('dm-secondary');
+                togglePreviewBtn.classList.add('dm-report');
+            }
+
+            showNotification(isPreviewActive ? 'ইনস্ট্যান্ট প্রিভিউ মোড সক্রিয়' : 'কনফিগারেশন মোড সক্রিয়');
+        });
+    }
+
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
