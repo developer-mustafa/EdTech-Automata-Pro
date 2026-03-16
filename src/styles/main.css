@@ -12633,75 +12633,44 @@ input:checked + .toggle-slider:before {
 }
 
 .ac-tab-pill.active {
-    color: #634604; /* Deeper, clearer gold for visibility */
-    background: rgba(191, 149, 63, 0.12); /* Slightly more opaque for better contrast */
+    color: #634604;
+    background: rgba(191, 149, 63, 0.12);
     border-radius: 8px;
-    font-weight: 700; /* Bolder text for clarity */
-    border-bottom-color: transparent;
+    font-weight: 700;
     box-shadow: 0 4px 15px rgba(191, 149, 63, 0.2);
-    transform: translateY(-1px); /* Slight lift */
+    transform: translateY(-1px);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none; /* Reset border to use pseudo-element instead */
 }
 
-.ac-tab-pill.active:hover {
-    transform: translateY(-2px) scale(1.02); /* More lift and scale on hover */
-    background: rgba(191, 149, 63, 0.18);
-    box-shadow: 0 6px 25px rgba(191, 149, 63, 0.3);
-}
-
-/* Premium "All-Around" Active State with Animated Dashed Border */
-.ac-tab-pill.active::after {
-    content: '';
+/* Premium Solid Animated Border */
+.ac-tab-pill.active::before {
+    content: "";
     position: absolute;
-    inset: -2px;
+    inset: -2px; /* Slight offset for border thickness */
     border-radius: 10px;
-    padding: 2px;
-    background: linear-gradient(90deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+    padding: 2px; /* Border thickness */
+    background: linear-gradient(90deg, #bf953f, #fcf6ba, #bf953f);
+    background-size: 200% auto;
     -webkit-mask: 
-       linear-gradient(#fff 0 0) content-box, 
-       linear-gradient(#fff 0 0);
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask: 
-       linear-gradient(#fff 0 0) content-box, 
-       linear-gradient(#fff 0 0);
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
     mask-composite: exclude;
-    background-size: 200% 200%;
-    animation: royalGoldShine 3s linear infinite;
+    animation: borderFlow 3s linear infinite;
     pointer-events: none;
-    z-index: -1;
-    transition: opacity 0.3s ease;
-}
-
-.ac-tab-pill.active:hover::after {
-    animation: royalGoldShine 1.5s linear infinite; /* Speed up on hover */
-    opacity: 1;
-}
-
-/* Subtle Animated Dotted Path */
-.ac-tab-pill.active::before {
-    content: '';
-    position: absolute;
-    border: 2.5px dotted #b38728;
-    animation: pulseDots 2s ease-in-out infinite;
-    inset: -6px;
-    border-radius: 12px;
-    transition: all 0.3s ease;
 }
 
 .ac-tab-pill.active:hover::before {
-    inset: -8px; /* Expand dots on hover */
-    opacity: 0.8;
+    animation-duration: 1.5s; /* Speed up on hover */
 }
 
-@keyframes pulseDots {
-    0%, 100% { opacity: 0.25; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.03); }
-}
-
-@keyframes royalGoldShine {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+@keyframes borderFlow {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
 }
 
 /* Dark Mode Overrides for Tabs */
@@ -12719,14 +12688,8 @@ input:checked + .toggle-slider:before {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 10px rgba(191, 149, 63, 0.1);
 }
 
-.dark-mode .ac-tab-pill.active:hover {
-    background: rgba(191, 149, 63, 0.25);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(191, 149, 63, 0.2);
-}
-
 .dark-mode .ac-tab-pill.active::before {
-    border-color: #fcf6ba;
-    opacity: 0.5;
+    background: linear-gradient(90deg, #b38728, #fcf6ba, #b38728); /* Adjust colors for dark mode */
 }
 
 .ac-tab-panel {
