@@ -8874,15 +8874,16 @@ body.is-super-admin td.admin-only {
 .ms-page {
   position: relative;
   width: 210mm;
-  min-height: 297mm;
-  margin: 20px auto;
+  height: 297mm;
+  padding: 0;
+  margin: 0 auto;
   background: #fff;
   color: #1a1a1a;
   font-family: 'Noto Sans Bengali', 'Kalpurush', sans-serif;
   font-size: 11pt;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   page-break-after: always;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .ms-watermark-bg {
@@ -8903,12 +8904,20 @@ body.is-super-admin td.admin-only {
 .ms-border-frame {
   position: relative;
   z-index: 1;
-  margin: 8mm;
-  padding: 10mm 12mm;
+  margin: 6mm auto !important;
+  padding: 5mm 8mm 2mm; /* Reduced bottom padding */
   border: 3px solid #0d5e2e;
   border-radius: 2px;
-  min-height: calc(297mm - 16mm);
+  height: calc(100% - 12mm);
+  width: calc(100% - 12mm);
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.ms-flex-spacer {
+  flex: 1;
+  min-height: 10px;
 }
 
 .ms-border-frame::before {
@@ -9214,8 +9223,11 @@ body.is-super-admin td.admin-only {
 .ms-signatures-section {
   display: flex;
   justify-content: space-between;
-  margin-top: 40px;
-  padding: 0 10px;
+  margin-top: auto !important;
+  padding-top: 15px;
+  padding-bottom: 2px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .ms-sig-block {
@@ -9420,6 +9432,42 @@ body.is-super-admin td.admin-only {
   @page {
     size: A4;
     margin: 0;
+  }
+
+  body {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Watermark Visibility & Print Safety */
+  .ms-border-frame,
+  .ms-table, 
+  .ms-table th, 
+  .ms-table td,
+  .ms-student-section,
+  .ms-result-section,
+  .ms-grade-scale {
+    background-color: transparent !important;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .ms-page {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    page-break-inside: avoid;
+    overflow: hidden;
+  }
+
+  .ms-border-frame {
+    margin: 6mm auto !important;
+    height: calc(100% - 12mm) !important;
+    width: calc(100% - 12mm) !important;
   }
 }
 
@@ -11122,10 +11170,72 @@ body.is-super-admin td.admin-only {
   font-family: 'Nikosh', 'Times New Roman', serif !important;
 }
 
+/* Base Header Layout */
+.ms-header-section {
+  text-align: center;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.ms-header-main-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 5px;
+}
+
+.ms-inst-logo {
+  height: 65px;
+  width: 65px;
+  object-fit: contain;
+  border-radius: 50%;
+  border: 1px solid #c5a059;
+  padding: 2px;
+}
+
+.ms-inst-details {
+  text-align: left;
+}
+
+.ms-page .ms-inst-name {
+  color: #1a1a1a;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ms-inst-address {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+.ms-header-pill {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  border: 1.2px solid #c5a059; /* Elegant Bronze/Gold */
+  border-radius: 10px;
+  padding: 6px 20px;
+  max-width: 650px;
+  margin: 8px auto;
+  background: transparent;
+}
+
+.ms-pill-left, .ms-pill-right {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #1a1a1a;
+}
+
 /* 2. Themes */
 /* Classic (Default) */
 .ms-page.theme-classic .ms-header-section {
-  border-bottom: 2px solid var(--ms-primary);
+  border-bottom: none; /* Removed default border for new design */
 }
 
 /* Modern Theme - Sleek & High Contrast */
@@ -11442,6 +11552,36 @@ body.is-super-admin td.admin-only {
   .ms-actions-float {
     display: none !important;
   }
+  .ms-table, .ms-table th, .ms-table td {
+    background-color: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+.ms-page .ms-info-grid {
+  gap: 5px 20px;
+}
+
+.ms-student-section {
+  padding: 10px 15px;
+  margin: 10px 0;
+  background: rgba(var(--primary-rgb), 0.02);
+  border-radius: 8px;
+}
+
+.ms-result-section {
+  margin: 15px 0;
+  gap: 12px;
+}
+
+.ms-signatures-section {
+  margin-top: 30px;
+}
+
+.ms-footer {
+  margin-top: 15px;
+  padding-top: 10px;
 }
 
 .ms-btn-action {

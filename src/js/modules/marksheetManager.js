@@ -8,6 +8,7 @@ import { getSavedExams, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits } from '../utils.js';
 import { compressImage } from '../imageUtils.js';
+import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 
 let marksheetSettings = {
     institutionName: '',
@@ -229,7 +230,56 @@ async function generateMarksheets() {
     }
 
     const subjectsSet = new Set(relevantExams.map(e => e.subject).filter(Boolean));
-    const subjects = [...subjectsSet];
+    let subjects = [...subjectsSet];
+
+    // --- Hierarchical Subject Sorting Logic ---
+    try {
+        await loadMarksheetRules();
+        const rules = currentMarksheetRules[cls] || currentMarksheetRules["All"] || {};
+        
+        const generalSubjects = rules.generalSubjects || [];
+        const groupSubjects = (rules.groupSubjects || {})[selectedGroup] || [];
+        // Flatten all group subjects if "all" groups selected
+        const allGroupSubs = selectedGroup === 'all' 
+            ? Object.values(rules.groupSubjects || {}).flat() 
+            : groupSubjects;
+            
+        const optionalSubjects = (rules.optionalSubjects || {})[selectedGroup] || [];
+        const allOptSubs = selectedGroup === 'all'
+            ? Object.values(rules.optionalSubjects || {}).flat()
+            : optionalSubjects;
+
+        subjects.sort((a, b) => {
+            const getScore = (sub) => {
+                // 1. General Subjects (Highest Priority)
+                const genIdx = generalSubjects.indexOf(sub);
+                if (genIdx !== -1) return 1000 + genIdx;
+
+                // Hardcoded fallback for common general subjects if not in rules
+                const hardcodedGen = ['বাংলা ১ম পত্র', 'বাংলা ২য় পত্র', 'ইংরেজি ১ম পত্র', 'ইংরেজি ২য় পত্র', 'তথ্য ও যোগাযোগ প্রযুক্তি'];
+                const hardIdx = hardcodedGen.indexOf(sub);
+                if (hardIdx !== -1) return 1100 + hardIdx;
+
+                // 2. Group Subjects
+                if (allGroupSubs.includes(sub)) return 2000;
+
+                // 3. Optional Subjects
+                if (allOptSubs.includes(sub)) return 3000;
+
+                // 4. Everything else
+                return 4000;
+            };
+
+            const scoreA = getScore(a);
+            const scoreB = getScore(b);
+
+            if (scoreA !== scoreB) return scoreA - scoreB;
+            return a.localeCompare(b, 'bn'); // Alphabetical within same tier
+        });
+    } catch (err) {
+        console.warn("Subject sorting failed, using default order", err);
+    }
+    // ------------------------------------------
 
     // Build student aggregation
     const studentAgg = new Map();
@@ -398,15 +448,19 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
                 
                 <!-- Header Section -->
                 <div class="ms-header-section">
-                    <div class="ms-emblem">
-                        <i class="fas fa-graduation-cap"></i>
+                    <div class="ms-header-main-info">
+                        ${ms.watermarkUrl ? `<img src="${ms.watermarkUrl}" class="ms-inst-logo" alt="College Logo">` : 
+                          `<div class="ms-emblem"><i class="fas fa-graduation-cap"></i></div>`}
+                        <div class="ms-inst-details">
+                            <h1 class="ms-inst-name">${ms.institutionName || 'প্রতিষ্ঠানের নাম'}</h1>
+                            ${ms.institutionAddress ? `<p class="ms-inst-address">${ms.institutionAddress}</p>` : ''}
+                        </div>
                     </div>
-                    <h1 class="ms-inst-name">${ms.institutionName || 'প্রতিষ্ঠানের নাম'}</h1>
-                    ${ms.institutionAddress ? `<p class="ms-inst-address">${ms.institutionAddress}</p>` : ''}
-                    <div class="ms-title-divider"></div>
-                    <h2 class="ms-title-main">${ms.headerLine1 || 'পরীক্ষার ফলাফল পত্র'}</h2>
-                    <p class="ms-title-sub">শিক্ষাবর্ষ: ${selectedSession}</p>
-                    <p class="ms-exam-name-display">${examDisplayName}</p>
+                    
+                    <div class="ms-header-pill">
+                        <div class="ms-pill-left">${ms.headerLine1 || 'পরীক্ষার ফলাফল পত্র'}</div>
+                        <div class="ms-pill-right">${selectedSession} &nbsp; ${examDisplayName}</div>
+                    </div>
                 </div>
 
                 <!-- Student Info Section -->
@@ -500,6 +554,7 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
                 </div>
 
                 <!-- Signatures -->
+                <div class="ms-flex-spacer"></div>
                 <div class="ms-signatures-section">
                     ${signatureHtml}
                 </div>
