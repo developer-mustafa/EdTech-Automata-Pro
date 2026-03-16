@@ -661,10 +661,16 @@ async function generateCards(type) {
     await fetchRoutines();
 
     const allExams = await getSavedExams();
-    const relevantExams = allExams.filter(e => e.class === cls && e.session === session && e.name === examName);
+    let relevantExams = allExams.filter(e => e.class === cls && e.session === session && e.name === examName);
+
+    // If no exams found for this specific exam name, fall back to ANY exam in this class/session to get the student list
+    if (relevantExams.length === 0) {
+        relevantExams = allExams.filter(e => e.class === cls && e.session === session);
+    }
 
     if (relevantExams.length === 0) {
-        showNotification('নির্বাচিত তথ্য অনুযায়ী কোনো শিক্ষার্থী পাওয়া যায়নি', 'error');
+        // Only show notification if NO exams exist for this class/session at all
+        showNotification('নির্বাচিত শ্রেণি ও সেশনে কোনো তথ্য পাওয়া যায়নি', 'warning');
         return;
     }
 
