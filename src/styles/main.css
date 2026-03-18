@@ -8591,10 +8591,10 @@ body:not(.dark-mode) .nav-btn {
 }
 
 .result-entry-table input.mark-pass {
-  border-color: #22c55e;
-  background: rgba(34, 197, 94, 0.08);
-  color: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15), inset 0 1px 3px rgba(34, 197, 94, 0.1);
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.15);
+  color: #15803d;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25), inset 0 1px 3px rgba(22, 163, 74, 0.12);
   font-weight: 700;
 }
 
@@ -8658,6 +8658,88 @@ body:not(.dark-mode) .nav-btn {
   font-weight: 600;
 }
 
+/* Pass Mark Info in Exam Info Bar */
+.re-pass-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  color: var(--primary);
+  font-size: 0.8rem;
+}
+
+.re-pass-info > i {
+  color: #22c55e;
+  font-size: 0.85rem;
+}
+
+.re-pass-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  white-space: nowrap;
+}
+
+.re-pass-badge i {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.dark-mode .re-pass-badge {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+/* Table Header Pass Mark Hints */
+.re-th-pass-hint {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+  border: none;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.re-th-pass-hint:hover {
+  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.4);
+  transform: translateY(-1px);
+}
+
+.dark-mode .re-th-pass-hint {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #052e16;
+  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.25);
+  text-shadow: none;
+}
+
+@media (max-width: 600px) {
+  .re-pass-info {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .re-th-pass-hint {
+    font-size: 0.6rem;
+  }
+}
+
 /* Empty State Message */
 .empty-state-msg {
   text-align: center;
@@ -8700,6 +8782,15 @@ body:not(.dark-mode) .nav-btn {
   background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
   background-size: 20px 20px;
   --ms-main-scale: 1;
+}
+
+@media print {
+  .marksheet-preview-area {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
 }
 
 .marksheet-preview-area .ms-page {
@@ -8904,10 +8995,10 @@ body.is-super-admin td.admin-only {
 /* Decorative Border Frame */
 .ms-border-frame {
   position: absolute;
-  top: 2.2mm;
-  left: 2.2mm;
-  bottom: 2.2mm;
-  right: 2.2mm;
+  top: 2.1mm;
+  left: 2.1mm;
+  bottom: 2.1mm;
+  right: 2.1mm;
   z-index: 1;
   padding: 2mm 3mm 1mm; /* Minimized padding */
   border: 1.5px solid #0d5e2e; /* Thinner border */
@@ -8919,7 +9010,7 @@ body.is-super-admin td.admin-only {
 
 .ms-flex-spacer {
   flex: 1;
-  min-height: 10px;
+  min-height: 2px;
 }
 
 .ms-border-frame::before {
@@ -8934,18 +9025,18 @@ body.is-super-admin td.admin-only {
 /* Header Section */
 .ms-header-section {
   text-align: center;
-  margin-bottom: 12px; /* Tightened from 18px */
-  padding-bottom: 6px; /* Tightened from 10px */
+  margin-bottom: 2px; 
+  padding-bottom: 2px; 
 }
 
 .ms-emblem {
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   color: #0d5e2e;
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 }
 
 .ms-inst-name {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 900;
   color: #0d5e2e;
   margin: 0;
@@ -8953,46 +9044,46 @@ body.is-super-admin td.admin-only {
 }
 
 .ms-inst-address {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #555;
-  margin: 3px 0 0;
+  margin: 2px 0 0;
 }
 
 .ms-title-divider {
   width: 60px;
-  height: 3px;
+  height: 2px;
   background: linear-gradient(90deg, #b8860b, #daa520, #b8860b);
-  margin: 10px auto;
+  margin: 6px auto;
   border-radius: 2px;
 }
 
 .ms-title-main {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #1a1a1a;
-  margin: 0 0 2px;
-  padding: 4px 24px;
+  margin: 0 0 1px;
+  padding: 3px 20px;
   display: inline-block;
   border-bottom: 2px double #0d5e2e;
 }
 
 .ms-title-sub {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #666;
-  margin: 4px 0 0;
+  margin: 2px 0 0;
 }
 
 .ms-exam-name-display {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #0d5e2e;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
 }
 
 /* Student Info Section */
 .ms-student-section {
-  margin: 8px 0; /* Tightened from 12px */
-  padding: 8px 12px; /* Tightened */
+  margin: 2px 0; 
+  padding: 4px 10px; 
   background: #f8fdf8;
   border: 1px solid #c8e6c9;
   border-radius: 4px;
@@ -9001,7 +9092,7 @@ body.is-super-admin td.admin-only {
 .ms-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px 20px;
+  gap: 3px 20px;
 }
 
 .ms-info-grid .ms-info-item:first-child {
@@ -9012,13 +9103,13 @@ body.is-super-admin td.admin-only {
   display: flex;
   gap: 8px;
   align-items: baseline;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .ms-info-label {
   font-weight: 700;
   color: #333;
-  min-width: 80px;
+  min-width: 70px;
 }
 
 .ms-info-label::after {
@@ -9039,18 +9130,18 @@ body.is-super-admin td.admin-only {
 .ms-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 4px 0; /* Tightest margin */
-  font-size: 0.75rem; /* Reduced to ensure no wrap */
+  margin: 2px 0; 
+  font-size: 0.72rem; 
   table-layout: auto; 
 }
 
 .ms-table th,
 .ms-table td {
   border: 1px solid #555;
-  padding: 2px 2px; /* Minimized padding */
+  padding: 1.5px 1.5px; 
   text-align: center;
   vertical-align: middle;
-  white-space: nowrap; /* No wrapping allowed */
+  white-space: nowrap; 
 }
 
 .ms-table thead tr {
@@ -9060,8 +9151,8 @@ body.is-super-admin td.admin-only {
 
 .ms-table th {
   font-weight: 700;
-  font-size: 0.78rem;
-  padding: 6px 4px;
+  font-size: 0.75rem;
+  padding: 4px 4px;
   white-space: nowrap;
 }
 
@@ -9168,7 +9259,7 @@ body.is-super-admin td.admin-only {
 
 .ms-row-total td {
   border-top: 2px solid #0d5e2e;
-  padding: 7px 6px;
+  padding: 4px 4px;
 }
 
 .ms-td-total-label {
@@ -9181,18 +9272,18 @@ body.is-super-admin td.admin-only {
 .ms-result-section {
   display: flex;
   justify-content: center;
-  gap: 10px; /* Tightened gap */
-  margin: 10px 0; /* Tightened from 14px */
+  gap: 8px; 
+  margin: 5px 0; 
   flex-wrap: wrap;
 }
 
 .ms-result-box {
   text-align: center;
-  padding: 8px 16px;
+  padding: 4px 12px;
   border: 1px solid #c8e6c9;
   border-radius: 6px;
   background: #f0faf0;
-  min-width: 80px;
+  min-width: 70px;
 }
 
 .ms-result-label {
@@ -9235,8 +9326,8 @@ body.is-super-admin td.admin-only {
 
 /* Grade Scale */
 .ms-grade-scale {
-  margin: 6px 0; /* Tightened from 10px */
-  padding: 5px 8px; /* Tightened */
+  margin: 4px 0; 
+  padding: 3px 6px; 
   background: #fafafa;
   border: 1px dashed #ccc;
   border-radius: 4px;
@@ -9263,8 +9354,8 @@ body.is-super-admin td.admin-only {
 .ms-signatures-section {
   display: flex;
   justify-content: space-between;
-  margin-top: auto !important;
-  padding-top: 15px;
+  margin-top: 15px; /* Reduced from auto to pull signatures up */
+  padding-top: 8px;
   padding-bottom: 2px;
   padding-left: 10px;
   padding-right: 10px;
@@ -9278,7 +9369,12 @@ body.is-super-admin td.admin-only {
 .ms-sig-line {
   width: 110px;
   border-bottom: 1.5px solid #333;
-  margin: 0 auto 5px;
+  margin: 0 auto 2px;
+}
+
+.ms-sig-block img {
+  max-height: 40px;
+  object-fit: contain;
 }
 
 .ms-sig-block span {
@@ -9392,14 +9488,37 @@ body.is-super-admin td.admin-only {
     print-color-adjust: exact !important;
   }
 
-  /* When printing marksheets, hide everything else */
-  body.ms-printing * {
-    visibility: hidden;
+  /* Bulk Print Controls - Hide UI elements and show marksheet path */
+  body.ms-printing .header-controls,
+  body.ms-printing .data-management-card,
+  body.ms-printing .page-nav-tabs,
+  body.ms-printing .preview-header,
+  body.ms-printing .dm-marksheet-controls,
+  body.ms-printing .ms-print-actions,
+  body.ms-printing .app-page:not(#marksheetPage),
+  body.ms-printing .no-print,
+  body.ms-printing .dm-btn,
+  body.ms-printing .marksheet-view-settings,
+  body.ms-printing .empty-state-msg {
+    display: none !important;
   }
 
-  body.ms-printing .ms-page,
-  body.ms-printing .ms-page *,
-  body.ms-printing .ms-watermark-bg {
+  body.ms-printing .container-fluid,
+  body.ms-printing #marksheetPage,
+  body.ms-printing .marksheet-preview-wrapper,
+  body.ms-printing .marksheet-preview-area {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  body.ms-printing .ms-page {
     visibility: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -9408,22 +9527,7 @@ body.is-super-admin td.admin-only {
   body.ms-printing .ms-watermark-bg {
     opacity: var(--ms-watermark-opacity, 0.1) !important;
     display: block !important;
-    background-image: inherit !important; /* Force preservation */
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  body.ms-printing .ms-page {
-    position: relative;
-    left: 0;
-    top: 0;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0;
-    box-shadow: none;
-    transform: none !important;
-    transform-origin: top left !important;
-    page-break-after: always;
+    background-image: inherit !important;
   }
 
   body.ms-printing .no-print,
@@ -9432,22 +9536,45 @@ body.is-super-admin td.admin-only {
   body.ms-printing .header-controls,
   body.ms-printing .result-entry-selectors,
   body.ms-printing .ms-print-actions,
-  body.ms-printing #marksheetPage>.card>.card-header,
-  body.ms-printing #marksheetPage>.card>.result-entry-selectors {
+  body.ms-printing #marksheetPage .card-header,
+  body.ms-printing #marksheetPage .result-entry-selectors {
     display: none !important;
   }
 
-  /* Individual Single Print Support */
-  body.ms-printing-single * {
-    visibility: hidden;
+
+  /* Single Print Controls */
+  body.ms-printing-single .header-controls,
+  body.ms-printing-single .data-management-card,
+  body.ms-printing-single .page-nav-tabs,
+  body.ms-printing-single .preview-header,
+  body.ms-printing-single .dm-marksheet-controls,
+  body.ms-printing-single .ms-print-actions,
+  body.ms-printing-single .app-page:not(#marksheetPage),
+  body.ms-printing-single .no-print,
+  body.ms-printing-single .dm-btn,
+  body.ms-printing-single .marksheet-view-settings,
+  body.ms-printing-single .empty-state-msg,
+  body.ms-printing-single .result-entry-selectors,
+  body.ms-printing-single .card-header,
+  body.ms-printing-single .ms-page:not(.ms-single-active) {
+    display: none !important;
   }
 
-  body.ms-printing-single .ms-page.ms-single-active,
-  body.ms-printing-single .ms-page.ms-single-active *,
-  body.ms-printing-single .ms-watermark-bg {
-    visibility: visible !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+  body.ms-printing-single .container-fluid,
+  body.ms-printing-single #marksheetPage,
+  body.ms-printing-single .marksheet-preview-wrapper,
+  body.ms-printing-single .marksheet-preview-area,
+  body.ms-printing-single .ms-page.ms-single-active {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    page-break-after: avoid !important;
   }
 
   body.ms-printing-single .ms-watermark-bg {
@@ -9455,22 +9582,9 @@ body.is-super-admin td.admin-only {
     display: block !important;
   }
 
-  body.ms-printing-single .ms-page.ms-single-active {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 210mm;
-    margin: 0;
-    box-shadow: none;
-    transform: none !important;
-    transform-origin: top left !important;
-    display: block !important;
-  }
 
-  /* Specific hide for single print */
-  body.ms-printing-single .no-print {
-    display: none !important;
-  }
+
+
 
   @page {
     size: A4;
@@ -9483,8 +9597,48 @@ body.is-super-admin td.admin-only {
     padding: 0;
   }
 
-  /* Watermark Visibility & Print Safety */
-  .ms-border-frame,
+  /* Shared Print Styles for all Marksheets */
+  .ms-page {
+    position: relative !important;
+    visibility: visible !important;
+    display: block !important;
+    width: 210mm !important;
+    min-height: 296mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    transform-origin: top left !important;
+    page-break-after: always !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border: none !important;
+  }
+  .ms-page:last-child {
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .ms-border-frame {
+    position: absolute !important;
+    visibility: visible !important;
+    top: 2.1mm !important;
+    left: 2.1mm !important;
+    bottom: 2.1mm !important;
+    right: 2.1mm !important;
+    margin: 0 !important;
+    padding: 2mm 3mm 1mm !important;
+    height: auto !important;
+    width: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset layout for print safety */
   .ms-table, 
   .ms-table th, 
   .ms-table td,
@@ -9495,22 +9649,6 @@ body.is-super-admin td.admin-only {
     background: transparent !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  .ms-page {
-    margin: 0 !important;
-    padding: 0 !important;
-    box-shadow: none !important;
-    width: 210mm !important;
-    height: 297mm !important;
-    page-break-inside: avoid;
-    overflow: hidden;
-  }
-
-  .ms-border-frame {
-    margin: 6mm auto !important;
-    height: calc(100% - 12mm) !important;
-    width: calc(100% - 12mm) !important;
   }
 }
 
@@ -11237,7 +11375,7 @@ body.is-super-admin td.admin-only {
 /* Base Header Layout */
 .ms-header-section {
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   position: relative;
 }
 
@@ -11246,12 +11384,12 @@ body.is-super-admin td.admin-only {
   justify-content: center;
   align-items: center;
   gap: 15px;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
 .ms-inst-logo {
-  height: 65px;
-  width: 65px;
+  height: 55px;
+  width: 55px;
   object-fit: contain;
   border-radius: 50%;
   border: 1px solid #c5a059;
@@ -11284,9 +11422,9 @@ body.is-super-admin td.admin-only {
   gap: 30px;
   border: 1.2px solid #c5a059; /* Elegant Bronze/Gold */
   border-radius: 10px;
-  padding: 6px 20px;
+  padding: 4px 15px;
   max-width: 650px;
-  margin: 8px auto;
+  margin: 6px auto;
   background: transparent;
 }
 
@@ -11315,9 +11453,9 @@ body.is-super-admin td.admin-only {
 
 .ms-page.theme-modern .ms-header-section {
   background: #f8fafc;
-  padding: 30px;
+  padding: 15px 20px;
   border-radius: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 /* Elite Theme - Royal Gold & Dark Accents (Perfect Match for User Image) */
@@ -11336,9 +11474,9 @@ body.is-super-admin td.admin-only {
   background: #1a2333;
   /* Deep Dark Blue */
   color: #ffffff;
-  padding: 35px 20px;
+  padding: 20px 15px;
   border-radius: 12px;
-  margin-bottom: 25px;
+  margin-bottom: 8px;
   border-bottom: 5px solid var(--ms-primary);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
@@ -11472,7 +11610,7 @@ body.is-super-admin td.admin-only {
 
 .ms-page.density-compact .ms-border-frame {
   margin: 4mm !important;
-  padding: 5mm 8mm !important;
+  padding: 4mm 6mm !important;
   min-height: calc(297mm - 8mm) !important;
 }
 
@@ -11549,7 +11687,7 @@ body.is-super-admin td.admin-only {
 }
 
 .ms-page.density-compact .ms-signatures-section {
-  margin-top: 20px !important;
+  margin-top: 10px !important;
 }
 
 .ms-page.density-compact .ms-sig-block img {
@@ -11558,8 +11696,8 @@ body.is-super-admin td.admin-only {
 
 /* Elite Theme Specific Compact Adjustments */
 .ms-page.theme-elite.density-compact .ms-header-section {
-  padding: 15px 10px !important;
-  margin-bottom: 10px !important;
+  padding: 12px 10px !important;
+  margin-bottom: 6px !important;
 }
 
 .ms-page.theme-elite.density-compact .ms-inst-name {
@@ -11635,8 +11773,8 @@ body.is-super-admin td.admin-only {
 }
 
 .ms-result-section {
-  margin: 15px 0;
-  gap: 12px;
+  margin: 8px 0;
+  gap: 10px;
 }
 
 .ms-signatures-section {
@@ -11644,8 +11782,8 @@ body.is-super-admin td.admin-only {
 }
 
 .ms-footer {
-  margin-top: 15px;
-  padding-top: 10px;
+  margin-top: 6px;
+  padding-top: 4px;
 }
 
 .ms-btn-action {
@@ -13167,4 +13305,42 @@ input:focus + .ac-slider {
 
 input:checked + .ac-slider:before {
   transform: translateX(26px);
+}
+
+/* Developer Credit Styles */
+.ac-dev-credit, .sp-dev-credit, .ms-dev-credit {
+  text-align: center;
+  font-size: 10px;
+  color: #9ca3af;
+  position: relative;
+  margin-top: 4px;
+  padding: 3px 0;
+  z-index: 10;
+}
+
+.ac-dev-credit a, .sp-dev-credit a, .ms-dev-credit a {
+  color: #9ca3af;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.ac-dev-credit a:hover, .sp-dev-credit a:hover, .ms-dev-credit a:hover {
+  color: #6b7280;
+}
+
+.ms-dev-credit {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  color: #9ca3af;
+  font-size: 10px;
+  text-align: center;
+}
+
+@media print {
+  .ac-dev-credit, .sp-dev-credit, .ms-dev-credit {
+      color: #9ca3af !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+  }
 }

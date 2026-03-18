@@ -4,7 +4,7 @@
  * @module marksheetManager
  */
 
-import { getSavedExams, getExamConfigs } from '../firestoreService.js';
+import { getSavedExams, getExamConfigs, getSettings } from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits } from '../utils.js';
 import { compressImage } from '../imageUtils.js';
@@ -345,6 +345,10 @@ async function generateMarksheets() {
         return;
     }
 
+    // Load developer credit settings before rendering
+    const globalSettings = await getSettings();
+    state.developerCredit = globalSettings?.developerCredit || null;
+
     const examDisplayName = examName === '__all__' ? 'সমন্বিত ফলাফল' : (examName || 'পরীক্ষা');
 
     // --- Combined Paper Logic Integration ---
@@ -367,6 +371,9 @@ async function generateMarksheets() {
     previewArea.innerHTML = studentsArray.map(student =>
         renderSingleMarksheet(student, displaySubjects, examDisplayName, session, null, rules, allOptSubs)
     ).join('');
+
+    // Load developer credit settings before rendering
+    state.developerCredit = await getSettings('developerCredit');
 
     // Show bulk print button
     const bulkBtn = document.getElementById('msPrintAllBtn');
@@ -607,7 +614,7 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
 
                 if (pIdx === 0) {
                     const avgMarks = (combinedData.avgMarks || 0).toFixed(1).replace('.0', '');
-                    
+
                     // HSC Board Correction: Grade and GP should be based on total combined percentage,
                     // BUT only if both papers' components pass.
                     // The combinedData already has status: 'ফেল' if any paper was marked 'ফেল' in result entry.
@@ -683,16 +690,16 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
 
             // Strict Component Pass/Fail check
             const isCompFail = getMarkClass(data.written, config.writtenPass) === 'ms-mark-fail' ||
-                               getMarkClass(data.mcq, config.mcqPass) === 'ms-mark-fail' ||
-                               getMarkClass(data.practical, config.practicalPass) === 'ms-mark-fail';
-            
+                getMarkClass(data.mcq, config.mcqPass) === 'ms-mark-fail' ||
+                getMarkClass(data.practical, config.practicalPass) === 'ms-mark-fail';
+
             if (isCompFail) {
                 grade = 'F';
                 gp = 0;
             }
 
             totalGradePointSum += gp;
-            
+
             // Determine if optional (Unified logic)
             const studentGroup = student.group || '';
             const optionalSubjectsObj = rules?.optionalSubjects || {};
@@ -799,7 +806,7 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
             <th class="ms-th-num">পূর্ণমান</th>
             <th class="ms-th-num">CQ</th>
             <th class="ms-th-num">MCQ</th>
-            <th class="ms-th-num">PR</th>
+            <th class="ms-th-num">ব্যবহারিক </th>
             <th class="ms-th-num">প্রাপ্ত নম্বর</th>
             <th class="ms-th-num">গড়</th>
             <th class="ms-th-grade">গ্রেড</th>
@@ -835,6 +842,22 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
         `<div class="ms-watermark-bg" style="background-image: url('${ms.watermarkUrl}'); opacity: ${ms.watermarkOpacity || 0.1};"></div>` : '';
 
     const todayDate = new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    function getDeveloperCreditHtml(className) {
+        if (!state.developerCredit || state.developerCredit.enabled === false) return '';
+        const text = state.developerCredit.text || '';
+        const name = state.developerCredit.name || '';
+        const link = state.developerCredit.link || '';
+
+        if (!text && !name) return '';
+
+        let content = `<span>${text} <strong>${name}</strong></span>`;
+        if (link) {
+            content += `<br><a href="${link}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:2px;">${link}</a>`;
+        }
+
+        return `<div class="${className}">${content.trim()}</div>`;
+    }
 
     return `
         <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" id="ms_page_${student.id}_${student.group}" style="--ms-primary: ${ms.primaryColor || '#4361ee'}; --ms-watermark-opacity: ${ms.watermarkOpacity || 0.1};">
@@ -955,9 +978,10 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
 
                 <!-- Footer -->
                 <div class="ms-footer">
-                    <span>প্রকাশের তারিখ: ${todayDate}</span>
+                    <span>জেনারেটেড  তারিখ: ${todayDate}</span>
                     <span>এটি কম্পিউটার জেনারেটেড ফলাফল পত্র</span>
                 </div>
+                ${getDeveloperCreditHtml('ms-dev-credit')}
             </div>
         </div>
     `;

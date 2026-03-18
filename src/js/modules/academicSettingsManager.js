@@ -3,13 +3,14 @@
  * Handles dynamic management of Classes, Sessions, Groups, and Sections
  */
 
-import { getAcademicStructure, saveAcademicItem, deleteAcademicItem } from '../firestoreService.js';
+import { getAcademicStructure, saveAcademicItem, deleteAcademicItem, getSettings, saveSettings } from '../firestoreService.js';
 import { showNotification, normalizeSession } from '../utils.js';
 import { state } from './state.js';
 import { populateDynamicDropdowns } from './uiManager.js';
 
 export async function initAcademicSettingsManager() {
     await loadAcademicStructure();
+    initDeveloperCreditSettings();
     setupEventListeners();
 }
 
@@ -101,8 +102,8 @@ function setupEventListeners() {
             }
         };
 
-        btn.addEventListener('click', addItem);
-        input.addEventListener('keypress', (e) => {
+        if (btn) btn.addEventListener('click', addItem);
+        if (input) input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') addItem();
         });
     });
@@ -116,4 +117,60 @@ function getLabel(type) {
         section: 'শাখা'
     };
     return labels[type] || type;
+}
+
+// Developer Credit Management
+async function initDeveloperCreditSettings() {
+    const enabledInput = document.getElementById('devCreditEnabled');
+    const textInput = document.getElementById('devCreditText');
+    const nameInput = document.getElementById('devCreditName');
+    const linkInput = document.getElementById('devCreditLink');
+    const saveBtn = document.getElementById('saveDevCreditBtn');
+
+    if (!enabledInput || !textInput || !nameInput || !linkInput || !saveBtn) return;
+
+    // Load existing settings
+    try {
+        const settings = await getSettings();
+        const devSettings = settings?.developerCredit;
+        if (devSettings) {
+            enabledInput.checked = devSettings.enabled !== false; // Default to true if not set
+            textInput.value = devSettings.text || '';
+            nameInput.value = devSettings.name || '';
+            linkInput.value = devSettings.link || '';
+        } else {
+            // Default setup for a fresh installation
+            enabledInput.checked = true;
+            textInput.value = 'Developed By:';
+            nameInput.value = '';
+            linkInput.value = '';
+        }
+    } catch (e) {
+        console.error("Error loading developer credit settings", e);
+    }
+
+    // Save settings
+    saveBtn.addEventListener('click', async () => {
+        const btnOriginalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> সেভ করা হচ্ছে...';
+        saveBtn.disabled = true;
+
+        const creditData = {
+            enabled: enabledInput.checked,
+            text: textInput.value.trim(),
+            name: nameInput.value.trim(),
+            link: linkInput.value.trim()
+        };
+
+        try {
+            await saveSettings({ developerCredit: creditData });
+            showNotification('ডেভেলপার ক্রেডিট সেটিংস সেভ হয়েছে ✅', 'success');
+        } catch (e) {
+            console.error("Error saving developer credit settings", e);
+            showNotification('সেটিংস সেভ করতে সমস্যা হয়েছে', 'error');
+        } finally {
+            saveBtn.innerHTML = btnOriginalText;
+            saveBtn.disabled = false;
+        }
+    });
 }

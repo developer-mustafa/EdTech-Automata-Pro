@@ -7,7 +7,7 @@
 
 import { getSavedExams, updateExam, saveExam, getAllStudents, getUnifiedStudents, getExamConfigs } from '../firestoreService.js';
 import { state } from './state.js';
-import { showNotification, convertToEnglishDigits, calculateStatistics, normalizeText, normalizeSession } from '../utils.js';
+import { showNotification, convertToEnglishDigits, convertToBengaliDigits, calculateStatistics, normalizeText, normalizeSession } from '../utils.js';
 import { isTeacherAuthorized, getTeacherAssignmentsByUid } from './teacherAssignmentManager.js';
 import { loadMarksheetRules } from './marksheetRulesManager.js';
 import { normalizeGroupName } from './routineManager.js';
@@ -551,12 +551,33 @@ async function loadExamForEntry() {
 function showExamInfo(exam, count, isNew = false) {
     const infoEl = document.getElementById('reExamInfo');
     if (infoEl) {
+        const config = getSubjectConfig(exam.subject);
+        const writtenMax = cfgNum(config.written);
+        const mcqMax = cfgNum(config.mcq);
+        const practicalMax = cfgNum(config.practical);
+        const writtenPass = cfgNum(config.writtenPass);
+        const mcqPass = cfgNum(config.mcqPass);
+        const practicalPass = cfgNum(config.practicalPass);
+        const totalMax = cfgNum(config.total);
+
+        // Build pass mark badges — only show active criteria
+        let passMarkHtml = '';
+        const badges = [];
+        if (writtenMax > 0) badges.push(`<span class="re-pass-badge"><i class="fas fa-pen-nib"></i> লিখিত পাশ: ${convertToBengaliDigits(writtenPass)}/${convertToBengaliDigits(writtenMax)}</span>`);
+        if (mcqMax > 0) badges.push(`<span class="re-pass-badge"><i class="fas fa-list-ol"></i> MCQ পাশ: ${convertToBengaliDigits(mcqPass)}/${convertToBengaliDigits(mcqMax)}</span>`);
+        if (practicalMax > 0) badges.push(`<span class="re-pass-badge"><i class="fas fa-flask"></i> ব্যবহারিক পাশ: ${convertToBengaliDigits(practicalPass)}/${convertToBengaliDigits(practicalMax)}</span>`);
+        if (badges.length > 0) {
+            passMarkHtml = `<span class="re-pass-info"><i class="fas fa-check-circle"></i> ${badges.join('')}</span>`;
+        }
+
         infoEl.innerHTML = `
             ${isNew ? '<span style="background: rgba(234, 179, 8, 0.15); color: #b45309; padding: 2px 10px; border-radius: 6px; font-weight: 700; font-size: 0.85em;"><i class="fas fa-plus-circle"></i> নতুন পরীক্ষা</span>' : ''}
             <span><i class="fas fa-book"></i> ${exam.subject}</span>
             <span><i class="fas fa-file-alt"></i> ${exam.name}</span>
             <span><i class="fas fa-school"></i> ${exam.class} | ${exam.session}</span>
             <span><i class="fas fa-users"></i> ${count} জন শিক্ষার্থী</span>
+            <span><i class="fas fa-chart-bar"></i> মোট: ${convertToBengaliDigits(totalMax)}</span>
+            ${passMarkHtml}
         `;
     }
 }
@@ -666,11 +687,48 @@ function recalculateStudentStatuses(studentData, subjectName) {
 // ==========================================
 
 /**
+ * Dynamically update table headers with pass mark sub-text hints
+ */
+function updateTableHeaders(config) {
+    const thead = document.getElementById('reTableHead');
+    if (!thead) return;
+
+    const writtenMax = cfgNum(config.written);
+    const mcqMax = cfgNum(config.mcq);
+    const practicalMax = cfgNum(config.practical);
+    const writtenPass = cfgNum(config.writtenPass);
+    const mcqPass = cfgNum(config.mcqPass);
+    const practicalPass = cfgNum(config.practicalPass);
+
+    const passHint = (max, pass) => {
+        if (max <= 0) return '';
+        return `<div class="re-th-pass-hint">${convertToBengaliDigits(pass)}/${convertToBengaliDigits(max)}</div>`;
+    };
+
+    thead.innerHTML = `
+        <tr>
+            <th style="width:50px;">রোল</th>
+            <th>নাম</th>
+            <th>গ্রুপ</th>
+            <th style="width:80px;">লিখিত${passHint(writtenMax, writtenPass)}</th>
+            <th style="width:80px;">এমসিকিউ${passHint(mcqMax, mcqPass)}</th>
+            <th style="width:80px;">ব্যবহারিক${passHint(practicalMax, practicalPass)}</th>
+            <th style="width:70px;">মোট</th>
+            <th style="width:60px;">গ্রেড</th>
+            <th style="width:70px;">স্ট্যাটাস</th>
+        </tr>
+    `;
+}
+
+/**
  * Render the result entry table
  */
 function renderRETable(students, config) {
     const tbody = document.getElementById('reTableBody');
     if (!tbody) return;
+
+    // --- Update table headers with pass mark hints ---
+    updateTableHeaders(config);
 
     // Apply strict sorting before rendering
     const sorted = [...students];

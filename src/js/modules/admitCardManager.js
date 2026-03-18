@@ -508,7 +508,10 @@ async function saveACSettings() {
     btn.disabled = true;
 
     try {
+        // Get all settings once and extract developer credit
         const settings = await getSettings() || {};
+        // state.developerCredit = settings.developerCredit || null; // This line was removed as per instruction
+
         const newSettings = {
             ...settings,
             admitCard: {
@@ -721,6 +724,8 @@ async function generateCards(type) {
 
     // Fetch Settings
     const settings = await getSettings() || {};
+    state.developerCredit = settings.developerCredit || null;
+
     const acConfig = settings.admitCard || {};
     
     // Dynamic Layout Switching: 
@@ -831,6 +836,22 @@ async function generateCards(type) {
 
     // Auto-scale titles to fit one line
     setTimeout(fitTitleScaling, 50);
+}
+
+function getDeveloperCreditHtml(className) {
+    if (!state.developerCredit || state.developerCredit.enabled === false) return '';
+    const text = state.developerCredit.text || '';
+    const name = state.developerCredit.name || '';
+    const link = state.developerCredit.link || '';
+    
+    if (!text && !name) return '';
+    
+    let content = `<span>${text} <strong>${name}</strong></span>`;
+    if (link) {
+        content += `<br><a href="${link}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:2px;">${link}</a>`;
+    }
+    
+    return `<div class="${className}">${content.trim()}</div>`;
 }
 
 function renderAdmitCard(student, subjects, examName, config) {
@@ -994,6 +1015,7 @@ function renderAdmitCard(student, subjects, examName, config) {
                         </div>
                     `).join('')}
                 </div>
+                ${getDeveloperCreditHtml('ac-dev-credit')}
             </div>
         </div>
     `;
@@ -1048,6 +1070,7 @@ function renderSeatPlan(student, examName, config) {
                     </table>
                     <div class="sp-watermark-roll">${bgPrefix}${student.id}</div>
                 </div>
+                ${getDeveloperCreditHtml('sp-dev-credit')}
             </div>
         </div>
     `;
