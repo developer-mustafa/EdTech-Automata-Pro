@@ -403,7 +403,7 @@ async function generateMarksheets() {
     renderSubjectVisibilityToggles();
 }
 
-function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, rules = null, allOptSubs = []) {
+export function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, rules = null, allOptSubs = []) {
     /**
      * Helper to normalize Bengali text for resilient matching
      * Normalizes Unicode variations and removes spaces/case
@@ -987,7 +987,7 @@ function renderSingleMarksheet(student, subjects, examDisplayName, selectedSessi
     `;
 }
 
-function getLetterGrade(pct) {
+export function getLetterGrade(pct) {
     if (pct >= 80) return 'A+';
     if (pct >= 70) return 'A';
     if (pct >= 60) return 'A-';
@@ -997,7 +997,7 @@ function getLetterGrade(pct) {
     return 'F';
 }
 
-function getGradePoint(pct) {
+export function getGradePoint(pct) {
     if (pct >= 80) return 5.00;
     if (pct >= 70) return 4.00;
     if (pct >= 60) return 3.50;
@@ -1007,7 +1007,7 @@ function getGradePoint(pct) {
     return 0.00;
 }
 
-function getGradeFromGP(gp) {
+export function getGradeFromGP(gp) {
     if (gp >= 5.00) return 'A+';
     if (gp >= 4.00) return 'A';
     if (gp >= 3.50) return 'A-';
@@ -1557,7 +1557,7 @@ function renderSubjectVisibilityToggles() {
  * Combined Paper Calculation Logic
  * Merges Paper 1 and Paper 2 results based on rules
  */
-function applyCombinedPaperLogic(studentsArray, currentSubjects, rules, allOptSubs = []) {
+export function applyCombinedPaperLogic(studentsArray, currentSubjects, rules, allOptSubs = []) {
     const combinedMappings = rules.combinedSubjects || [];
     const groupedSubjects = [];
     const processedPapers = new Set();

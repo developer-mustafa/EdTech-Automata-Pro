@@ -145,6 +145,9 @@
       <button class="page-nav-btn super-admin-only" data-page="access-control" style="display: none;">
         <i class="fas fa-user-lock"></i> <span>এক্সেস কন্ট্রোল</span>
       </button>
+      <button class="page-nav-btn" data-page="student-results">
+        <i class="fas fa-search"></i> <span>ফলাফল</span>
+      </button>
 
       <style>
         .nav-badge {
@@ -858,7 +861,157 @@
       </div>
     </div>
 
-    <!-- ========== PAGE: ACCESS CONTROL PANEL ========== -->
+    <!-- ========== PAGE: PUBLIC STUDENT RESULTS (ফলাফল) ========== -->
+    <div id="studentResultsPage" class="app-page" style="display: none;">
+      <div class="card sr-main-card">
+        
+
+        <!-- Top Bar with Tabs and Bulk Print Controls -->
+        <div class="sr-top-header-bar">
+          <!-- Tab Switcher -->
+          <div class="sr-tabs">
+            <button class="sr-tab-btn active" data-tab="srSearchTab">
+              <i class="fas fa-search"></i> আইডি দিয়ে সার্চ
+            </button>
+            <button class="sr-tab-btn" data-tab="srGenTab">
+              <i class="fas fa-key"></i> আইডি তৈরি করুন
+            </button>
+          </div>
+
+          <!-- Bulk Print Controls (Super Admin Only) -->
+          <div class="sr-bulk-print-controls super-admin-only">
+            <select id="srBpClass" class="form-control-sm">
+              <option value="">ক্লাস</option>
+            </select>
+            <select id="srBpSession" class="form-control-sm">
+              <option value="">সেশন</option>
+            </select>
+            <select id="srBpGroup" class="form-control-sm">
+              <option value="all">সকল গ্রুপ</option>
+            </select>
+            <button id="srBulkPrintBtn" class="dm-btn dm-report btn-sm" style="white-space: nowrap;">
+              <i class="fas fa-print"></i> বাল্ক আইডি কার্ড প্রিন্ট
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab: Search by ID -->
+        <div class="sr-tab-content" id="srSearchTab" style="display: block;">
+          <div class="sr-search-section">
+            <div class="sr-search-box">
+              <div class="sr-search-icon"><i class="fas fa-fingerprint"></i></div>
+              <input type="text" id="srSearchInput" class="sr-search-input"
+                placeholder="আপনার ইউনিক আইডি লিখুন (e.g. MOHLAH-EKADOSH-2025-2026-05-BIGGYAN)"
+                autocomplete="off" spellcheck="false">
+              <button id="srSearchBtn" class="sr-search-btn">
+                <i class="fas fa-search"></i> <span>সার্চ</span>
+              </button>
+              <button id="srClearBtn" class="sr-clear-btn" title="রিসেট">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <p class="sr-hint">
+              <i class="fas fa-info-circle"></i>
+              আপনার ইউনিক আইডি না জানা থাকলে <strong>"আইডি তৈরি করুন"</strong> ট্যাবে গিয়ে আপনার তথ্য দিয়ে আইডি জেনে নিন।
+            </p>
+          </div>
+        </div>
+
+        <!-- Tab: Generate ID -->
+        <div class="sr-tab-content" id="srGenTab" style="display: none;">
+          <div class="sr-gen-section">
+            <p class="sr-gen-desc"><i class="fas fa-lightbulb"></i> নিচের তথ্যগুলো পূরণ করে আপনার ইউনিক আইডি তৈরি করুন</p>
+            
+            <div class="sr-gen-split-layout">
+              <!-- Left Side: Form Options -->
+              <div class="sr-gen-form-box">
+                <div class="sr-gen-grid-inline">
+                  <div class="sr-gen-field">
+                    <label><i class="fas fa-graduation-cap"></i> শ্রেণি</label>
+                    <select id="srGenClass" class="form-control">
+                      <option value="">লোড হচ্ছে...</option>
+                    </select>
+                  </div>
+                  <div class="sr-gen-field">
+                    <label><i class="fas fa-calendar-alt"></i> সেশন</label>
+                    <select id="srGenSession" class="form-control">
+                      <option value="">লোড হচ্ছে...</option>
+                    </select>
+                  </div>
+                  <div class="sr-gen-field">
+                    <label><i class="fas fa-users"></i> গ্রুপ/বিভাগ</label>
+                    <select id="srGenGroup" class="form-control">
+                      <option value="all">সকল গ্রুপ (বা নির্দিষ্ট নেই)</option>
+                    </select>
+                  </div>
+                  <div class="sr-gen-field sr-gen-field-student">
+                    <label><i class="fas fa-user"></i> শিক্ষার্থী (রোল - নাম)</label>
+                    <select id="srGenStudent" class="form-control">
+                      <option value="">প্রথমে শ্রেণি ও সেশন নির্বাচন করুন</option>
+                    </select>
+                  </div>
+                  <div class="sr-gen-field sr-gen-btn-field">
+                    <button id="srGenIdBtn" class="dm-btn dm-save sr-gen-btn">
+                      <i class="fas fa-key"></i> আইডি তৈরি করুন
+                    </button>
+                    <button id="srGenResetBtn" class="dm-btn dm-danger sr-gen-btn" style="display: none;">
+                      <i class="fas fa-times"></i> রিসেট
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Side: Generated ID Result -->
+              <div class="sr-gen-result-box">
+                <div id="srGenResultPlaceholder" class="sr-gen-placeholder">
+                  <i class="fas fa-id-badge"></i>
+                  <p>আইডি জেনারেট হলে এখানে দেখাবে</p>
+                </div>
+                <div id="srGenResult" style="display: none;"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Not Found Message -->
+        <div id="srNotFound" class="sr-not-found" style="display: none;">
+          <div class="sr-not-found-icon"><i class="fas fa-exclamation-triangle"></i></div>
+          <h3>ফলাফল পাওয়া যায়নি</h3>
+          <p>এই ইউনিক আইডি দিয়ে কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি। অনুগ্রহ করে আইডি সঠিকভাবে লিখুন।</p>
+        </div>
+
+        <!-- Student ID Card -->
+        <div id="srIdCard" style="display: none;"></div>
+
+        <!-- Result Area -->
+        <div id="srResultArea" style="display: none;">
+          <div class="marksheet-preview-wrapper">
+            <div class="preview-header marksheet-main-preview-header" style="display: none;" id="srPreviewHeader">
+              <div class="preview-header-left">
+                <h4><i class="fas fa-search-plus"></i> ভিউ কাস্টমাইজেশন</h4>
+              </div>
+              <div class="preview-header-actions">
+                <div class="zoom-control">
+                  <i class="fas fa-search-minus"></i>
+                  <input type="range" id="srZoom" min="0.2" max="1.5" step="0.05" value="1.0" title="জুম">
+                  <i class="fas fa-search-plus"></i>
+                  <span id="srZoomLevel">100%</span>
+                </div>
+              </div>
+            </div>
+            <div id="srMarksheetPreview" class="marksheet-preview-area">
+              <div class="empty-state-msg">
+                <i class="fas fa-search" style="font-size: 2rem; opacity: 0.3;"></i>
+                <p>ইউনিক আইডি দিয়ে সার্চ করুন অথবা আইডি তৈরি করুন আপনার ফলাফল দেখতে।</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <div id="accessControlPage" class="app-page super-admin-only" style="display: none;">
 
       <!-- 3-Grid Layout -->

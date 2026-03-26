@@ -18,7 +18,8 @@ const NEW_PAGE_IDS = {
     'exam-config': 'examConfigPage',
     'academic-settings': 'academicSettingsPage',
     'admit-card': 'admitCardPage',
-    'access-control': 'accessControlPage'
+    'access-control': 'accessControlPage',
+    'student-results': 'studentResultsPage'
 };
 
 // IDs/selectors of all dashboard-only sections to hide on other pages
@@ -132,7 +133,7 @@ export function initPageRouter(callback) {
     // Listen for hash changes (back/forward navigation, direct URL entry)
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.replace('#', '') || 'dashboard';
-        const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control'];
+        const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control', 'student-results'];
         if (validPages.includes(hash)) {
             // Role protection for direct hash entry
             if ((hash === 'exam-config' || hash === 'academic-settings' || hash === 'access-control') && state.userRole !== 'super_admin') {
@@ -148,22 +149,19 @@ export function initPageRouter(callback) {
 
     // Handle initial hash
     const currentHash = window.location.hash.replace('#', '') || 'dashboard';
-    const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control'];
+    const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control', 'student-results'];
     if (initialPages.includes(currentHash) && currentHash !== 'dashboard') {
         navigateTo(currentHash);
     }
 }
 
-/**
- * Show/hide nav tabs based on user role
- */
 export function updateNavVisibility() {
     const navTabs = document.getElementById('pageNavTabs');
     if (!navTabs) return;
 
     const role = state.userRole;
-    const isAuthorized = ['super_admin', 'admin', 'teacher'].includes(role);
-    navTabs.style.display = isAuthorized ? 'flex' : 'none';
+    // Always show nav tabs if we want public access to results
+    navTabs.style.display = 'flex';
 
     // Role-based individual tab visibility
     document.querySelectorAll('.page-nav-btn').forEach(btn => {
@@ -171,12 +169,24 @@ export function updateNavVisibility() {
         if (!page) return;
 
         // Dynamic check against access control settings
-        const allowedRoles = state.accessControl.tabAccess[page] || [];
-        let visible = allowedRoles.includes(role);
+        let allowedRoles = state.accessControl.tabAccess[page];
+        if (!allowedRoles) {
+            // Fallback for new pages not yet saved in DB
+            if (page === 'student-results') allowedRoles = ['super_admin', 'admin', 'teacher', null];
+            else allowedRoles = [];
+        }
+        
+        // If student-results, it's public (allow null role)
+        let visible = false;
+        if (page === 'student-results') {
+            visible = true;
+        } else {
+            visible = role && allowedRoles.includes(role);
+        }
 
         // Special override for Super Admin: always see certain tabs regardless of settings
         if (role === 'super_admin') {
-            const superAdminTabs = ['dashboard', 'access-requests', 'exam-config', 'academic-settings', 'access-control'];
+            const superAdminTabs = ['dashboard', 'access-requests', 'exam-config', 'academic-settings', 'access-control', 'student-results'];
             if (superAdminTabs.includes(page)) visible = true;
         }
 

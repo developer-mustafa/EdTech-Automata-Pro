@@ -58,6 +58,7 @@ import { initAcademicSettingsManager } from './js/modules/academicSettingsManage
 import { initAdmitCardManager, populateACDropdowns } from './js/modules/admitCardManager.js';
 import { initRoutineManager } from './js/modules/routineManager.js';
 import AccessControlManager from './js/modules/accessControlManager.js';
+import { initStudentResultsManager } from './js/modules/studentResultsManager.js';
 
 /**
  * Recalculate student grades/statuses using CURRENT subject config.
@@ -260,6 +261,7 @@ async function init() {
         initAccessRequestUI();
         initAccessRequestNotifications();
         AccessControlManager.init();
+        initStudentResultsManager();
 
         // Listen for exam data updates from Result Entry
         window.addEventListener('examDataUpdated', async () => {

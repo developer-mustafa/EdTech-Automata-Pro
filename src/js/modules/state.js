@@ -77,7 +77,8 @@ export const state = {
             'access-requests': ['super_admin'],
             'exam-config': ['super_admin'],
             'academic-settings': ['super_admin'],
-            'admit-card': ['super_admin', 'admin']
+            'admit-card': ['super_admin', 'admin'],
+            'student-results': ['super_admin', 'admin', 'teacher']
         },
         globalEntryDisabled: false,
         entryDeadline: null,
