@@ -1002,28 +1002,38 @@ async function handleDownloadIdCard() {
         const clsValue = classSelect?.value || 'Class';
         const sessionValue = sessionSelect?.value || 'Session';
         
-        // Strictly ASCII-only filename for maximum browser compatibility (Prevords GUID fallback)
-        const engName = transliterateBangla(rawName).replace(/[^a-zA-Z0-9]/g, '-').substring(0, 15);
-        const engCls = transliterateBangla(clsValue).replace(/[^a-zA-Z0-9]/g, '-');
-        const englishFileName = `IDCard_${engName}_Roll-${roll}_${engCls}_${sessionValue.replace(/\//g, '-')}.png`;
+        // Strictly ASCII-only filename for maximum machine compatibility
+        // Transliterate from Bengali to English, lowercase, no special chars
+        const engName = transliterateBangla(rawName).replace(/[^a-z0-9]/gi, '_').substring(0, 15);
+        const engCls = transliterateBangla(clsValue).replace(/[^a-z0-9]/gi, '_');
+        const finalFileName = `ID-Card_${engName}_Roll-${roll}_${engCls}.png`;
 
-        // Generate high-resolution image
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        
-        // Stable download trigger
-        const link = document.createElement('a');
-        link.style.display = 'none';
-        link.href = dataUrl;
-        link.setAttribute('download', englishFileName);
-        
-        document.body.appendChild(link);
-        link.click();
-        
-        setTimeout(() => {
-            document.body.removeChild(link);
-        }, 200);
-        
-        showNotification('আইডি কার্ড সফলভাবে ডাউনলোড হয়েছে! ✅');
+        // Capture! Using toBlob for stable large-file handling on Desktops
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                showNotification('ইমেজ তৈরি করতে ব্যর্থ হয়েছে', 'error');
+                return;
+            }
+
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            link.style.display = 'none';
+            link.href = url;
+            link.setAttribute('download', finalFileName);
+            
+            // Critical for desktop Chrome: append to body
+            document.body.appendChild(link);
+            link.click();
+            
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 1000);
+            
+            showNotification('আইডি কার্ড সফলভাবে ডাউনলোড হয়েছে! ✅');
+        }, 'image/png', 1.0);
     } catch (err) {
         console.error('Download failed:', err);
         showNotification('ইমেজ ডাউনলোড করতে একটি সমস্যা হয়েছে', 'error');
