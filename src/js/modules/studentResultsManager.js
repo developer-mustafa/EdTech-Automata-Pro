@@ -6,6 +6,7 @@
 
 import { getSavedExams, getExamConfigs, getSettings } from '../firestoreService.js';
 import { state } from './state.js';
+import QRCode from 'qrcode';
 import { showNotification, convertToEnglishDigits } from '../utils.js';
 import {
     renderSingleMarksheet,
@@ -329,32 +330,41 @@ function getIdCardHTML(studentResult, isGenerator = false, devCredit = null) {
     const uid = studentResult.uniqueId;
     const group = studentResult.group || '';
     
-    // Group-based color class (Extremely robust substring matching for Bengali/English)
+    // Group-based color class
     let groupClass = 'sr-id-group-default';
     const gText = group.toLowerCase();
     
-    if (gText.includes('বিজ্ঞা') || gText.includes('sci')) {
-        groupClass = 'sr-id-group-science'; // Now Light Red (Based on user request)
-    } else if (gText.includes('মানবি') || gText.includes('hum') || gText.includes('কলা')) {
-        groupClass = 'sr-id-group-humanities'; // Light Green
-    } else if (gText.includes('ব্যবসায়') || gText.includes('ব্যবসা') || gText.includes('bus') || gText.includes('comm')) {
-        groupClass = 'sr-id-group-business'; // Light Blue
-    }
-
-    // Generate QR Data: Simplified for maximum scannability
-    let qrDevInfoString = '';
-    if (devCredit && devCredit.name) {
-        qrDevInfoString = `\nDev: ${devCredit.name}`;
-        if (devCredit.link) qrDevInfoString += ` (${devCredit.link})`;
-    }
-
-    const qrData = `ID: ${uid}\nName: ${studentResult.name}\nRoll: ${studentResult.id}\nClass: ${studentResult.class}\nGroup: ${group || 'N/A'}\nSession: ${studentResult.session}${qrDevInfoString}`;
+    let printHeaderColor = '#eff6ff'; // Ultra-soft Blue (blue-50)
+    let printHeaderIconColor = '#3b82f6';
+    let printHeaderTitleColor = '#1e40af';
+    let printHeaderBorderColor = '#bfdbfe';
     
-    // Increased size from 100x100 to 150x150 for better density handling
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+    if (gText.includes('বিজ্ঞা') || gText.includes('sci')) {
+        groupClass = 'sr-id-group-science';
+        printHeaderColor = '#fef2f2'; // Ultra-soft Red (red-50)
+        printHeaderIconColor = '#ef4444';
+        printHeaderTitleColor = '#991b1b';
+        printHeaderBorderColor = '#fecaca';
+    } else if (gText.includes('মানবি') || gText.includes('hum') || gText.includes('কলা')) {
+        groupClass = 'sr-id-group-humanities';
+        printHeaderColor = '#f0fdf4'; // Ultra-soft Green (green-50)
+        printHeaderIconColor = '#22c55e';
+        printHeaderTitleColor = '#166534';
+        printHeaderBorderColor = '#bbf7d0';
+    } else if (gText.includes('ব্যবসায়') || gText.includes('ব্যবসা') || gText.includes('bus') || gText.includes('comm')) {
+        groupClass = 'sr-id-group-business';
+        printHeaderColor = '#eff6ff'; // Ultra-soft Blue (blue-50)
+        printHeaderIconColor = '#3b82f6';
+        printHeaderTitleColor = '#1e40af';
+        printHeaderBorderColor = '#bfdbfe';
+    }
+
+    // Unique ID for QR canvas target
+    const qrCanvasId = `qr-${uid.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const qrPrintCanvasId = `qr-print-${uid.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
     return `
-        <div class="sr-id-card-glow-wrapper no-print">
+        <div class="sr-id-card-wrapper no-print">
             <div class="sr-id-card-inner ${groupClass}">
                 <div class="sr-id-card-header">
                     <div class="sr-id-icon"><i class="fas fa-id-badge"></i></div>
@@ -394,14 +404,15 @@ function getIdCardHTML(studentResult, isGenerator = false, devCredit = null) {
                     
                     <div class="sr-id-card-body-right">
                         <div class="sr-id-qr-container">
-                            <img src="${qrUrl}" alt="QR" class="sr-id-qr-img">
+                            <canvas id="${qrCanvasId}" data-uid="${uid}" class="sr-id-qr-canvas"></canvas>
                             <div class="sr-id-qr-label">UID SCAN</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="sr-id-uid-container no-print">
+                <div class="sr-id-uid-container">
                     <div class="sr-id-uid-box">
+                        <span class="sr-id-uid-prefix">ID No.</span>
                         <span class="sr-id-uid-code">${uid}</span>
                     </div>
                     <div class="sr-id-actions">
@@ -420,11 +431,11 @@ function getIdCardHTML(studentResult, isGenerator = false, devCredit = null) {
 
         <div class="print-only">
              <div class="sr-id-card-inner ${groupClass}">
-                <div class="sr-id-card-header">
-                    <div class="sr-id-icon"><i class="fas fa-id-badge"></i></div>
+                <div class="sr-id-card-header" style="-webkit-print-color-adjust: exact !important; background: ${printHeaderColor} !important; border-bottom: 2px solid ${printHeaderBorderColor} !important;">
+                    <div class="sr-id-icon" style="-webkit-print-color-adjust: exact !important; background: ${printHeaderIconColor} !important;"><i class="fas fa-id-badge" style="color: white !important;"></i></div>
                     <div class="sr-id-card-title-group">
-                        <div class="sr-id-card-title">শিক্ষার্থী আইডি কার্ড</div>
-                        <div class="sr-id-card-subtitle">STUDENT IDENTIFICATION CARD</div>
+                        <div class="sr-id-card-title" style="color: ${printHeaderTitleColor} !important;">শিক্ষার্থী আইডি কার্ড</div>
+                        <div class="sr-id-card-subtitle" style="color: ${printHeaderTitleColor} !important;">STUDENT IDENTIFICATION CARD</div>
                     </div>
                 </div>
                 <div class="sr-id-card-main">
@@ -456,46 +467,70 @@ function getIdCardHTML(studentResult, isGenerator = false, devCredit = null) {
                     </div>
                     <div class="sr-id-card-body-right">
                         <div class="sr-id-qr-container">
-                            <img src="${qrUrl}" alt="QR" class="sr-id-qr-img">
+                            <canvas id="${qrPrintCanvasId}" data-uid="${uid}" class="sr-id-qr-canvas"></canvas>
                             <div class="sr-id-qr-label">UID SCAN</div>
                         </div>
                     </div>
                 </div>
-                <div class="sr-id-uid-container" style="height: auto; padding-bottom: 20px;">
-                    <div class="sr-id-uid-box-print-centered">
-                        <span class="sr-id-uid-code" style="font-size: 1.1rem;">${uid}</span>
+                <div class="sr-id-uid-container" style="height: auto; padding-bottom: 10px;">
+                    <div class="sr-id-uid-box-print-centered" style="-webkit-print-color-adjust: exact !important; background: ${printHeaderColor} !important; border: 1.5px solid ${printHeaderBorderColor} !important;">
+                        <span class="sr-id-uid-prefix" style="font-weight: 600; font-size: 6.5pt; margin-right: 6px; color: ${printHeaderTitleColor} !important; opacity: 0.75;">ID No.</span>
+                        <span class="sr-id-uid-code" style="font-family: monospace, sans-serif; font-size: 9.5pt; font-weight: 800; letter-spacing: 0.5px; color: ${printHeaderTitleColor} !important;">${uid}</span>
                     </div>
                 </div>
-
             </div>
         </div>
-
     `;
 
 }
 
 /**
+ * Render QR codes on all matching canvases inside a container using client-side QRCode library.
+ * This generates QR codes instantly without any external API call.
+ */
+async function renderQRCodesInContainer(container, studentResult, devCredit = null) {
+    const uid = studentResult.uniqueId;
+    const group = studentResult.group || '';
+
+    let qrDevInfoString = '';
+    if (devCredit && devCredit.name) {
+        qrDevInfoString = `\nDev: ${devCredit.name}`;
+        if (devCredit.link) qrDevInfoString += ` (${devCredit.link})`;
+    }
+
+    const qrData = `ID: ${uid}\nName: ${studentResult.name}\nRoll: ${studentResult.id}\nClass: ${studentResult.class}\nGroup: ${group || 'N/A'}\nSession: ${studentResult.session}${qrDevInfoString}`;
+
+    // IMPORTANT BUGFIX: Select only the canvases for the CURRENT UID
+    const canvases = container.querySelectorAll(`.sr-id-qr-canvas[data-uid="${uid}"]`);
+    for (const canvas of canvases) {
+        try {
+            await QRCode.toCanvas(canvas, qrData, {
+                width: 150,
+                margin: 1,
+                color: { dark: '#1e293b', light: '#ffffff' },
+                errorCorrectionLevel: 'M'
+            });
+            // Override CSS dimensions so canvas looks sharp
+            canvas.style.width = '115px';
+            canvas.style.height = '115px';
+        } catch (err) {
+            console.error('QR generation failed:', err);
+        }
+    }
+}
+
+/**
  * Render the student ID card with the unique ID
  */
-function renderIdCard(studentResult) {
+async function renderIdCard(studentResult) {
     const container = document.getElementById('srIdCard');
     if (!container) return;
 
     container.innerHTML = getIdCardHTML(studentResult, false);
     container.style.display = 'block';
 
-    // Advanced dynamic scaling for all mobile devices
-    const wrapper = container.querySelector('.sr-id-card-glow-wrapper');
-    if (wrapper) {
-        const parentWidth = container.clientWidth || window.innerWidth;
-        if (parentWidth < 650) {
-            const scale = Math.min(1.0, (parentWidth - 16) / 620);
-            wrapper.style.transform = `scale(${scale})`;
-            wrapper.style.transformOrigin = 'center top';
-            wrapper.style.margin = '10px auto';
-            wrapper.style.marginBottom = `${-350 * (1 - scale)}px`; 
-        }
-    }
+    // Generate QR code instantly
+    await renderQRCodesInContainer(container, studentResult);
 
     // Copy feedback
     window.__srCopyFeedback = () => {
@@ -822,22 +857,8 @@ async function handleGenerateId() {
         resultBox.innerHTML = getIdCardHTML(studentResult, true, developerCredit);
         resultBox.style.display = 'block';
 
-        // Precise dynamic scaling for results box (laptop/mobile)
-        const wrapperFactor = resultBox.querySelector('.sr-id-card-glow-wrapper');
-        if (wrapperFactor) {
-            const containerWidth = resultBox.clientWidth || window.innerWidth;
-            if (containerWidth < 650) {
-                const s = Math.min(1.0, (containerWidth - 16) / 620);
-                wrapperFactor.style.transform = `scale(${s})`;
-                wrapperFactor.style.transformOrigin = 'center top';
-                wrapperFactor.style.margin = '10px auto';
-                wrapperFactor.style.marginBottom = `${-350 * (1 - s)}px`;
-            } else {
-                // Ensure reset on large screens
-                wrapperFactor.style.transform = 'none';
-                wrapperFactor.style.margin = '20px auto';
-            }
-        }
+        // Generate QR code instantly
+        await renderQRCodesInContainer(resultBox, studentResult, developerCredit);
 
         // Show the reset generator button
         const genResetBtn = document.getElementById('srGenResetBtn');
@@ -1024,6 +1045,20 @@ async function handleBulkPrint() {
         }
         
         printContainer.innerHTML = printHTML;
+
+        // Generate QR codes for all bulk print cards instantly
+        for (const s of sortedStudents) {
+            const uid = generateStudentUniqueId(s.name, selClass, selSession, s.id, s.group || '');
+            const studentResult = {
+                id: s.id,
+                name: s.name,
+                class: selClass,
+                session: selSession,
+                group: s.group || '',
+                uniqueId: uid
+            };
+            await renderQRCodesInContainer(printContainer, studentResult, developerCredit);
+        }
 
         // Add a class to body to trigger print styles, then print
         document.body.classList.add('sr-bulk-printing-active');
