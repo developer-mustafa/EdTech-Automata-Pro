@@ -1405,51 +1405,209 @@ function renderSignatureSlots() {
 }
 
 /**
- * Print a single marksheet
+ * Build a clean print-only HTML document for marksheet(s)
+ * This approach completely bypasses all conflicting @media print rules
+ * by creating an isolated document with only marksheet content and CSS.
+ */
+function buildMarksheetPrintDocument(marksheetHtmlArray) {
+    // Collect all styles and stylesheets from the current page
+    // Crucial for environments like Vite that inject CSS via <style> tags
+    const allStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+        .map(el => el.outerHTML)
+        .join('\n');
+
+    const marksheetContent = marksheetHtmlArray.join('\n');
+
+    return `<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>মার্কশীট প্রিন্ট</title>
+    ${allStyles}
+    <style>
+        /* ===== ISOLATED PRINT-ONLY OVERRIDE ===== */
+        /* Reset everything for a clean print environment */
+        *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        body {
+            display: block !important;
+        }
+
+        /* Screen preview styling */
+        @media screen {
+            body {
+                background: #e5e7eb !important;
+                padding: 20px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 30px !important;
+            }
+            .ms-page {
+                box-shadow: 0 20px 50px rgba(0,0,0,0.15) !important;
+            }
+        }
+
+        /* CRITICAL: Override the ms-page for perfect A4 fit */
+        html body .ms-page {
+            display: block !important;
+            visibility: visible !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            background: #fff !important;
+            position: relative !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+            transform: none !important;
+            page-break-after: always !important;
+            page-break-inside: avoid !important;
+            break-after: page !important;
+            break-inside: avoid !important;
+        }
+
+        html body .ms-page:last-child {
+            page-break-after: avoid !important;
+            break-after: auto !important;
+        }
+
+        /* Hide print/action buttons */
+        .ms-actions-float,
+        .no-print {
+            display: none !important;
+        }
+
+        /* Preserve all backgrounds and colors during print */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                width: 210mm !important;
+            }
+
+            html body .ms-page {
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                transform: none !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                break-after: page !important;
+                break-inside: avoid !important;
+            }
+
+            html body .ms-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+
+            /* Force preserve backgrounds */
+            .ms-table thead tr,
+            .ms-table tbody tr:nth-child(even),
+            .ms-row-total,
+            .ms-student-section,
+            .ms-result-box,
+            .ms-result-pass,
+            .ms-result-fail,
+            .ms-grade-scale,
+            .ms-optional-tag,
+            .ms-header-pill,
+            .ms-watermark-bg {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .ms-watermark-bg {
+                display: block !important;
+                opacity: var(--ms-watermark-opacity, 0.1) !important;
+            }
+
+            .ms-border-frame {
+                position: absolute !important;
+                visibility: visible !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    ${marksheetContent}
+    <script>
+        // Auto-print when loaded, then close
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 400);
+        };
+        window.onafterprint = function() {
+            window.close();
+        };
+    </script>
+</body>
+</html>`;
+}
+
+/**
+ * Print a single marksheet - Opens an isolated print window
  */
 window.printSingleMarksheet = function (containerId) {
     const el = document.getElementById(containerId);
     if (!el) return;
 
-    // We use a temporary class to hide everything except THIS specific marksheet
-    document.body.classList.add('ms-printing-single');
-    el.classList.add('ms-single-active');
-
-    // Hide all other ms-pages temporarily
-    const allPages = document.querySelectorAll('.ms-page');
-    allPages.forEach(p => {
-        if (p.id !== containerId) p.style.display = 'none';
-    });
-
-    window.print();
-
-    // Restoration
-    const restore = () => {
-        document.body.classList.remove('ms-printing-single');
-        el.classList.remove('ms-single-active');
-        allPages.forEach(p => p.style.display = '');
-        window.removeEventListener('afterprint', restore);
-    };
-
-    window.addEventListener('afterprint', restore);
-    // Switch back after 3s just in case
-    setTimeout(restore, 3000);
+    const htmlContent = buildMarksheetPrintDocument([el.outerHTML]);
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+        showNotification('পপ-আপ ব্লক করা হয়েছে। অনুগ্রহ করে পপ-আপ অনুমতি দিন।', 'error');
+        return;
+    }
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 };
 
 /**
- * Bulk Print - opens print dialog with only marksheets
+ * Bulk Print - Opens an isolated print window with all marksheets
  */
 function bulkPrint() {
-    document.body.classList.add('ms-printing');
-    window.print();
-    // Remove class after print dialog closes
-    window.addEventListener('afterprint', () => {
-        document.body.classList.remove('ms-printing');
-    }, { once: true });
-    // Fallback for browsers that don't fire afterprint
-    setTimeout(() => {
-        document.body.classList.remove('ms-printing');
-    }, 3000);
+    const previewArea = document.getElementById('marksheetPreview');
+    if (!previewArea) return;
+
+    const allPages = previewArea.querySelectorAll('.ms-page');
+    if (allPages.length === 0) {
+        showNotification('প্রিন্ট করার জন্য কোনো মার্কশীট নেই', 'error');
+        return;
+    }
+
+    const marksheetHtmlArray = Array.from(allPages).map(p => p.outerHTML);
+    const htmlContent = buildMarksheetPrintDocument(marksheetHtmlArray);
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+        showNotification('পপ-আপ ব্লক করা হয়েছে। অনুগ্রহ করে পপ-আপ অনুমতি দিন।', 'error');
+        return;
+    }
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 }
 
 /**
