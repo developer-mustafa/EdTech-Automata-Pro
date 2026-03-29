@@ -1,14 +1,14 @@
 /**
  * Chart Management Module
  */
-
+import { state } from './state.js';
 import {
     createPerformanceChart,
     createHistoryChart,
     downloadHighResChart,
     getCurrentChart
 } from '../chartModule.js';
-import { state } from './state.js';
+
 
 export function initializeMainChart(canvas, data, options) {
     if (!canvas) return null;

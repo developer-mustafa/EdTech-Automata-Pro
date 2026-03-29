@@ -12588,6 +12588,374 @@ input:checked + .toggle-slider:before {
   color: #000 !important;
 }
 
+/* =========================================
+   MOBILE RESPONSIVE: Admit Card & Seat Plan
+   ========================================= */
+
+/* Tablet and below: Scale A4 pages to fit viewport */
+@media screen and (max-width: 850px) {
+  .admit-card-preview-area {
+    padding: 10px;
+    gap: 15px;
+  }
+
+  .ac-page {
+    width: 100% !important;
+    min-height: auto !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 3mm;
+    gap: 3mm;
+    margin: 0 auto 15px auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .ac-page-portrait,
+  .ac-page-landscape {
+    width: 100% !important;
+    min-height: auto !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Force single column for all layouts on mobile */
+  .ac-page,
+  .ac-page.ac-layout-2,
+  .ac-page.ac-layout-4,
+  .ac-page.ac-layout-6,
+  .ac-page.ac-layout-8,
+  .ac-page.ac-layout-10,
+  .ac-page.ac-layout-12,
+  .ac-page-landscape.ac-layout-1,
+  .ac-page-landscape.ac-layout-2,
+  .ac-page-landscape.ac-layout-4,
+  .ac-page-landscape.ac-layout-6,
+  .ac-page-landscape.ac-layout-8,
+  .ac-page-landscape.ac-layout-10,
+  .ac-page-landscape.ac-layout-12 {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+    gap: 10px !important;
+  }
+
+  /* Seat plan also single column */
+  .ac-page-seat {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+  }
+
+  .ac-page-seat .sp-card {
+    height: auto !important;
+  }
+
+  /* Admit Card */
+  .ac-card {
+    padding: 6px;
+    overflow: hidden;
+    align-self: auto;
+  }
+
+  .ac-card-inner {
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .ac-header {
+    gap: 8px;
+    min-height: auto;
+    flex-wrap: nowrap;
+  }
+
+  .ac-logo-container {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+
+  .ac-logo {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .ac-header-text h3 {
+    font-size: clamp(12px, 3.5vw, var(--ac-title-font-size, 22px)) !important;
+    white-space: normal !important;
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
+  .ac-address {
+    font-size: 0.6rem;
+    word-break: break-word;
+  }
+
+  /* Pill Header - responsive */
+  .ac-pill-header-container,
+  .sp-pill-header-container {
+    margin: 4px 0;
+  }
+
+  .ac-pill-header,
+  .sp-pill-header {
+    flex-direction: column;
+    border-radius: 10px;
+    text-align: center;
+  }
+
+  .ac-pill-left, .sp-pill-left {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    justify-content: center;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .ac-pill-right, .sp-pill-right {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    justify-content: center;
+    text-align: center;
+    word-break: break-word;
+  }
+
+  /* Body section */
+  .ac-body {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ac-info-section {
+    width: 100%;
+  }
+
+  .ac-photo-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .ac-photo-box {
+    width: 25mm;
+    height: 30mm;
+  }
+
+  .ac-info-table {
+    font-size: clamp(11px, 2.5vw, var(--ac-table-font-size, 13px));
+  }
+
+  .ac-info-table th {
+    width: 75px;
+    font-size: inherit;
+  }
+
+  /* Routine Table */
+  .ac-routine-box {
+    margin-top: 4px;
+    margin-bottom: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ac-routine-table {
+    font-size: 9px;
+    min-width: 100%;
+  }
+
+  .ac-routine-table th,
+  .ac-routine-table td {
+    padding: 2px 3px;
+    word-break: break-word;
+  }
+
+  .ac-section-title {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Footer / Signatures */
+  .ac-footer {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    justify-content: center;
+  }
+
+  .ac-sig-block {
+    max-width: none;
+    min-width: 60px;
+    flex: 1 1 auto;
+  }
+
+  .ac-sig-label {
+    font-size: 0.65rem;
+  }
+
+  .ac-sig-img {
+    height: 25px;
+  }
+
+  .ac-sig-space {
+    height: 22px;
+  }
+
+  /* Seat Plan Card */
+  .sp-card {
+    padding: 6px;
+    height: auto !important;
+  }
+
+  .sp-card-inner {
+    padding: 6px;
+    height: auto !important;
+  }
+
+  .sp-table {
+    font-size: 0.9rem;
+  }
+
+  .sp-table th {
+    width: 45px;
+  }
+
+  .sp-watermark-roll {
+    font-size: 3.5rem;
+    letter-spacing: -3px;
+  }
+
+  .sp-highlight-roll {
+    font-size: 1rem;
+  }
+
+  /* Watermark adjustments */
+  .ac-has-watermark .ac-card-inner::before {
+    width: 35mm;
+    height: 35mm;
+  }
+
+  .sp-has-watermark .sp-card-inner::before {
+    width: 30mm;
+    height: 30mm;
+  }
+
+  .ac-card.ac-with-routine.ac-has-watermark .ac-routine-box::before {
+    width: 40mm;
+    height: 40mm;
+  }
+
+  /* Group highlight */
+  .ac-grp-highlight {
+    padding: 1px 6px;
+    font-size: 0.85em;
+  }
+
+  /* Developer credit */
+  .ac-dev-credit,
+  .sp-dev-credit {
+    font-size: 0.55rem !important;
+  }
+}
+
+/* Extra small phones */
+@media screen and (max-width: 480px) {
+  .ac-page {
+    padding: 2mm;
+    gap: 2mm;
+    margin-bottom: 10px;
+  }
+
+  .ac-card {
+    padding: 4px;
+  }
+
+  .ac-card-inner {
+    padding: 4px;
+    border-width: 1.5px;
+  }
+
+  .ac-header {
+    gap: 6px;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    border-bottom-width: 1.5px;
+  }
+
+  .ac-logo-container {
+    width: 26px;
+    height: 26px;
+  }
+
+  .ac-logo {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .ac-header-text h3 {
+    font-size: clamp(11px, 3vw, 16px) !important;
+  }
+
+  .ac-pill-left, .sp-pill-left {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .ac-pill-right, .sp-pill-right {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .ac-info-table th {
+    width: 65px;
+  }
+
+  .ac-routine-table {
+    font-size: 8px;
+  }
+
+  .ac-routine-table th,
+  .ac-routine-table td {
+    padding: 1.5px 2px;
+  }
+
+  .ac-footer {
+    margin-top: 8px;
+    gap: 4px;
+  }
+
+  .ac-sig-label {
+    font-size: 0.6rem;
+  }
+
+  .ac-sig-img {
+    height: 20px;
+  }
+
+  .ac-sig-space {
+    height: 18px;
+  }
+
+  .sp-card {
+    padding: 4px;
+  }
+
+  .sp-card-inner {
+    padding: 4px;
+  }
+
+  .sp-table {
+    font-size: 0.8rem;
+  }
+
+  .sp-watermark-roll {
+    font-size: 2.5rem;
+    letter-spacing: -2px;
+  }
+
+  .ac-photo-box {
+    width: 22mm;
+    height: 27mm;
+  }
+}
+
 /* Print Overrides */
 @media print {
   body.ac-printing {
