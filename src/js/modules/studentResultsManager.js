@@ -161,19 +161,31 @@ function generateStudentUniqueId(name, cls, session, roll, group) {
 }
 
 /**
- * Search for a student by unique ID across all saved exams
- * @param {string} searchId - The unique ID to search for
+ * Search for a student by unique ID (or Roll Number with filters) across saved exams
+ * @param {string} searchId - The unique ID or Roll Number to search for
+ * @param {Object} filters - Optional filters: { class, session, examName }
  * @returns {Promise<Object|null>} - Student match with all related exam data
  */
-async function searchByUniqueId(searchId) {
+async function searchByUniqueId(searchId, filters = {}) {
     const normalizedSearch = searchId.toUpperCase().replace(/\s+/g, '');
     const allExams = await getSavedExams();
+    
+    const { class: selClass, session: selSession, examName } = filters;
+
+    // Filter exams first if filter options are provided
+    let filteredExams = allExams;
+    if (selClass) filteredExams = filteredExams.filter(e => e.class === selClass);
+    if (selSession) filteredExams = filteredExams.filter(e => e.session === selSession);
+    if (examName && examName !== 'all') filteredExams = filteredExams.filter(e => e.name === examName);
 
     // Build a map of all students against their unique IDs
     const matches = new Map();
 
     allExams.forEach(exam => {
         if (!exam.studentData || !Array.isArray(exam.studentData)) return;
+
+        // Skip if this exam is not the one filtered for (if examName filter is active)
+        if (examName && examName !== 'all' && exam.name !== examName) return;
 
         exam.studentData.forEach(s => {
             const uid = generateStudentUniqueId(
@@ -184,8 +196,21 @@ async function searchByUniqueId(searchId) {
                 s.group || ''
             );
 
-            if (uid === normalizedSearch) {
-                const key = `${s.id}_${s.group || ''}`;
+            // Match logic:
+            // 1. Exact Unique ID match (Always highest priority)
+            // 2. Roll match (s.id) + Class + Session (If filters provided)
+            let isMatch = (uid === normalizedSearch);
+            
+            if (!isMatch && selClass && selSession) {
+                const roll = convertToEnglishDigits(String(s.id || '').trim());
+                const searchRoll = convertToEnglishDigits(normalizedSearch);
+                if (roll === searchRoll && (exam.class === selClass) && (exam.session === selSession)) {
+                    isMatch = true;
+                }
+            }
+
+            if (isMatch) {
+                const key = `${s.id}_${s.group || ''}_${exam.class}_${exam.session}`;
                 if (!matches.has(key)) {
                     matches.set(key, {
                         id: s.id,
@@ -204,7 +229,8 @@ async function searchByUniqueId(searchId) {
 
     if (matches.size === 0) return null;
 
-    // Return the first match (there should be only one for a unique ID)
+    // If an examName filter is set, we return the match that contains that exam
+    // Otherwise we return the first match.
     return [...matches.values()][0];
 }
 
@@ -224,8 +250,15 @@ async function displayStudentMarksheet(studentResult) {
     await loadMarksheetSettings();
     const ms = getMarksheetSettings();
 
-    // Collect all subjects from exams
-    const subjectsSet = new Set(exams.map(e => e.subject).filter(Boolean));
+    // Filter exams if a specific one was sought
+    let activeExams = exams;
+    const searchExamName = document.getElementById('srSearchExam')?.value;
+    if (searchExamName && searchExamName !== 'all') {
+        activeExams = exams.filter(e => e.name === searchExamName);
+    }
+
+    // Collect all subjects ONLY from active exams
+    const subjectsSet = new Set(activeExams.map(e => e.subject).filter(Boolean));
     let subjects = [...subjectsSet];
 
     // Build student data aggregation (same logic as marksheetManager)
@@ -236,7 +269,7 @@ async function displayStudentMarksheet(studentResult) {
         subjects: {}
     };
 
-    exams.forEach(exam => {
+    activeExams.forEach(exam => {
         if (exam.studentData) {
             const s = exam.studentData.find(st => String(st.id) === String(id) && (st.group || '') === group);
             if (s) {
@@ -298,7 +331,7 @@ async function displayStudentMarksheet(studentResult) {
     const globalSettings = await getSettings();
     state.developerCredit = globalSettings?.developerCredit || null;
 
-    const examDisplayName = exams.length > 1 ? 'সমন্বিত ফলাফল' : (exams[0]?.name || 'পরীক্ষা');
+    const examDisplayName = activeExams.length > 1 ? 'সমন্বিত ফলাফল' : (activeExams[0]?.name || 'পরীক্ষা');
 
     const html = renderSingleMarksheet(studentAgg, displaySubjects, examDisplayName, session, null, rules, allOptSubs);
 
@@ -695,6 +728,45 @@ async function populateSrDropdowns() {
             });
         }
 
+        // Also populate Search Tab Filters
+        const searchClassSelect = document.getElementById('srSearchClass');
+        const searchSessionSelect = document.getElementById('srSearchSession');
+        const searchExamSelect = document.getElementById('srSearchExam');
+
+        if (searchClassSelect) {
+            searchClassSelect.innerHTML = '<option value="">সকল শ্রেণি (বা আইডি ব্যবহার করুন)</option>';
+            classes.forEach(c => searchClassSelect.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+        if (searchSessionSelect) {
+            searchSessionSelect.innerHTML = '<option value="">সকল সেশন</option>';
+            sessions.forEach(s => searchSessionSelect.innerHTML += `<option value="${s}">${s}</option>`);
+        }
+
+        const updateSearchExamDropdown = () => {
+            if (!searchExamSelect) return;
+            const selClass = searchClassSelect.value;
+            const selSession = searchSessionSelect.value;
+
+            if (!selClass || !selSession) {
+                searchExamSelect.innerHTML = '<option value="">প্রথমে শ্রেণি ও সেশন নির্বাচন করুন</option>';
+                searchExamSelect.disabled = true;
+                return;
+            }
+
+            searchExamSelect.disabled = false;
+            const examsForSelection = allExams.filter(e => e.class === selClass && e.session === selSession);
+            const examNames = [...new Set(examsForSelection.map(e => e.name).filter(Boolean))].sort();
+
+            searchExamSelect.innerHTML = '<option value="">সকল পরীক্ষা (সমন্বিত)</option>';
+            examNames.forEach(name => {
+                searchExamSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+        };
+
+        if (searchClassSelect) searchClassSelect.addEventListener('change', updateSearchExamDropdown);
+        if (searchSessionSelect) searchSessionSelect.addEventListener('change', updateSearchExamDropdown);
+        updateSearchExamDropdown();
+
         // Function to update the student list
         const updateStudentDropdown = async () => {
             const selClass = classSelect.value;
@@ -797,7 +869,13 @@ async function handleSearch() {
     }
 
     try {
-        const result = await searchByUniqueId(searchId);
+        const filters = {
+            class: document.getElementById('srSearchClass')?.value || '',
+            session: document.getElementById('srSearchSession')?.value || '',
+            examName: document.getElementById('srSearchExam')?.value || ''
+        };
+
+        const result = await searchByUniqueId(searchId, filters);
 
         if (!result) {
             if (previewArea) previewArea.innerHTML = '';

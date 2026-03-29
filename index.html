@@ -898,10 +898,32 @@
         <!-- Tab: Search by ID -->
         <div class="sr-tab-content" id="srSearchTab" style="display: block;">
           <div class="sr-search-section">
+            <!-- Search Filters -->
+            <div class="sr-search-filters">
+              <div class="sr-filter-field">
+                <label><i class="fas fa-graduation-cap"></i> শ্রেণি</label>
+                <select id="srSearchClass" class="form-control">
+                  <option value="">সকল শ্রেণি (বা আইডি ব্যবহার করুন)</option>
+                </select>
+              </div>
+              <div class="sr-filter-field">
+                <label><i class="fas fa-calendar-alt"></i> সেশন</label>
+                <select id="srSearchSession" class="form-control">
+                  <option value="">সকল সেশন</option>
+                </select>
+              </div>
+              <div class="sr-filter-field">
+                <label><i class="fas fa-file-invoice"></i> পরীক্ষার নাম (ঐচ্ছিক)</label>
+                <select id="srSearchExam" class="form-control">
+                  <option value="">সকল পরীক্ষা</option>
+                </select>
+              </div>
+            </div>
+
             <div class="sr-search-box">
               <div class="sr-search-icon"><i class="fas fa-fingerprint"></i></div>
               <input type="text" id="srSearchInput" class="sr-search-input"
-                placeholder="আপনার ইউনিক আইডি লিখুন (e.g. MOHLAH-EKADOSH-2025-2026-05-BIGGYAN)" autocomplete="off"
+                placeholder="আপনার রোল বা ইউনিক আইডি লিখুন" autocomplete="off"
                 spellcheck="false">
               <button id="srSearchBtn" class="sr-search-btn">
                 <i class="fas fa-search"></i> <span>সার্চ</span>
@@ -912,8 +934,7 @@
             </div>
             <p class="sr-hint">
               <i class="fas fa-info-circle"></i>
-              আপনার ইউনিক আইডি না জানা থাকলে <strong>"আইডি তৈরি করুন"</strong> ট্যাবে গিয়ে আপনার তথ্য দিয়ে আইডি জেনে
-              নিন।
+              রোল নাম্বার লিখলে উপরে <strong>শ্রেণি ও সেশন</strong> নির্বাচন করুন। অথবা সরাসরি <strong>ইউনিক আইডি</strong> লিখে সার্চ করুন।
             </p>
           </div>
         </div>
