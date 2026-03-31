@@ -2411,7 +2411,8 @@ body.is-super-admin .admin-only:not(.app-page) {
   /* Ensure DASHBOARD card allows children to overflow */
   #performanceSection, 
   .card,
-  #tableView {
+  #tableView,
+  .collapse-container:not(.collapsed) {
     overflow: visible !important;
   }
 
