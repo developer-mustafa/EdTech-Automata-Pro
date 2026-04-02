@@ -99,15 +99,15 @@ export function renderGroupStats(container, data, options = {}) {
   const { examName, subjectName } = options;
   if (metaElement) {
     metaElement.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 10px;">
-        <div class="meta-items-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div class="modern-meta-header">
+        <div class="meta-items-group">
           <span class="meta-item"><i class="fas fa-graduation-cap"></i> শ্রেণি: ${firstStudent.class || 'N/A'}</span>
           <span class="meta-item"><i class="fas fa-calendar-alt"></i> সেশন: ${firstStudent.session || 'N/A'}</span>
           ${examName ? `<span class="meta-item"><i class="fas fa-book"></i> ${examName}</span>` : ''}
           ${subjectName ? `<span class="meta-item"><i class="fas fa-book-open"></i> ${subjectName}</span>` : ''}
         </div>
-        <button class="view-btn btn-premium-download" id="downloadGroupStatsBtn" style="margin: 0; padding: 6px 14px; font-size: 0.85rem;">
-          <i class="fas fa-download"></i> ডাউনলোড
+        <button class="sleek-download-btn" id="downloadGroupStatsBtn">
+          <i class="fas fa-download"></i> <span>ডাউনলোড</span>
         </button>
       </div>
     `;

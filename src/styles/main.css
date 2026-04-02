@@ -434,11 +434,13 @@ input:focus {
 
 @media (max-width: 576px) {
   .theme-toggle {
-    width: 30px;
-    height: 30px;
-    font-size: 13px;
-    top: 82px;
-    right: 26px;
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+    top: 15px;
+    right: 15px;
+    position: absolute;
+    z-index: 1000;
   }
 }
 
@@ -2360,8 +2362,9 @@ body.is-super-admin .admin-only:not(.app-page) {
     width: 100% !important;
     max-width: 100% !important;
     overflow-x: auto !important;
+    overflow-y: auto !important;
+    max-height: 65vh !important;
     -webkit-overflow-scrolling: touch !important;
-    display: block !important;
     position: relative !important;
     margin-bottom: 20px !important;
     border-radius: var(--radius-md) !important;
@@ -2396,7 +2399,8 @@ body.is-super-admin .admin-only:not(.app-page) {
 
   /* Professional Scrollbar */
   .table-container::-webkit-scrollbar {
-    height: 8px !important;
+    width: 6px !important;
+    height: 6px !important;
   }
   .table-container::-webkit-scrollbar-thumb {
     background-color: #cbd5e1 !important;
@@ -2406,18 +2410,16 @@ body.is-super-admin .admin-only:not(.app-page) {
     background: transparent !important;
   }
 
-  /* CRITICAL: Override overflow:hidden on parent containers so table can scroll */
+  /* CRITICAL: Allow horizontal scroll to break out of horizontal bounds if normally hidden, but keep accordion safe */
   .collapse-container:not(.collapsed) {
     overflow-x: visible !important;
-    overflow-y: visible !important;
   }
 
   #chartSectionCollapse:not(.collapsed) {
     overflow-x: visible !important;
-    overflow-y: visible !important;
   }
 
-  /* Cards must not clip table scroll */
+  /* Cards must not clip table scroll horizontally */
   .card {
     overflow: visible !important;
   }
@@ -2436,8 +2438,8 @@ body.is-super-admin .admin-only:not(.app-page) {
   .data-management-card .dm-controls {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-    padding: 10px !important;
+    gap: 12px !important;
+    padding: 16px !important;
   }
 
   .dm-search {
@@ -2445,22 +2447,35 @@ body.is-super-admin .admin-only:not(.app-page) {
     width: 100% !important;
     min-width: 100% !important;
     order: -1 !important;
+    margin-bottom: 4px;
   }
 
-  .dm-upload-wrapper,
-  .dm-btn {
-    width: 100% !important;
-    justify-content: center !important;
-    padding: 10px !important;
+  /* Force Admin button to bottom taking full width, format Contact and Users side-by-side */
+  .dm-controls .admin-toggle {
+    grid-column: 1 / -1 !important;
+    order: 10 !important;
+  }
+  .dm-controls .dm-contact {
+    order: 8 !important;
+  }
+  .dm-controls .super-admin-only {
+    order: 9 !important;
   }
 
+  .dm-controls .dropdown,
   .dm-upload-wrapper {
+    width: 100% !important;
     grid-column: span 1;
   }
 
-  .dm-upload-wrapper label {
+  .dm-btn,
+  .dropdown .dm-btn,
+  .dm-upload-wrapper label.dm-btn {
     width: 100% !important;
     justify-content: center !important;
+    padding: 12px 10px !important;
+    font-size: 0.85rem !important;
+    border-radius: 12px !important;
   }
 
   /* Stats Grid for Mobile */
@@ -6362,6 +6377,71 @@ body:not(.dark-mode) .current-roll-display {
   margin-top: 8px;
 }
 
+/* Modern Header for Group Stats (Premium UI) */
+.modern-meta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding: 8px 0 16px 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.modern-meta-header .meta-items-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.sleek-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--container-bg);
+  border: 1.5px solid var(--primary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.sleek-download-btn i {
+  font-size: 1rem;
+}
+
+.sleek-download-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.25);
+}
+
+@media (max-width: 576px) {
+  .modern-meta-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .modern-meta-header .meta-items-group {
+    justify-content: center;
+  }
+  
+  .sleek-download-btn {
+    width: 100%;
+    padding: 10px;
+  }
+}
+
 .meta-item {
   background: var(--light);
   padding: 4px 10px;
@@ -6645,15 +6725,17 @@ body:not(.dark-mode) .current-roll-display {
   display: flex;
   gap: 8px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 
 .vcd-badge {
   font-size: 0.65rem;
   font-weight: 800;
-  padding: 2px 10px;
+  padding: 4px 10px;
   border-radius: 6px;
   text-transform: uppercase;
   color: white;
+  white-space: nowrap;
 }
 
 .vcd-badge.cls {
@@ -6725,6 +6807,24 @@ body:not(.dark-mode) .current-roll-display {
   text-transform: uppercase;
 }
 
+@media (max-width: 576px) {
+  .vibrant-center-details {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+    padding: 16px 12px;
+  }
+  .vcd-labels {
+    align-items: center;
+  }
+  .vcd-top-badges {
+    justify-content: center;
+  }
+  .vcd-exam {
+    font-size: 1.05rem;
+  }
+}
+
 .vibrant-title-group {
   display: flex;
   align-items: center;
@@ -6758,19 +6858,29 @@ body:not(.dark-mode) .current-roll-display {
 }
 
 .vibrant-meta-pills {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+  width: 100%;
 }
 
 .vibrant-meta-pill {
   background: var(--container-bg);
-  padding: 8px 20px;
-  border-radius: 50px;
+  padding: 12px 8px;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   border: 1px solid var(--border-color);
-  min-width: 100px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vibrant-meta-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0,0,0,0.05);
 }
 
 .vibrant-meta-pill.highlight {
@@ -13933,33 +14043,103 @@ body.dark-mode .re-row-humanities td:nth-child(3) { color: #4ade80 !important; }
   opacity: 0.5;
 }
 
-/* Switch UI */
-.ac-switch {
+/* =========================================
+   Access Control Manager - Modern UI (v2)
+   ========================================= */
+
+.ac-tab-list-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.ac-tab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: var(--light);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.dark-mode .ac-tab-row {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ac-tab-row:hover {
+  border-color: var(--primary);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.ac-tab-row-label {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-weight: 700;
+  color: var(--heading-color);
+  font-size: 1.05rem;
+}
+
+.ac-tab-row-label i {
+  color: var(--primary);
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+}
+
+.ac-tab-checks {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+.ac-tab-check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ac-tab-role-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* Modern Toggle Switch (.ac-sw) */
+.ac-sw {
   position: relative;
   display: inline-block;
-  width: 50px;
+  width: 48px;
   height: 24px;
 }
 
-.ac-switch input {
+.ac-sw input {
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.ac-slider {
+.ac-sw-sl {
   position: absolute;
   cursor: pointer;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
+  background-color: #cbd5e1;
+  transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 24px;
 }
 
-.ac-slider:before {
+.dark-mode .ac-sw-sl {
+  background-color: #334155;
+}
+
+.ac-sw-sl:before {
   position: absolute;
   content: "";
   height: 18px;
@@ -13967,20 +14147,47 @@ body.dark-mode .re-row-humanities td:nth-child(3) { color: #4ade80 !important; }
   left: 3px;
   bottom: 3px;
   background-color: white;
-  transition: .4s;
+  transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-input:checked + .ac-slider {
-  background-color: var(--primary);
+.ac-sw input:checked + .ac-sw-sl {
+  background-color: #10b981; /* Vibrant Green from screenshot */
 }
 
-input:focus + .ac-slider {
-  box-shadow: 0 0 1px var(--primary);
+.ac-sw input:checked + .ac-sw-sl:before {
+  transform: translateX(24px);
 }
 
-input:checked + .ac-slider:before {
-  transform: translateX(26px);
+/* Teacher Row Adjustments */
+.ac-teacher-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.ac-teacher-row.is-inactive {
+  opacity: 0.6;
+  background: var(--light);
+}
+
+.ac-teacher-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--heading-color);
+}
+
+/* Reusable Switch Labels for Teacher List too */
+.ac-teacher-action {
+  display: flex;
+  align-items: center;
 }
 
 /* Developer Credit Styles */
@@ -13988,10 +14195,9 @@ input:checked + .ac-slider:before {
   text-align: center;
   font-size: 10px;
   color: #9ca3af;
-  position: relative;
-  margin-top: 4px;
-  padding: 3px 0;
-  z-index: 10;
+  margin-top: 20px;
+  padding: 10px;
+  opacity: 0.6;
 }
 
 .ac-dev-credit a, .sp-dev-credit a, .ms-dev-credit a {
