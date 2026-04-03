@@ -5,12 +5,12 @@
  * @module resultEntryManager
  */
 
-import { 
-    getSavedExams, 
-    updateExam, 
-    saveExam, 
-    getAllStudents, 
-    getUnifiedStudents, 
+import {
+    getSavedExams,
+    updateExam,
+    saveExam,
+    getAllStudents,
+    getUnifiedStudents,
     getExamConfigs,
     getStudentLookupMap,
     generateStudentDocId
@@ -136,7 +136,7 @@ export async function populateREDropdowns() {
         // Target .selector-group (from index.html) or .dm-input-group (generic)
         const groupContainer = groupSelect.closest('.selector-group') || groupSelect.closest('.dm-input-group') || groupSelect.parentElement;
         const isTeacherOnly = state.userRole === 'teacher' && !state.isAdmin && !state.isSuperAdmin;
-        
+
         if (isTeacherOnly) {
             if (groupContainer) {
                 groupContainer.style.display = 'none';
@@ -213,7 +213,7 @@ export async function populateREDropdowns() {
             });
 
             if (isFullySubmitted) return ' [✔]'; // Will be contextually understood as green/complete
-            
+
             // Check if ANY data exists
             const hasAnyData = relevantExams.some(e =>
                 (e.studentData || []).some(s =>
@@ -237,7 +237,7 @@ export async function populateREDropdowns() {
                     const relevantExams = exams.filter(e => e.class === selClass && e.session === selSession && e.subject === s);
                     const isFull = isSubjectFullySubmitted(exams, selClass, selSession, s);
                     const hasData = relevantExamsHasSubjectData(exams, selClass, selSession, s);
-                    
+
                     let tick = '';
                     let color = '';
                     if (isFull) {
@@ -247,7 +247,7 @@ export async function populateREDropdowns() {
                         tick = ' [✔]';
                         color = '#b45309'; // Dark yellow/Amber
                     }
-                    
+
                     html += `<option value="${s}" style="color: ${color}">${s}${tick}</option>`;
                 });
                 html += `</optgroup>`;
@@ -345,7 +345,7 @@ async function getREGroupSubjects(cls, group) {
             const matchGroup = (mapping) => {
                 const keys = Object.keys(mapping);
                 const gValue = group.trim().toLowerCase();
-                
+
                 // 1. Exact match (case-insensitive)
                 let foundKey = keys.find(k => k.trim().toLowerCase() === gValue);
                 if (foundKey) return mapping[foundKey];
@@ -417,7 +417,7 @@ async function loadExamForEntry() {
         showAccessDeniedMessage(permission.reason);
         return;
     }
-    
+
     // Authorization check for teachers
     if (state.userRole === 'teacher' && !state.isAdmin && !state.isSuperAdmin) {
         const uid = state.currentUser?.uid;
@@ -440,15 +440,15 @@ async function loadExamForEntry() {
 
         const classMatch = eCls === normCls;
         const sessionMatch = eSess === normSession;
-        
-        // If we are looking for 'all', we accept any group
-        const groupMatch = normGroup === 'all' || eGroup === normGroup || 
-                          (eGroup.includes(normGroup)) || (normGroup.includes(eGroup));
 
-        return classMatch && sessionMatch && 
-               e.subject === subject &&
-               e.name === examName &&
-               groupMatch;
+        // If we are looking for 'all', we accept any group
+        const groupMatch = normGroup === 'all' || eGroup === normGroup ||
+            (eGroup.includes(normGroup)) || (normGroup.includes(eGroup));
+
+        return classMatch && sessionMatch &&
+            e.subject === subject &&
+            e.name === examName &&
+            groupMatch;
     });
 
     // --- AGGREGATION LOGIC ---
@@ -461,8 +461,8 @@ async function loadExamForEntry() {
 
         const classMatch = sCls === normCls;
         const sessionMatch = sSess === normSession;
-        const groupMatch = normGroup === 'all' || sGroup === normGroup || 
-                         (sGroup.includes(normGroup)) || (normGroup.includes(sGroup));
+        const groupMatch = normGroup === 'all' || sGroup === normGroup ||
+            (sGroup.includes(normGroup)) || (normGroup.includes(sGroup));
 
         return classMatch && sessionMatch && groupMatch;
     });
@@ -503,8 +503,8 @@ async function loadExamForEntry() {
         matchingExams.forEach(ex => {
             const existing = (ex.studentData || []).find(es => {
                 // Key compare: Roll + Name + Group
-                return String(es.id) === String(s.id) && 
-                       normalizeText(es.group || '') === normalizeText(s.group || '');
+                return String(es.id) === String(s.id) &&
+                    normalizeText(es.group || '') === normalizeText(s.group || '');
             });
             if (existing) {
                 // Merge marks: if multiple records with marks exist (unlikely but possible), latest wins
@@ -523,7 +523,7 @@ async function loadExamForEntry() {
     if (matchingExams.length > 0) {
         // --- EXISTING EXAM (Aggregated) ---
         isNewExam = false;
-        
+
         // Pick the first matching exam as the master record reference for its metadata (docId, etc.)
         // If it was group-specific, we will essentially elevate it to 'all' or update its docId
         currentExamDoc = {
@@ -608,29 +608,37 @@ function showExamInfo(exam, count, isNew = false) {
         // Build pass mark badges — only show active criteria
         let passMarkHtml = '';
         const badges = [];
-        if (writtenMax > 0) badges.push(`<span class="re-pass-badge"><i class="fas fa-pen-nib"></i> লিখিত পাশ: ${convertToBengaliDigits(writtenPass)}/${convertToBengaliDigits(writtenMax)}</span>`);
-        if (mcqMax > 0) badges.push(`<span class="re-pass-badge"><i class="fas fa-list-ol"></i> MCQ পাশ: ${convertToBengaliDigits(mcqPass)}/${convertToBengaliDigits(mcqMax)}</span>`);
-        if (practicalMax > 0) badges.push(`<span class="re-pass-badge"><i class="fas fa-flask"></i> ব্যবহারিক পাশ: ${convertToBengaliDigits(practicalPass)}/${convertToBengaliDigits(practicalMax)}</span>`);
+        if (writtenMax > 0) badges.push(`<span class="re-pass-badge pass-written"><i class="fas fa-pen-nib"></i> লিখিত পাশ: ${convertToBengaliDigits(writtenPass)}/${convertToBengaliDigits(writtenMax)}</span>`);
+        if (mcqMax > 0) badges.push(`<span class="re-pass-badge pass-mcq"><i class="fas fa-list-ol"></i> MCQ পাশ: ${convertToBengaliDigits(mcqPass)}/${convertToBengaliDigits(mcqMax)}</span>`);
+        if (practicalMax > 0) badges.push(`<span class="re-pass-badge pass-practical"><i class="fas fa-flask"></i> ব্যবহারিক পাশ: ${convertToBengaliDigits(practicalPass)}/${convertToBengaliDigits(practicalMax)}</span>`);
         if (badges.length > 0) {
             passMarkHtml = `<span class="re-pass-info"><i class="fas fa-check-circle"></i> ${badges.join('')}</span>`;
         }
 
+        infoEl.className = 're-exam-info modern-layout';
         infoEl.innerHTML = `
-            ${isNew ? '<span style="background: rgba(234, 179, 8, 0.15); color: #b45309; padding: 2px 10px; border-radius: 6px; font-weight: 700; font-size: 0.85em;"><i class="fas fa-plus-circle"></i> নতুন পরীক্ষা</span>' : ''}
-            <span><i class="fas fa-book"></i> ${exam.subject}</span>
-            <span><i class="fas fa-file-alt"></i> ${exam.name}</span>
-            <span><i class="fas fa-school"></i> ${exam.class} | ${exam.session}</span>
-            <span><i class="fas fa-users"></i> ${count} জন শিক্ষার্থী</span>
-            <div class="re-group-legend" style="display:flex;gap:10px;font-size:0.85em;background:rgba(0,0,0,0.03);border:1px solid #e2e8f0;padding:4px 8px;border-radius:4px;margin: 2px 0;">
-               <span style="color:#ef4444;font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6em;vertical-align:middle;position:relative;top:-1px;"></i> বিজ্ঞান</span>
-               <span style="color:#3b82f6;font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6em;vertical-align:middle;position:relative;top:-1px;"></i> ব্যবসায়</span>
-               <span style="color:#22c55e;font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6em;vertical-align:middle;position:relative;top:-1px;"></i> মানবিক</span>
+            <div class="re-exam-details-grid">
+                ${isNew ? '<div class="re-info-item highlight-new"><i class="fas fa-plus-circle"></i> <span>নতুন পরীক্ষা</span></div>' : ''}
+                <div class="re-info-item"><i class="fas fa-book"></i> <span>${exam.subject}</span></div>
+                <div class="re-info-item"><i class="fas fa-file-alt"></i> <span>${exam.name}</span></div>
+                <div class="re-info-item"><i class="fas fa-school"></i> <span>${exam.class} | ${exam.session}</span></div>
+                <div class="re-info-item"><i class="fas fa-users"></i> <span>${count} জন শিক্ষার্থী</span></div>
             </div>
+            
+            <div class="re-group-legend premium-legend">
+               <span class="legend-item sci"><i class="fas fa-circle"></i> বিজ্ঞান</span>
+               <span class="legend-item bus"><i class="fas fa-circle"></i> ব্যবসায়</span>
+               <span class="legend-item hum"><i class="fas fa-circle"></i> মানবিক</span>
+            </div>
+            
             <button id="toggleNamesBtn" class="re-toggle-name-btn ${hideNames ? 'active' : ''}">
                 <i class="fas ${hideNames ? 'fa-eye' : 'fa-eye-slash'}"></i> 
-                ${hideNames ? 'নাম দেখান' : 'নাম লুকান'}
+                ${hideNames ? 'বিস্তারিত দেখান' : 'সংক্ষিপ্ত করুন'}
             </button>
-            ${passMarkHtml}
+            
+            <div class="re-pass-marks-container">
+               ${passMarkHtml}
+            </div>
         `;
 
         // Toggle Visibility Listener
@@ -701,11 +709,11 @@ function sortStudentsByGroupAndRoll(studentData) {
         const scoreA = getGroupScore(a.group);
         const scoreB = getGroupScore(b.group);
         if (scoreA !== scoreB) return scoreA - scoreB;
-        
+
         const rollA = parseInt(convertToEnglishDigits(String(a.id))) || 0;
         const rollB = parseInt(convertToEnglishDigits(String(b.id))) || 0;
         if (rollA !== rollB) return rollA - rollB;
-        
+
         return (a.name || '').localeCompare(b.name || '', 'bn');
     });
 }
@@ -779,9 +787,9 @@ function updateTableHeaders(config) {
             <th class="re-col-roll">রোল</th>
             <th class="re-col-name">নাম</th>
             <th class="re-col-group">গ্রুপ</th>
-            <th class="re-col-written">লিখিত${passHint(writtenMax, writtenPass)}</th>
-            <th class="re-col-mcq">এমসিকিউ${passHint(mcqMax, mcqPass)}</th>
-            <th class="re-col-practical">ব্যবহারিক${passHint(practicalMax, practicalPass)}</th>
+            <th class="re-col-written">লিখিত</th>
+            <th class="re-col-mcq">এমসিকিউ</th>
+            <th class="re-col-practical">ব্যবহারিক</th>
             <th class="re-col-total">মোট</th>
             <th class="re-col-grade">গ্রেড</th>
             <th class="re-col-status">স্ট্যাটাস</th>
@@ -1224,9 +1232,9 @@ function checkMarkEntryPermission() {
 
     // 1. Global Disable
     if (ac.globalEntryDisabled) {
-        return { 
-            allowed: false, 
-            reason: 'নিরাপত্তা বা তথ্য হালনাগাদ করার জন্য বর্তমানে সকল শিক্ষকের জন্য ফলাফল এন্ট্রি সাময়িকভাবে বন্ধ রাখা হয়েছে।' 
+        return {
+            allowed: false,
+            reason: 'নিরাপত্তা বা তথ্য হালনাগাদ করার জন্য বর্তমানে সকল শিক্ষকের জন্য ফলাফল এন্ট্রি সাময়িকভাবে বন্ধ রাখা হয়েছে।'
         };
     }
 
@@ -1234,9 +1242,9 @@ function checkMarkEntryPermission() {
     if (ac.deadlineEnabled && ac.entryDeadline) {
         const deadline = new Date(ac.entryDeadline);
         if (new Date() > deadline) {
-            return { 
-                allowed: false, 
-                reason: `ফলাফল এন্ট্রির সময়সীমা ${deadline.toLocaleString('bn-BD')} এ শেষ হয়ে গেছে। এখন আর কোনো তথ্য পরিবর্তন বা নতুন এন্ট্রি করা সম্ভব নয়।` 
+            return {
+                allowed: false,
+                reason: `ফলাফল এন্ট্রির সময়সীমা ${deadline.toLocaleString('bn-BD')} এ শেষ হয়ে গেছে। এখন আর কোনো তথ্য পরিবর্তন বা নতুন এন্ট্রি করা সম্ভব নয়।`
             };
         }
     }
@@ -1245,9 +1253,9 @@ function checkMarkEntryPermission() {
     if (state.userRole === 'teacher' && state.currentUser) {
         const teacherPerm = (ac.teacherPermissions || {})[state.currentUser.uid];
         if (teacherPerm && teacherPerm.disabled) {
-            return { 
-                allowed: false, 
-                reason: 'আপনার জন্য এই ফিচারে এক্সেস বর্তমানে নিস্ক্রিয় করা হয়েছে। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।' 
+            return {
+                allowed: false,
+                reason: 'আপনার জন্য এই ফিচারে এক্সেস বর্তমানে নিস্ক্রিয় করা হয়েছে। অনুগ্রহ করে অ্যাডমিনের সাথে যোগাযোগ করুন।'
             };
         }
     }
@@ -1261,15 +1269,15 @@ function checkMarkEntryPermission() {
 function showAccessDeniedMessage(message) {
     const tableWrapper = document.getElementById('resultEntryTableWrapper');
     const emptyState = document.getElementById('reEmptyState');
-    
+
     if (tableWrapper) tableWrapper.style.display = 'none';
-    
+
     if (emptyState) {
         emptyState.style.display = 'flex';
         emptyState.style.justifyContent = 'center';
         emptyState.style.alignItems = 'center';
         emptyState.style.padding = '40px 20px';
-        
+
         emptyState.innerHTML = `
             <div style="text-align: center; max-width: 550px; padding: 40px; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 12px; color: #c53030; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                 <i class="fas fa-user-shield" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.8;"></i>

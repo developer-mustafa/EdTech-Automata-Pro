@@ -8854,17 +8854,90 @@ body:not(.dark-mode) .nav-btn {
   transition: background-color 0.3s ease;
 }
 
-.re-exam-info {
+/* Premium Result Entry Header Info Area */
+.re-exam-info.modern-layout {
   display: flex;
-  gap: 15px;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.025);
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+body.dark-mode .re-exam-info.modern-layout {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  background: rgba(30, 41, 59, 0.6);
+}
+
+.re-exam-details-grid {
+  display: flex;
   flex-wrap: wrap;
-  padding: 8px 12px;
-  background: rgba(67, 97, 238, 0.05);
-  border-radius: 8px;
-  margin-bottom: 10px;
-  font-size: 0.85rem;
+  column-gap: 20px;
+  row-gap: 10px;
+  align-items: center;
+}
+
+.re-info-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
   font-weight: 600;
+  color: var(--text-color);
+}
+
+.re-info-item i {
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+.re-info-item.highlight-new {
+  background: rgba(234, 179, 8, 0.15);
+  color: #b45309;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.re-info-item.highlight-new i { color: #b45309; }
+body.dark-mode .re-info-item.highlight-new { color: #fcd34d; }
+body.dark-mode .re-info-item.highlight-new i { color: #fcd34d; }
+
+/* Premium Group Legend */
+.premium-legend {
+  display: inline-flex;
+  gap: 16px;
+  font-size: 0.85rem;
+  background: rgba(100, 116, 139, 0.05);
+  border: 1px solid rgba(100, 116, 139, 0.1);
+  padding: 6px 14px;
+  border-radius: 8px;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+body.dark-mode .premium-legend { background: rgba(15, 23, 42, 0.5); border-color: rgba(71, 85, 105, 0.3); }
+
+.legend-item { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.legend-item i { font-size: 0.65rem; }
+
+.legend-item.sci, .legend-item.sci i { color: #ef4444; }
+body.dark-mode .legend-item.sci, body.dark-mode .legend-item.sci i { color: #f87171; }
+
+.legend-item.bus, .legend-item.bus i { color: #3b82f6; }
+body.dark-mode .legend-item.bus, body.dark-mode .legend-item.bus i { color: #60a5fa; }
+
+.legend-item.hum, .legend-item.hum i { color: #22c55e; }
+body.dark-mode .legend-item.hum, body.dark-mode .legend-item.hum i { color: #4ade80; }
+
+.re-pass-marks-container {
+  display: flex;
+  margin-top: 4px;
 }
 
 /* Result Entry Table Enhancements */
@@ -8876,7 +8949,7 @@ body:not(.dark-mode) .nav-btn {
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 700;
-  display: inline-flex;
+  display: none !important; /* ONLY show on mobile */
   align-items: center;
   gap: 8px;
   cursor: pointer;
@@ -8914,7 +8987,8 @@ body:not(.dark-mode) .nav-btn {
 }
 
 /* 🚀 THE PERFECT SOLUTION: ZERO GAP Column Hiding */
-.re-hide-names .re-col-name {
+.re-hide-names .re-col-name,
+.re-hide-names .re-col-group {
   display: none !important;
   visibility: collapse !important;
   width: 0 !important;
@@ -8957,15 +9031,65 @@ body:not(.dark-mode) .nav-btn {
   
   /* Hide columns when toggled - Ultra Compact for Mobile Entry */
   /* Compact layout on mobile */
-  .re-exam-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+  /* Show toggle button on mobile */
+  .re-toggle-name-btn {
+    display: flex !important;
+    width: 100%;
+    justify-content: center;
     padding: 10px;
+    font-size: 1rem;
+  }
+
+  .re-exam-info.modern-layout {
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  .re-exam-details-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0px;
+  }
+  .re-info-item {
+    font-size: 0.9rem;
+    padding: 5px 0;
+    border-bottom: 1px dashed rgba(0,0,0,0.06); /* very subtle, clean */
+    width: 100%;
+  }
+  body.dark-mode .re-info-item {
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+  }
+  .re-info-item:first-child {
+    padding-top: 0;
+  }
+  .re-info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+  .re-info-item i {
+    width: 20px;
+    text-align: center;
+    font-size: 1rem;
+    margin-right: 6px;
+  }
+  .premium-legend {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 6px 10px;
+    justify-content: center;
+    width: 100%;
+    margin-top: 4px;
+    border-radius: 6px;
   }
   
   /* Mobile Padding Reset - ZERO GAP EXPERIENCE - High Specificity */
-  table.result-entry-table th.re-col-sl, table.result-entry-table td.re-col-sl,
+  table.result-entry-table th.re-col-sl, table.result-entry-table td.re-col-sl {
+    padding-left: 10px !important;
+    padding-right: 2px !important;
+    width: 1px !important;
+    white-space: nowrap !important;
+  }
+  
   table.result-entry-table th.re-col-roll, table.result-entry-table td.re-col-roll,
   table.result-entry-table th.re-col-name, table.result-entry-table td.re-col-name {
     padding-left: 2px !important;
@@ -9039,23 +9163,116 @@ body:not(.dark-mode) .nav-btn {
   gap: 4px;
   padding: 3px 10px;
   border-radius: 20px;
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
   font-size: 0.78rem;
   font-weight: 700;
-  border: 1px solid rgba(34, 197, 94, 0.2);
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .re-pass-badge i {
-  font-size: 0.7rem;
-  opacity: 0.8;
+  font-size: 0.75rem;
+  opacity: 0.85;
 }
 
-.dark-mode .re-pass-badge {
+/* Written: Modern Blue Outline Theme */
+.re-pass-badge.pass-written {
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+.re-pass-badge.pass-written i { color: #3b82f6; }
+
+.dark-mode .re-pass-badge.pass-written {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* MCQ: Vibrant Violet/Purple Theme */
+.re-pass-badge.pass-mcq {
+  background: rgba(139, 92, 246, 0.08);
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+.re-pass-badge.pass-mcq i { color: #8b5cf6; }
+
+.dark-mode .re-pass-badge.pass-mcq {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* Practical: Crisp Emerald Theme */
+.re-pass-badge.pass-practical {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.re-pass-badge.pass-practical i { color: #10b981; }
+
+.dark-mode .re-pass-badge.pass-practical {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* Table Header Colors to match badges */
+table.result-entry-table th.re-col-written { color: #2563eb !important; }
+table.result-entry-table th.re-col-mcq { color: #7c3aed !important; }
+table.result-entry-table th.re-col-practical { color: #059669 !important; }
+
+body.dark-mode table.result-entry-table th.re-col-written { color: #60a5fa !important; }
+body.dark-mode table.result-entry-table th.re-col-mcq { color: #a78bfa !important; }
+body.dark-mode table.result-entry-table th.re-col-practical { color: #34d399 !important; }
+
+/* Status Badges UI/UX */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Status Pass */
+.status-badge.pass {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+body.dark-mode .status-badge.pass {
   background: rgba(34, 197, 94, 0.15);
   color: #4ade80;
-  border-color: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+/* Status Fail */
+.status-badge.fail {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+body.dark-mode .status-badge.fail {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Status Absent */
+.status-badge.absent {
+  background: rgba(107, 114, 128, 0.1);
+  color: #4b5563;
+  border: 1px solid rgba(107, 114, 128, 0.25);
+}
+body.dark-mode .status-badge.absent {
+  background: rgba(107, 114, 128, 0.15);
+  color: #e5e7eb;
+  border-color: rgba(107, 114, 128, 0.4);
 }
 
 /* Table Header Pass Mark Hints */
