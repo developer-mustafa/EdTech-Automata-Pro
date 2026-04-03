@@ -2705,13 +2705,24 @@
           <div class="ta-list-column card"
             style="flex: 1.5; min-width: 350px; padding: 20px; box-shadow: none; border: 1px solid var(--border-color);">
             <div style="margin-bottom: 12px;">
-              <div
-                style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 10px;">
-                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                <div
+                style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 10px;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                   বর্তমান অ্যাসাইনমেন্টসমূহ
-                  <span id="taTeacherCount"
-                    style="background: var(--primary); color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;">0</span>
+                  <div id="taStatsContainer" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span id="taTotalAssignments"
+                        style="background: #eff6ff; color: #2563eb; font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #bfdbfe; display: flex; align-items: center; gap: 5px;">
+                        মোট এসাইনকৃত তালিকা: 0টি
+                    </span>
+                    <span id="taUniqueTeachers"
+                        style="background: #f1f5f9; color: #475569; font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; font-weight: 700; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 5px;">
+                        মোট শিক্ষক দায়িত্বে আছেন: 0 জন
+                    </span>
+                  </div>
                 </h3>
+                <button id="taBulkPrintBtn" class="dm-btn dm-report btn-sm super-admin-only" style="padding: 4px 10px; font-size: 0.85rem;">
+                  <i class="fas fa-print"></i> প্রিন্ট ইনফো কার্ড
+                </button>
               </div>
               <div style="position: relative;">
                 <i class="fas fa-search"
@@ -3400,6 +3411,35 @@
     </div>
 
   </div><!-- END .container-fluid -->
+
+  <!-- Teacher Info Card Modal (Refined Structure) -->
+  <div id="teacherInfoCardModal" class="config-modal tc-modal">
+    <div class="tc-modal-content">
+      <div class="tc-modal-header">
+        <h3 class="tc-modal-title"><i class="fas fa-id-card"></i> আইডি কার্ড প্রিভিউ</h3>
+        <div class="tc-modal-actions">
+          <button id="copyTeacherCardBtn" class="tc-action-btn tc-copy-btn">
+            <i class="far fa-copy"></i> কপি
+          </button>
+          <button id="downloadTeacherCardBtn" class="tc-action-btn tc-download-btn">
+            <i class="fas fa-download"></i> ইমেজ
+          </button>
+          <button id="closeTeacherCardBtn" class="tc-action-btn tc-close-btn">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div id="teacherCardPreview" class="tc-preview-container">
+        <!-- Preview will be injected here -->
+      </div>
+      <!-- Hidden Export Wrapper for Desktop-style Landscape Capture -->
+      <div id="teacherCardExportWrapper" class="tc-export-wrapper"></div>
+    </div>
+  </div>
+
+  <!-- Bulk Teacher Cards Container (Used for printing 4x2 grid) -->
+  <div id="bulkTeacherCardsContainer" class="tc-bulk-print-wrapper" style="display: none;"></div>
+
 </body>
 
 </html>

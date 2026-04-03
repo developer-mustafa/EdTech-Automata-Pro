@@ -10585,6 +10585,696 @@ body.dark-mode .status-badge.absent {
   cursor: pointer;
 }
 
+.ta-copy-info-btn, .ta-id-card-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 1.1em;
+  transition: transform 0.2s;
+}
+
+.ta-copy-info-btn { color: #2196f3; }
+.ta-id-card-btn { color: #4caf50; }
+
+.ta-copy-info-btn:hover, .ta-id-card-btn:hover {
+  transform: scale(1.2);
+}
+
+/* =========================================
+   Teacher Info Card (ID Card) Design
+   ========================================= */
+.config-modal {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  padding: 40px 15px; /* Robust spacing for all screens */
+  overflow-y: auto; /* Natural modal-level scrolling */
+  justify-content: center;
+  align-items: flex-start; /* 'Safe' start to prevent top cut-off */
+  -webkit-overflow-scrolling: touch;
+}
+
+.config-modal.active {
+  display: flex !important;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tc-card {
+  width: 580px;
+  min-height: 380px;
+  background: var(--card-bg);
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+  font-family: 'Inter', sans-serif;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+/* Modal Specific Refinements */
+.tc-modal-content {
+  max-width: 720px;
+  width: 100%;
+  background: var(--container-bg);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  margin: auto; /* Perfect centering within flex vertical-start */
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.tc-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 10;
+}
+
+.tc-modal-title {
+  margin: 0;
+  color: var(--heading-color);
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tc-modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tc-action-btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.tc-copy-btn {
+  background: rgba(71, 85, 105, 0.05);
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.dark-mode .tc-copy-btn {
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.tc-download-btn {
+  background: var(--success);
+  color: white;
+}
+
+.tc-close-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  padding: 6px 10px;
+}
+
+.tc-action-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+/* Force Strictly 700px Landscape for Professional Download Capture */
+.tc-card.tc-export-mode {
+  width: 700px !important;
+  min-width: 700px !important;
+  max-width: 700px !important;
+  min-height: 440px !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.dark-mode .tc-card {
+  background: #1e293b;
+  border-color: rgba(255,255,255,0.1);
+}
+
+.tc-header {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #fff;
+  padding: 16px 20px;
+  text-align: center;
+  position: relative;
+  box-shadow: inset 0 -5px 15px rgba(0,0,0,0.05);
+}
+
+.tc-inst-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tc-inst-address {
+  font-size: 0.72rem;
+  opacity: 0.9;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.tc-content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tc-top-row {
+  display: flex;
+  padding: 15px 20px;
+  gap: 20px;
+  border-bottom: 1px dashed rgba(0,0,0,0.06);
+}
+
+.dark-mode .tc-top-row { border-bottom-color: rgba(255,255,255,0.06); }
+
+.tc-left-col {
+  width: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid rgba(0,0,0,0.05);
+  padding-right: 15px;
+}
+
+.dark-mode .tc-left-col { border-right-color: rgba(255,255,255,0.05); }
+
+.tc-avatar-wrapper {
+  width: 90px;
+  height: 90px;
+  background: #fff;
+  border-radius: 12px;
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.tc-avatar-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.tc-avatar-wrapper i {
+  font-size: 3rem;
+  color: #cbd5e1;
+}
+
+.dark-mode .tc-avatar-wrapper {
+  background: #334155;
+  border-color: #334155;
+}
+
+.tc-personal-info {
+  text-align: center;
+}
+
+.tc-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+  color: #1e293b;
+}
+
+.dark-mode .tc-name { color: #f8fafc; }
+
+.tc-designation {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tc-right-col {
+  flex: 1;
+}
+
+.tc-info-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 5px 0;
+}
+
+.tc-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.02);
+  border-radius: 8px;
+}
+
+.dark-mode .tc-info-item { background: rgba(255,255,255,0.03); }
+
+.tc-info-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.tc-info-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.dark-mode .tc-info-label { color: #94a3b8; }
+.dark-mode .tc-info-value { color: #f1f5f9; }
+
+.tc-assignments-section {
+  padding: 15px 20px;
+  background: rgba(67, 97, 238, 0.03);
+  flex: 1;
+}
+
+.dark-mode .tc-assignments-section {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tc-assign-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.tc-assign-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+}
+
+.dark-mode .tc-assign-title {
+  color: #f8fafc !important; /* Force high visibility for title in dark mode */
+}
+
+.tc-total-count-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f4ff;
+  padding: 4px 14px;
+  border-radius: 30px;
+  border: 1px solid #d1dbff;
+  box-shadow: 0 2px 4px rgba(67, 97, 238, 0.05);
+}
+
+.dark-mode .tc-total-count-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.tc-total-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.dark-mode .tc-total-label { color: #cbd5e1; }
+
+.tc-total-value {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.dark-mode .tc-assign-title,
+.dark-mode .tc-designation,
+.dark-mode .tc-total-value,
+.dark-mode .tc-live-link a,
+.dark-mode .tc-dev-credit a {
+  color: #4ade80 !important; /* Professional vibrant green for dark mode readability */
+  filter: none;
+}
+
+.dark-mode .tc-assign-subjects {
+  color: #e2e8f0; /* Light text for subjects in dark mode */
+}
+
+.tc-assign-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px 30px;
+  width: 100%;
+}
+
+.tc-assign-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.85rem;
+  min-width: 0; /* Prevent overflow breaking the grid */
+}
+
+.tc-assign-class-badge {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  display: inline-block;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+
+.dark-mode #taTotalAssignments {
+  background: rgba(37, 99, 235, 0.1) !important;
+  color: #60a5fa !important;
+  border-color: rgba(37, 99, 235, 0.2) !important;
+}
+
+.dark-mode #taUniqueTeachers {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+
+
+
+.tc-subjects-box {
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .tc-subjects-box {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tc-assign-subjects {
+  color: #334155;
+  font-weight: 600;
+  line-height: 1.5;
+  font-size: 0.85rem;
+  display: block;
+}
+
+.dark-mode .tc-assign-subjects { color: #cbd5e1; }
+
+.tc-footer-area {
+  padding: 10px 20px 0;
+  background: var(--card-bg);
+}
+
+.tc-dev-credit {
+  font-size: 0.7rem;
+  text-align: center;
+  color: #64748b;
+  margin-bottom: 12px;
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.tc-dev-name {
+  font-weight: 800;
+  color: #334155;
+  transition: color 0.3s ease;
+}
+
+.dark-mode .tc-dev-name {
+  color: #f1f5f9;
+}
+
+.tc-dev-credit a {
+  text-decoration: none;
+  font-weight: 800;
+  border-bottom: 1.5px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.dark-mode .tc-dev-credit {
+  color: #94a3b8;
+}
+
+.tc-dev-credit a:hover {
+  border-bottom-color: currentColor;
+}
+
+.tc-footer-line {
+  height: 10px;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+  border-radius: 0 0 15px 15px;
+}
+
+.tc-preview-container {
+  padding: 40px 20px;
+  background: var(--bg-color); /* Light gray in light mode, Dark in dark mode */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .tc-preview-container {
+  background: #0f172a; /* Slightly lighter than deep dark for contrast in dark mode */
+}
+
+.tc-export-wrapper {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 700px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  z-index: -1;
+}
+
+/* --- Mobile Responsive ID Card (True Fluid Landscape Fix) --- */
+@media (max-width: 650px) {
+  .tc-preview-container {
+    padding: 30px 15px 40px !important;
+    overflow: visible !important; 
+    max-height: none !important; 
+    height: auto !important;
+  }
+
+  /* Core Card Fluidity */
+  .tc-card {
+    width: 100% !important;
+    max-width: 700px !important;
+    min-width: 0 !important; /* Allow shrinking */
+    transform: none !important; /* Remove scaling logic */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+  }
+
+  .tc-header {
+    height: auto !important;
+    padding: 12px 10px !important;
+  }
+
+  .tc-inst-name { font-size: 1rem !important; }
+  .tc-inst-address { font-size: 0.65rem !important; display: block; margin-top: 2px; }
+
+  /* Fluid Top Section (Maintain Landscape Feel) */
+  .tc-top-row {
+    padding: 15px 10px !important;
+    gap: 12px !important;
+  }
+
+  .tc-left-col {
+    width: 110px !important; /* Compact sidebar */
+    padding-right: 10px !important;
+  }
+
+  .tc-avatar-wrapper {
+    width: 65px !important;
+    height: 65px !important;
+  }
+
+  .tc-name { font-size: 0.95rem !important; }
+  .tc-designation { font-size: 0.6rem !important; }
+
+  /* Portrait Info Layout within Landscape Row */
+  .tc-info-list {
+    grid-template-columns: 1fr !important; /* Stack vertically for legibility */
+    gap: 8px !important;
+  }
+
+  .tc-info-item {
+    padding: 6px 10px !important;
+  }
+
+  .tc-info-label { font-size: 0.6rem !important; }
+  .tc-info-value { font-size: 0.75rem !important; }
+
+  /* Assignments Section Clarity */
+  .tc-assignments-section {
+    padding: 12px 10px !important;
+  }
+
+  .tc-assign-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .tc-assign-title { font-size: 0.75rem !important; }
+  .tc-total-count-badge { padding: 4px 10px !important; }
+  .tc-total-label { font-size: 0.65rem !important; }
+  .tc-total-value { font-size: 0.7rem !important; }
+  .tc-live-link { font-size: 0.7rem !important; width: 100%; border-top: 1px dotted rgba(255,255,255,0.1); padding-top: 8px; }
+
+  .tc-assign-grid {
+    grid-template-columns: 1fr !important; /* Force single column subjects */
+    gap: 10px !important;
+  }
+
+  .tc-assign-class-badge { font-size: 0.7rem !important; padding: 4px 10px !important; border-radius: 12px !important; }
+  .tc-row-count-badge { font-size: 0.65rem !important; }
+  .tc-assign-subjects { font-size: 0.8rem !important; }
+
+  .tc-dev-credit { font-size: 0.65rem !important; gap: 4px !important; }
+}
+
+
+/* Modal Header Fix for Smallest Screens */
+@media (max-width: 400px) {
+  .tc-modal-header h3 { display: none; }
+  .tc-modal-header { justify-content: flex-end; padding: 8px 10px; }
+}
+
+@media (pointer: coarse) {
+  .tc-preview-container { cursor: default; }
+}
+
+
+
+
+/* Bulk Print Layout */
+.tc-bulk-print-wrapper {
+  display: none;
+  background: white;
+  padding: 10mm;
+  width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+}
+
+.tc-bulk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15mm 10mm;
+  justify-items: center;
+  align-items: start;
+}
+
+@media print {
+  /* Strict Hide Everything except the bulk print wrapper */
+  body.tc-print-mode .app-container,
+  body.tc-print-mode .navbar,
+  body.tc-print-mode .sidebar,
+  body.tc-print-mode .config-modal,
+  body.tc-print-mode .tc-modal-header,
+  body.tc-print-mode #appContainer,
+  body.tc-print-mode .main-content,
+  body.tc-print-mode .container-fluid,
+  body.tc-print-mode #teacherAssignmentPage,
+  body.tc-print-mode .no-print {
+    display: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+  }
+
+  body.tc-print-mode .tc-bulk-print-wrapper {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    background: white !important;
+    z-index: 99999;
+  }
+
+  /* Force color for all card elements */
+  .tc-card, 
+  .tc-header, 
+  .tc-footer,
+  .tc-assignments,
+  .tc-avatar-wrapper,
+  .tc-logo-overlay i,
+  .tc-info-label,
+  .tc-assign-title {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .tc-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
 /* Admin-only visibility */
 .admin-only {
   display: none;
@@ -11071,9 +11761,55 @@ body.is-super-admin td.admin-only {
   gap: 8px;
   padding: 8px;
   background: rgba(128, 128, 128, 0.05);
-  border-radius: 8px;
-  max-height: 200px;
+  border-radius: 12px;
+  max-height: 250px;
   overflow-y: auto;
+  border: 1px solid var(--border-color);
+}
+
+.ta-subject-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.ta-subject-checklist label:has(input:checked) {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.ta-subject-checklist label.ta-subj-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: #fff5f5 !important;
+  border-color: #feb2b2 !important;
+}
+
+.ta-subj-conflict {
+  color: #e53e3e;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ta-subj-conflict-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #c53030;
+  background: #fed7d7;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
 }
 
 .ta-subject-checklist label {

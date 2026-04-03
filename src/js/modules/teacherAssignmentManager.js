@@ -9,11 +9,13 @@ import {
     collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp
 } from 'firebase/firestore';
 import { getAllUsers, createTeacherAccount, deleteTeacherFromFirestore, updateTeacherPassword, getLoginPermission, setLoginPermission, setUserLoginDisabled, getClassSubjectMappings } from '../firestoreService.js';
+import html2canvas from 'html2canvas';
 import { state } from './state.js';
 import { showNotification } from '../utils.js';
 import { setLoading, showConfirmModal } from './uiManager.js';
 
 const COLLECTION_NAME = 'teacher_assignments';
+let currentExportData = null; // Store current teacher data for high-res export
 
 /**
  * Get all teacher assignments
@@ -162,6 +164,71 @@ export function initTeacherAssignmentUI() {
                 'শিক্ষকের সব অ্যাসাইনমেন্টও মুছে যাবে। এটি স্থায়ীভাবে মুছে যাবে।'
             );
         });
+    }
+
+    // Modal listeners
+    const modal = document.getElementById('teacherInfoCardModal');
+    const closeBtn = document.getElementById('closeTeacherCardBtn');
+    const downloadBtn = document.getElementById('downloadTeacherCardBtn');
+    const exportWrapper = document.getElementById('teacherCardExportWrapper');
+
+    if (closeBtn) closeBtn.onclick = () => modal.classList.remove('active');
+    if (downloadBtn) {
+        downloadBtn.onclick = async () => {
+            if (!currentExportData || !exportWrapper) return;
+            
+            setLoading(true, '#teacherInfoCardModal .config-modal-content');
+            try {
+                // Render a fresh, fixed-width card into the hidden export container with export mode class
+                const exportCardHtml = renderTeacherInfoCardHTML(currentExportData);
+                exportWrapper.innerHTML = exportCardHtml;
+                
+                // CRITICAL: Ensure the export card is strictly 700px for high-res landscape capture
+                const cardEl = exportWrapper.querySelector('.tc-card');
+                if (cardEl) {
+                    cardEl.classList.add('tc-export-mode');
+                }
+                
+                // Ensure images are loaded before capture
+                const images = exportWrapper.querySelectorAll('img');
+                await Promise.all(Array.from(images).map(img => {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+                }));
+
+                const canvas = await html2canvas(exportWrapper, {
+                    useCORS: true,
+                    scale: 2.5, // Even higher resolution for pro look
+                    backgroundColor: null,
+                    width: 700,
+                    windowWidth: 700,
+                    logging: false
+                });
+
+                const link = document.createElement('a');
+                link.download = `teacher_card_${currentExportData.name.replace(/\s+/g, '_')}_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png', 1.0);
+                link.click();
+                
+                exportWrapper.innerHTML = ''; // Clean up
+                showNotification('প্রফেশনাল ল্যান্ডস্কেপ ইমেজ ডাউনলোড শুরু হয়েছে! ✅');
+            } catch (err) {
+                console.error('Download error:', err);
+                showNotification('ডাউনলোড করতে সমস্যা হয়েছে', 'error');
+            } finally {
+                setLoading(false, '#teacherInfoCardModal .config-modal-content');
+            }
+        };
+    }
+
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('active');
+    });
+
+    // Bulk Print listener
+    const bulkPrintBtn = document.getElementById('taBulkPrintBtn');
+    if (bulkPrintBtn) {
+        bulkPrintBtn.onclick = () => printBulkTeacherCards();
     }
 
     if (saveBtn) {
@@ -380,7 +447,7 @@ export async function loadTeacherAssignmentData() {
             }
             allSubjects.forEach(subj => {
                 const label = document.createElement('label');
-                label.innerHTML = `<input type="checkbox" value="${subj}"> ${subj}`;
+                label.innerHTML = `<input type="checkbox" value="${subj}"> <span>${subj}</span>`;
                 checklist.appendChild(label);
             });
         }
@@ -406,38 +473,47 @@ export async function loadTeacherAssignmentData() {
                 document.querySelectorAll('#taSubjectChecklist input[type="checkbox"]').forEach(cb => {
                     cb.checked = false;
                     cb.disabled = false;
-                    cb.parentElement.style.opacity = '1';
+                    cb.parentElement.classList.remove('ta-subj-disabled');
                 });
                 return;
             }
 
             const allAssignments = await getTeacherAssignments();
 
-            document.querySelectorAll('#taSubjectChecklist input[type="checkbox"]').forEach(cb => {
+            document.querySelectorAll('#taSubjectChecklist label').forEach(label => {
+                const cb = label.querySelector('input[type="checkbox"]');
+                const span = label.querySelector('span');
                 const subj = cb.value;
-                let isAssignedToThisTeacher = false;
-                let isAssignedToOtherTeacher = false;
+                let assignedTo = null; // Store user who has it
 
                 // Find if this subject is assigned in the given class & session
                 allAssignments.forEach(a => {
                     if (a.assignedClass === selectedClass && a.assignedSession === selectedSession && a.assignedSubjects && a.assignedSubjects.includes(subj)) {
-                        if (a.uid === selectedTeacher) {
-                            isAssignedToThisTeacher = true;
-                        } else {
-                            isAssignedToOtherTeacher = true;
-                        }
+                        assignedTo = a;
                     }
                 });
 
-                cb.checked = isAssignedToThisTeacher || isAssignedToOtherTeacher;
-                cb.disabled = isAssignedToOtherTeacher; // Disabled if assigned to someone else
-
-                if (isAssignedToOtherTeacher) {
-                    cb.parentElement.style.opacity = '0.5';
-                    cb.title = "এই বিষয়টি অন্য একজন শিক্ষককে অ্যাসাইন করা হয়েছে";
+                if (assignedTo) {
+                    const isOwn = assignedTo.uid === selectedTeacher;
+                    cb.checked = true;
+                    
+                    if (!isOwn) {
+                        cb.disabled = true;
+                        label.classList.add('ta-subj-disabled');
+                        span.innerHTML = `<span class="ta-subj-conflict"><i class="fas fa-exclamation-circle"></i> ${subj} <span class="ta-subj-conflict-name">(${assignedTo.displayName || assignedTo.email})</span></span>`;
+                        label.title = `${assignedTo.displayName || assignedTo.email} এই বিষয়টি পরিচালনা করছেন।`;
+                    } else {
+                        cb.disabled = false;
+                        label.classList.remove('ta-subj-disabled');
+                        span.textContent = subj;
+                        label.title = "";
+                    }
                 } else {
-                    cb.parentElement.style.opacity = '1';
-                    cb.title = "";
+                    cb.checked = false;
+                    cb.disabled = false;
+                    label.classList.remove('ta-subj-disabled');
+                    span.textContent = subj;
+                    label.title = "";
                 }
             });
         }
@@ -524,11 +600,16 @@ async function renderExistingAssignments() {
     const mappingSubjects = Object.values(classSubjectMappings).flatMap(v => Array.isArray(v) ? v : (v.subjects || []));
     const allSubjects = [...new Set([...examSubjects, ...mappingSubjects])].sort();
 
-    // Update teacher count badge
-    const countBadge = document.getElementById('taTeacherCount');
-    if (countBadge) {
-        const uniqueTeachers = [...new Set(assignments.map(a => a.uid))].length;
-        countBadge.textContent = uniqueTeachers + ' জন';
+    // Update statistics badges
+    const totalAsgBadge = document.getElementById('taTotalAssignments');
+    const uniqueTeacherBadge = document.getElementById('taUniqueTeachers');
+    
+    if (totalAsgBadge) {
+        totalAsgBadge.textContent = `মোট এসাইনকৃত তালিকা: ${assignments.length}টি`;
+    }
+    if (uniqueTeacherBadge) {
+        const uniqueTeachersCount = [...new Set(assignments.map(a => a.uid))].length;
+        uniqueTeacherBadge.textContent = `মোট শিক্ষক দায়িত্বে আছেন: ${uniqueTeachersCount} জন`;
     }
 
     if (assignments.length === 0) {
@@ -556,9 +637,27 @@ async function renderExistingAssignments() {
 
         // Subject edit checkboxes (hidden by default)
         const subjectCheckboxes = allSubjects.map(s => {
-            const isChecked = (a.assignedSubjects || []).includes(s) ? 'checked' : '';
-            return `<label style="display: inline-flex; align-items: center; gap: 4px; margin: 3px 6px 3px 0; font-size: 0.85em; cursor: pointer;">
-                <input type="checkbox" value="${s}" ${isChecked} class="ta-card-subj-cb"> ${s}
+            const currentAssignment = assignments.find(item => item.assignedClass === a.assignedClass && item.assignedSession === a.assignedSession && item.assignedSubjects.includes(s));
+            
+            let isChecked = (a.assignedSubjects || []).includes(s);
+            let isDisabled = false;
+            let conflictHtml = s;
+            let labelClass = "";
+            let title = "";
+
+            if (currentAssignment) {
+                if (currentAssignment.uid !== a.uid) {
+                    isDisabled = true;
+                    isChecked = true;
+                    labelClass = "ta-subj-disabled";
+                    conflictHtml = `<span class="ta-subj-conflict"><i class="fas fa-exclamation-circle"></i> ${s} <span class="ta-subj-conflict-name">(${currentAssignment.displayName || currentAssignment.email})</span></span>`;
+                    title = `${currentAssignment.displayName || currentAssignment.email} এই বিষয়টি পরিচালনা করছেন।`;
+                }
+            }
+
+            return `<label class="ta-card-subj-label ${labelClass}" title="${title}" style="display: inline-flex; align-items: center; gap: 4px; margin: 3px 6px 3px 0; font-size: 0.85em; cursor: pointer; padding: 2px 6px; border-radius: 4px;">
+                <input type="checkbox" value="${s}" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} class="ta-card-subj-cb"> 
+                <span>${conflictHtml}</span>
             </label>`;
         }).join('');
 
@@ -567,19 +666,19 @@ async function renderExistingAssignments() {
                 <div class="ta-info" style="flex: 1;">
                     <span class="ta-name">${a.displayName || 'No Name'} (${a.email})</span>
                     <span class="ta-detail">${a.assignedClass} | ${a.assignedSession}</span>
-                    <div class="ta-subjects" id="ta-subj-display-${idx}">
+                    <div class="ta-subjects" id="ta-subj-display-${idx}" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px;">
                         ${(a.assignedSubjects || []).map(s =>
             `<span class="ta-subject-tag">${s}</span>`
         ).join('')}
                     </div>
-                    <div class="ta-subjects-edit" id="ta-subj-edit-${idx}" style="display: none; margin-top: 8px; padding: 10px; background: #f0f4ff; border-radius: 8px; border: 1px dashed #90caf9;">
-                        <div style="display: flex; flex-wrap: wrap; gap: 2px;">${subjectCheckboxes}</div>
-                        <div style="margin-top: 10px; display: flex; gap: 8px;">
-                            <button type="button" class="ta-save-subj-btn dm-btn dm-save" data-idx="${idx}" data-doc-id="${a.docId}" data-uid="${a.uid}" data-email="${a.email || ''}" data-name="${a.displayName || ''}" data-class="${a.assignedClass}" data-session="${a.assignedSession}" style="padding: 4px 14px; font-size: 0.85em;">
+                    <div class="ta-subjects-edit" id="ta-subj-edit-${idx}" style="display: none; margin-top: 12px; padding: 15px; background: #f8faff; border-radius: 12px; border: 1px solid #dbeafe; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; flex-wrap: wrap; gap: 5px;">${subjectCheckboxes}</div>
+                        <div style="margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 12px;">
+                            <button type="button" class="ta-save-subj-btn dm-btn dm-save" data-idx="${idx}" data-doc-id="${a.docId}" data-uid="${a.uid}" data-email="${a.email || ''}" data-name="${a.displayName || ''}" data-class="${a.assignedClass}" data-session="${a.assignedSession}" style="padding: 6px 20px; font-size: 0.85em; font-weight: 600;">
                                 <i class="fas fa-check"></i> আপডেট
                             </button>
-                            <button type="button" class="ta-cancel-subj-btn" data-idx="${idx}" style="padding: 4px 14px; font-size: 0.85em; background: #eee; border: none; border-radius: 6px; cursor: pointer;">
-                                বাতিল
+                            <button type="button" class="ta-cancel-subj-btn dm-btn dm-danger" data-idx="${idx}" style="padding: 6px 20px; font-size: 0.85em; font-weight: 600; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;">
+                                <i class="fas fa-times"></i> বাতিল
                             </button>
                         </div>
                     </div>
@@ -603,8 +702,14 @@ async function renderExistingAssignments() {
                     </div>
                     ` : ''}
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
+                    <div style="display: flex; flex-direction: column; gap: 6px; align-items: center;">
                     ${state.isSuperAdmin ? `
+                    <button class="ta-copy-info-btn" data-uid="${a.uid}" title="শিক্ষকের সব তথ্য কপি করুন">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="ta-id-card-btn" data-uid="${a.uid}" title="শিক্ষক ইনফো কার্ড দেখুন">
+                        <i class="fas fa-id-card"></i>
+                    </button>
                     <button class="ta-edit-subj-btn" data-idx="${idx}" style="background: none; border: none; color: #1976d2; cursor: pointer; padding: 4px 6px; font-size: 1.1em;" title="বিষয় এডিট করুন">
                         <i class="fas fa-pen-square"></i>
                     </button>
@@ -760,6 +865,7 @@ async function renderExistingAssignments() {
             cards.forEach(card => {
                 const name = (card.querySelector('.ta-name')?.textContent || '').toLowerCase();
                 const detail = (card.querySelector('.ta-detail')?.textContent || '').toLowerCase();
+                const matches = name.includes(query) || detail.includes(query);
                 card.style.display = matches ? '' : 'none';
                 if (matches) visibleCount++;
             });
@@ -795,4 +901,335 @@ async function renderExistingAssignments() {
             }
         });
     });
+
+    // Copy Full Info handlers
+    listEl.querySelectorAll('.ta-copy-info-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const uid = btn.dataset.uid;
+            const teacherAssignments = assignments.filter(asg => asg.uid === uid);
+            const user = allUsers.find(u => u.uid === uid);
+            
+            if (!user) return;
+
+            let infoText = `--- শিক্ষক তথ্য ---\n`;
+            infoText += `নাম: ${user.displayName || 'No Name'}\n`;
+            infoText += `ফোন: ${user.phone || 'N/A'}\n`;
+            infoText += `ইমেইল: ${user.email}\n`;
+            if (user.tempPassword) infoText += `পাসওয়ার্ড: ${user.tempPassword}\n`;
+            infoText += `লগইন স্ট্যাটাস: ${user.loginDisabled ? 'বন্ধ ⛔' : 'চালু ✅'}\n\n`;
+            infoText += `অ্যাসাইনমেন্টসমূহ:\n`;
+            
+            teacherAssignments.forEach(asg => {
+                infoText += `- ${asg.assignedClass} (${asg.assignedSession}): ${(asg.assignedSubjects || []).join(', ')}\n`;
+            });
+
+            navigator.clipboard.writeText(infoText).then(() => {
+                showNotification('শিক্ষকের সকল তথ্য কপি করা হয়েছে! ✅');
+            });
+        });
+    });
+
+    // View ID Card handlers
+    listEl.querySelectorAll('.ta-id-card-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const uid = btn.dataset.uid;
+            const teacherAssignments = assignments.filter(asg => asg.uid === uid);
+            const user = allUsers.find(u => u.uid === uid);
+            
+            if (!user) return;
+
+            const { getSettings } = await import('../firestoreService.js');
+            const settings = await getSettings() || {};
+            const adSettings = settings.admitCard || {};
+            const instName = adSettings.instName || 'প্রতিষ্ঠানের নাম';
+            const instAddress = adSettings.instAddress || 'প্রতিষ্ঠানের ঠিকানা';
+            const logoUrl = adSettings.logoUrl || '';
+            const developerCredit = settings.developerCredit || null;
+
+            // Store the data for export high-res captured download
+            currentExportData = {
+                uid: user.uid,
+                name: user.displayName || 'No Name',
+                phone: user.phone || 'N/A',
+                email: user.email,
+                password: user.tempPassword || '******',
+                loginStatus: user.loginDisabled ? 'বন্ধ' : 'চালু',
+                assignments: teacherAssignments,
+                instName: instName,
+                instAddress: instAddress,
+                logoUrl: logoUrl,
+                developerCredit: developerCredit
+            };
+
+            const cardHtml = renderTeacherInfoCardHTML(currentExportData);
+
+            document.getElementById('teacherCardPreview').innerHTML = cardHtml;
+            document.getElementById('teacherInfoCardModal').classList.add('active');
+
+            // Set up copy info for this specific teacher in the modal
+            const copyBtn = document.getElementById('copyTeacherCardBtn');
+            if (copyBtn) {
+                copyBtn.onclick = () => {
+                    let infoText = `--- শিক্ষক তথ্য ---\n`;
+                    infoText += `নাম: ${user.displayName || 'No Name'}\n`;
+                    infoText += `ফোন: ${user.phone || 'N/A'}\n`;
+                    infoText += `ইমেইল: ${user.email}\n`;
+                    if (user.tempPassword) infoText += `পাসওয়ার্ড: ${user.tempPassword}\n`;
+                    infoText += `লগইন স্ট্যাটাস: ${user.loginDisabled ? 'বন্ধ ⛔' : 'চালু ✅'}\n\n`;
+                    infoText += `অ্যাসাইনমেন্টসমূহ:\n`;
+                    teacherAssignments.forEach(asg => {
+                        infoText += `- ${asg.assignedClass} (${asg.assignedSession}): ${(asg.assignedSubjects || []).join(', ')}\n`;
+                    });
+                    
+                    infoText += `\nলাইভ সফটওয়্যার লিংক: ${window.location.origin}\n`;
+
+                    navigator.clipboard.writeText(infoText).then(() => {
+                        showNotification('শিক্ষকের তথ্য কপি করা হয়েছে! ✅');
+                    });
+                };
+            }
+        });
+    });
+}
+
+/**
+ * Render Teacher ID Card HTML
+ */
+function renderTeacherInfoCardHTML(data) {
+    // Dynamic Unique Theme Generator based on UID
+    const generateTheme = (uid) => {
+        let hash = 0;
+        const str = String(uid || 'default');
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        // Base Hue (0-360)
+        const hue = Math.abs(hash) % 360;
+        
+        // Soft Professional Gradient Colors
+        const start = `hsl(${hue}, 65%, 50%)`;
+        const end = `hsl(${(hue + 25) % 360}, 65%, 45%)`;
+        const accent = `hsl(${hue}, 75%, 40%)`;
+        const light = `hsl(${hue}, 40%, 96%)`;
+        
+        return { start, end, accent, light };
+    };
+
+    const theme = generateTheme(data.uid);
+
+    // Helper for session colors (Dynamic but distinct from main theme)
+    const getSessionStyle = (session) => {
+        let hash = 0;
+        const str = String(session || 'default');
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const sHue = Math.abs(hash) % 360;
+        return `background: hsl(${sHue}, 70%, 97%); color: hsl(${sHue}, 80%, 35%); border: 1px solid hsl(${sHue}, 60%, 85%);`;
+    };
+
+    const totalSubjectsCount = data.assignments.reduce((acc, asg) => acc + (asg.assignedSubjects || []).length, 0);
+
+    const assignmentsHtml = data.assignments.map(asg => {
+        const subjCount = (asg.assignedSubjects || []).length;
+        return `
+            <div class="tc-assign-row">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="tc-assign-class-badge" style="${getSessionStyle(asg.assignedSession)}">
+                        ${asg.assignedClass} (${asg.assignedSession})
+                    </span>
+                    <span class="tc-row-count-badge">${subjCount}টি বিষয়</span>
+                </div>
+                <div class="tc-subjects-box">
+                    <span class="tc-assign-subjects">${(asg.assignedSubjects || []).join(', ')}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const logoHtml = data.logoUrl 
+        ? `<img src="${data.logoUrl}" alt="Logo">` 
+        : `<i class="fas fa-university"></i>`;
+
+    const liveLink = window.location.origin;
+
+    // Developer Credit Logic
+    let devCreditHtml = '';
+    const dev = data.developerCredit;
+    if (dev && dev.enabled !== false) {
+        devCreditHtml = `
+            <div class="tc-dev-credit">
+                ${dev.text || 'Developed By:'} 
+                <span class="tc-dev-name">${dev.name || 'Developer'}</span> | 
+                ডেভেলপার প্রোফাইল লিংকঃ <a href="${dev.link || '#'}" target="_blank" style="color: var(--tc-theme-accent)">${dev.link || 'ভিজিট করুন'}</a>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="tc-card" style="--tc-theme-start: ${theme.start}; --tc-theme-end: ${theme.end}; --tc-theme-accent: ${theme.accent}; --tc-theme-light: ${theme.light};">
+            <div class="tc-header" style="background: linear-gradient(135deg, var(--tc-theme-start), var(--tc-theme-end))">
+                <div class="tc-inst-name">${data.instName}</div>
+                <div class="tc-inst-address">${data.instAddress}</div>
+            </div>
+            
+            <div class="tc-content-area">
+                <div class="tc-top-row">
+                    <div class="tc-left-col">
+                        <div class="tc-avatar-wrapper">
+                            ${logoHtml}
+                        </div>
+                        <div class="tc-personal-info">
+                            <div class="tc-name">${data.name}</div>
+                            <div class="tc-designation" style="color: var(--tc-theme-accent)">শিক্ষক</div>
+                        </div>
+                    </div>
+                    
+                    <div class="tc-right-col">
+                        <div class="tc-info-list">
+                            <div class="tc-info-item">
+                                <span class="tc-info-label">ফোন নম্বর</span>
+                                <span class="tc-info-value">${data.phone}</span>
+                            </div>
+                            <div class="tc-info-item">
+                                <span class="tc-info-label">লগইন ইমেইল</span>
+                                <span class="tc-info-value">${data.email}</span>
+                            </div>
+                            <div class="tc-info-item">
+                                <span class="tc-info-label">পাসওয়ার্ড</span>
+                                <span class="tc-info-value">${data.password}</span>
+                            </div>
+                            <div class="tc-info-item">
+                                <span class="tc-info-label">লগইন স্ট্যাটাস</span>
+                                <span class="tc-info-value" style="color: ${data.loginStatus === 'চালু' ? '#22c55e' : '#ef4444'};">
+                                    ${data.loginStatus}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tc-assignments-section">
+                    <div class="tc-assign-header">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span class="tc-assign-title" style="color: var(--tc-theme-accent)">
+                                <i class="fas fa-tasks"></i> অ্যাসাইনমেন্টসমূহ
+                            </span>
+                            <div class="tc-total-count-badge">
+                                <span class="tc-total-label">মোট বিষয় সংখ্যা:</span>
+                                <span class="tc-total-value" style="color: var(--tc-theme-accent)">${totalSubjectsCount}টি</span>
+                            </div>
+                        </div>
+                        <div class="tc-live-link">
+                            লাইভ সফটওয়্যার লিংক: <a href="${liveLink}" target="_blank" style="color: var(--tc-theme-accent)">${liveLink.replace(/^https?:\/\//, '')}</a>
+                        </div>
+                    </div>
+                    <div class="tc-assign-grid">
+                        ${assignmentsHtml || '<div style="opacity:0.5; font-style:italic; grid-column: 1/-1; text-align: center;">কোনো বিষয় নেই</div>'}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tc-footer-area">
+                ${devCreditHtml}
+                <div class="tc-footer-line" style="background: linear-gradient(90deg, var(--tc-theme-start), var(--tc-theme-end))"></div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Print Bulk Teacher Cards (4x2 grid on A4)
+ */
+async function printBulkTeacherCards() {
+    setLoading(true, '#teacherAssignmentPage');
+    try {
+        const assignments = await getTeacherAssignments();
+        const allUsers = await getAllUsers();
+        const { getSettings } = await import('../firestoreService.js');
+        const settings = await getSettings() || {};
+        const adSettings = settings.admitCard || {};
+        const instName = adSettings.instName || 'প্রতিষ্ঠানের নাম';
+        const instAddress = adSettings.instAddress || 'প্রতিষ্ঠানের ঠিকানা';
+        const logoUrl = adSettings.logoUrl || '';
+        const developerCredit = settings.developerCredit || null;
+
+        // Group assignments by teacher (UID)
+        const teachersMap = new Map();
+        assignments.forEach(asg => {
+            if (!teachersMap.has(asg.uid)) {
+                teachersMap.set(asg.uid, []);
+            }
+            teachersMap.get(asg.uid).push(asg);
+        });
+
+        const bulkContainer = document.getElementById('bulkTeacherCardsContainer');
+        bulkContainer.innerHTML = '';
+        
+        const teacherUids = Array.from(teachersMap.keys());
+        
+        if (teacherUids.length === 0) {
+            showNotification('কোনো শিক্ষক তথ্য পাওয়া যায়নি', 'warning');
+            return;
+        }
+
+        // Create grid(s) for printing
+        let currentGrid;
+        teacherUids.forEach((uid, index) => {
+            // Every 8 cards, create a new grid (if we want to support multiple pages)
+            if (index % 8 === 0) {
+                currentGrid = document.createElement('div');
+                currentGrid.className = 'tc-bulk-grid';
+                if (index > 0) {
+                    currentGrid.style.pageBreakBefore = 'always';
+                    currentGrid.style.marginTop = '20mm';
+                }
+                bulkContainer.appendChild(currentGrid);
+            }
+
+            const user = allUsers.find(u => u.uid === uid);
+            if (!user) return;
+
+            const tAssignments = teachersMap.get(uid);
+            const cardHtml = renderTeacherInfoCardHTML({
+                uid: uid,
+                name: user.displayName || 'No Name',
+                phone: user.phone || 'N/A',
+                email: user.email,
+                password: user.tempPassword || '******',
+                loginStatus: user.loginDisabled ? 'বন্ধ' : 'চালু',
+                assignments: tAssignments,
+                instName: instName,
+                instAddress: instAddress,
+                logoUrl: logoUrl,
+                developerCredit: developerCredit
+            });
+
+        const cardWrapper = document.createElement('div');
+            cardWrapper.innerHTML = cardHtml;
+            currentGrid.appendChild(cardWrapper.firstElementChild);
+        });
+
+        // Add print mode class
+        document.body.classList.add('tc-print-mode');
+
+        window.onafterprint = () => {
+            document.body.classList.remove('tc-print-mode');
+        };
+
+        setTimeout(() => {
+            window.print();
+            // Fallback if onafterprint doesn't fire immediately
+            setTimeout(() => {
+                document.body.classList.remove('tc-print-mode');
+            }, 1000);
+        }, 500);
+
+    } catch (err) {
+        console.error('Bulk print error:', err);
+        showNotification('বাল্ক প্রিন্ট করতে সমস্যা হয়েছে', 'error');
+    } finally {
+        setLoading(false, '#teacherAssignmentPage');
+    }
 }
