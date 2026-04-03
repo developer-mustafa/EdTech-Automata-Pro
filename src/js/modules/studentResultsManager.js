@@ -4,7 +4,14 @@
  * @module studentResultsManager
  */
 
-import { getSavedExams, getExamsByCriteria, getExamConfigs, getSettings } from '../firestoreService.js';
+import { 
+    getSavedExams, 
+    getExamsByCriteria, 
+    getExamConfigs, 
+    getSettings,
+    getStudentLookupMap,
+    generateStudentDocId 
+} from '../firestoreService.js';
 import { state } from './state.js';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
@@ -229,9 +236,37 @@ async function searchByUniqueId(searchId, filters = {}) {
 
     if (matches.size === 0) return null;
 
+    // Fetch latest student details for all matches
+    const lookupMap = await getStudentLookupMap();
+    const results = Array.from(matches.values());
+
+    results.forEach(res => {
+        const studentInfo = {
+            id: res.id,
+            group: res.group,
+            class: res.class,
+            session: res.session
+        };
+        const studentKey = generateStudentDocId(studentInfo);
+        const latest = lookupMap.get(studentKey);
+
+        if (latest) {
+            // Override with latest data from management
+            res.name = latest.name || res.name;
+            // Add other fields if needed for UI (Father's Name etc. if added to public search later)
+            res.fatherName = latest.fatherName || '';
+            res.mobile = latest.mobile || '';
+            
+            // Re-generate Unique ID if name changed (to keep it deterministic if generated on the fly)
+            // But wait, the Unique ID in the search is what the user entered. 
+            // If the name changed, the NEW Unique ID might be different. 
+            // This is a tricky part. If user searches by OLD UID, we should still find them but show NEW name.
+        }
+    });
+
     // If an examName filter is set, we return the match that contains that exam
     // Otherwise we return the first match.
-    return [...matches.values()][0];
+    return results[0];
 }
 
 /**
@@ -793,6 +828,8 @@ async function populateSrDropdowns() {
 
             studentSelect.innerHTML = '<option value="">খুঁজছে...</option>';
 
+            const lookupMap = await getStudentLookupMap();
+
             const relevantExams = allExams.filter(e =>
                 e.class === selClass &&
                 e.session === selSession
@@ -807,7 +844,23 @@ async function populateSrDropdowns() {
 
                         const key = `${s.id}_${stGroup}`;
                         if (!studentsMap.has(key)) {
-                            studentsMap.set(key, s);
+                            // Merge with latest info if available
+                            const studentKey = generateStudentDocId({
+                                id: s.id,
+                                group: stGroup,
+                                class: selClass,
+                                session: selSession
+                            });
+                            const latest = lookupMap.get(studentKey);
+                            
+                            const mergedStudent = {
+                                ...s,
+                                name: latest ? (latest.name || s.name) : s.name,
+                                fatherName: latest ? (latest.fatherName || '') : '',
+                                mobile: latest ? (latest.mobile || '') : ''
+                            };
+                            
+                            studentsMap.set(key, mergedStudent);
                         }
                     });
                 }

@@ -131,6 +131,22 @@ export async function getUnifiedStudents() {
 }
 
 /**
+ * Get a high-performance lookup map of students from the 'students' collection
+ * Key: Generated Doc ID (ID_Group_Class_Session)
+ * Value: Latest student data
+ * @returns {Promise<Map>} Student lookup map
+ */
+export async function getStudentLookupMap() {
+    const students = await getAllStudents();
+    const lookupMap = new Map();
+    students.forEach(s => {
+        const key = generateStudentDocId(s);
+        lookupMap.set(key, s);
+    });
+    return lookupMap;
+}
+
+/**
  * Get a single student by document ID
  * @param {string} docId - Firestore document ID
  * @returns {Promise<Object|null>} - Student data or null

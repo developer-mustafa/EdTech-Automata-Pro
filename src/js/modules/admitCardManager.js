@@ -1,4 +1,11 @@
-import { getSavedExams, getExamConfigs, getSettings, saveSettings } from '../firestoreService.js';
+import { 
+    getSavedExams, 
+    getExamConfigs, 
+    getSettings, 
+    saveSettings,
+    getStudentLookupMap,
+    generateStudentDocId 
+} from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits, convertToBengaliDigits } from '../utils.js';
 import { getRoutinesData, normalizeGroupName, fetchRoutines } from './routineManager.js';
@@ -680,6 +687,8 @@ async function generateCards(type) {
     const subjectsSet = new Set(relevantExams.map(e => e.subject).filter(Boolean));
     const subjects = [...subjectsSet].sort(); // Optional sorting
 
+    const lookupMap = await getStudentLookupMap();
+
     // Build unique student list
     const studentAgg = new Map();
 
@@ -694,9 +703,17 @@ async function generateCards(type) {
 
                 const key = `${s.id}_${sGroup}`;
                 if (!studentAgg.has(key)) {
+                    const studentKey = generateStudentDocId({
+                        id: s.id,
+                        group: sGroup,
+                        class: cls,
+                        session: session
+                    });
+                    const latest = lookupMap.get(studentKey);
+
                     studentAgg.set(key, {
                         id: s.id,
-                        name: s.name,
+                        name: latest ? (latest.name || s.name) : s.name,
                         group: sGroup,
                         class: cls,
                         session: session

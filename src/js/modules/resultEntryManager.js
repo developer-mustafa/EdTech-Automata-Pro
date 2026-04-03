@@ -5,7 +5,16 @@
  * @module resultEntryManager
  */
 
-import { getSavedExams, updateExam, saveExam, getAllStudents, getUnifiedStudents, getExamConfigs } from '../firestoreService.js';
+import { 
+    getSavedExams, 
+    updateExam, 
+    saveExam, 
+    getAllStudents, 
+    getUnifiedStudents, 
+    getExamConfigs,
+    getStudentLookupMap,
+    generateStudentDocId
+} from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits, convertToBengaliDigits, calculateStatistics, normalizeText, normalizeSession } from '../utils.js';
 import { isTeacherAuthorized, getTeacherAssignmentsByUid } from './teacherAssignmentManager.js';
@@ -16,6 +25,7 @@ let currentExamDoc = null;
 let originalStudentData = null; // For discard
 let hasUnsavedChanges = false;
 let isNewExam = false; // Flag: are we creating a new exam?
+let hideNames = false; // Toggle: Hide student names for compact mobile view
 
 // ==========================================
 // LOCAL STORAGE DRAFT HELPERS
@@ -423,13 +433,15 @@ async function loadExamForEntry() {
     const normGroup = group !== 'all' ? normalizeText(group) : 'all';
 
     const exams = await getSavedExams();
-    let exam = exams.find(e => {
+    const matchingExams = exams.filter(e => {
         const eCls = normalizeText(e.class || '');
         const eSess = normalizeSession(e.session || '');
         const eGroup = normalizeText(e.group || '');
-        
+
         const classMatch = eCls === normCls;
         const sessionMatch = eSess === normSession;
+        
+        // If we are looking for 'all', we accept any group
         const groupMatch = normGroup === 'all' || eGroup === normGroup || 
                           (eGroup.includes(normGroup)) || (normGroup.includes(eGroup));
 
@@ -439,58 +451,43 @@ async function loadExamForEntry() {
                groupMatch;
     });
 
-    if (exam) {
-        // --- EXISTING EXAM ---
-        isNewExam = false;
-        currentExamDoc = exam;
+    // --- AGGREGATION LOGIC ---
+    // Instead of just picking one, we fetch the complete student list for this Class/Session
+    const allStudentsList = await getUnifiedStudents();
+    const studentsForClass = allStudentsList.filter(s => {
+        const sCls = normalizeText(s.class || '');
+        const sSess = normalizeSession(s.session || '');
+        const sGroup = normalizeText(s.group || '');
 
-        // Recalculate all statuses using current subject config
-        recalculateStudentStatuses(currentExamDoc.studentData || [], exam.subject);
+        const classMatch = sCls === normCls;
+        const sessionMatch = sSess === normSession;
+        const groupMatch = normGroup === 'all' || sGroup === normGroup || 
+                         (sGroup.includes(normGroup)) || (normGroup.includes(sGroup));
 
-        // --- AUTOMATIC SORTING ---
-        sortStudentsByGroupAndRoll(currentExamDoc.studentData || []);
+        return classMatch && sessionMatch && groupMatch;
+    });
 
-        originalStudentData = JSON.parse(JSON.stringify(currentExamDoc.studentData || []));
-        hasUnsavedChanges = false;
+    if (studentsForClass.length === 0) {
+        showNotification(`${cls} শ্রেণি, ${session} সেশনে কোনো শিক্ষার্থী পাওয়া যায়নি। আগে শিক্ষার্থী যোগ করুন।`, 'warning');
+        return;
+    }
 
-        showExamInfo(exam, (currentExamDoc.studentData || []).length);
-        const config = getSubjectConfig(exam.subject);
-        renderRETable(currentExamDoc.studentData || [], config);
-    } else {
-        // --- NEW EXAM: Fetch students for this class/session ---
-        isNewExam = true;
-        showNotification(`"${examName}" পরীক্ষা পাওয়া যায়নি। নতুন পরীক্ষা হিসেবে শিক্ষার্থীদের তালিকা লোড হচ্ছে...`, 'info');
-
-        // Use getUnifiedStudents instead of getAllStudents to discover students from all exams & collection
-        const allStudents = await getUnifiedStudents();
-        const normCls = normalizeText(cls);
-        const normSession = normalizeSession(session);
-        const normGroup = group !== 'all' ? normalizeText(group) : 'all';
-
-        const filteredStudents = allStudents.filter(s => {
-            const sCls = normalizeText(s.class || '');
-            const sSess = normalizeSession(s.session || '');
-            const sGroup = normalizeText(s.group || '');
-
-            const classMatch = sCls === normCls;
-            const sessionMatch = sSess === normSession;
-            
-            // Check for group match: exact find or keywords
-            const groupMatch = normGroup === 'all' || sGroup === normGroup || 
-                             (sGroup.includes(normGroup)) || (normGroup.includes(sGroup));
-
-            return classMatch && sessionMatch && groupMatch;
-        });
-
-        if (filteredStudents.length === 0) {
-            showNotification(`${cls} শ্রেণি, ${session} সেশনে কোনো শিক্ষার্থী পাওয়া যায়নি। আগে শিক্ষার্থী যোগ করুন।`, 'warning');
-            return;
-        }
-
-        // Build empty student data for this exam
-        let studentData = filteredStudents.map(s => ({
+    // Prepare master data structure for students
+    const lookupMap = await getStudentLookupMap();
+    let mergedStudentData = studentsForClass.map(s => {
+        const studentKey = generateStudentDocId({
             id: s.id,
-            name: s.name || '',
+            group: s.group,
+            class: cls,
+            session: session
+        });
+        const latest = lookupMap.get(studentKey);
+        const name = latest ? (latest.name || s.name) : (s.name || '');
+
+        // Base student object
+        const base = {
+            id: s.id,
+            name: name,
             group: s.group || '',
             class: s.class || cls,
             session: s.session || session,
@@ -500,12 +497,63 @@ async function loadExamForEntry() {
             total: 0,
             grade: '',
             status: 'অনুপস্থিত'
-        }));
+        };
 
-        // Check if there's a draft in local storage
+        // Check for existing marks in any of the matching exams
+        matchingExams.forEach(ex => {
+            const existing = (ex.studentData || []).find(es => {
+                // Key compare: Roll + Name + Group
+                return String(es.id) === String(s.id) && 
+                       normalizeText(es.group || '') === normalizeText(s.group || '');
+            });
+            if (existing) {
+                // Merge marks: if multiple records with marks exist (unlikely but possible), latest wins
+                if (existing.written !== null) base.written = existing.written;
+                if (existing.mcq !== null) base.mcq = existing.mcq;
+                if (existing.practical !== null) base.practical = existing.practical;
+                base.total = existing.total || 0;
+                base.grade = existing.grade || '';
+                base.status = existing.status || 'পাস';
+            }
+        });
+
+        return base;
+    });
+
+    if (matchingExams.length > 0) {
+        // --- EXISTING EXAM (Aggregated) ---
+        isNewExam = false;
+        
+        // Pick the first matching exam as the master record reference for its metadata (docId, etc.)
+        // If it was group-specific, we will essentially elevate it to 'all' or update its docId
+        currentExamDoc = {
+            ...matchingExams[0],
+            studentData: mergedStudentData,
+            studentCount: mergedStudentData.length
+        };
+
+        // Recalculate all statuses using current subject config
+        recalculateStudentStatuses(currentExamDoc.studentData, subject);
+
+        // Sort
+        sortStudentsByGroupAndRoll(currentExamDoc.studentData);
+
+        originalStudentData = JSON.parse(JSON.stringify(currentExamDoc.studentData));
+        hasUnsavedChanges = false;
+
+        showExamInfo(currentExamDoc, currentExamDoc.studentCount);
+        const config = getSubjectConfig(subject);
+        renderRETable(currentExamDoc.studentData, config);
+    } else {
+        // --- NEW EXAM ---
+        isNewExam = true;
+        showNotification(`নতুন পরীক্ষা হিসেবে শিক্ষার্থীদের তালিকা লোড হচ্ছে...`, 'info');
+
+        let studentData = mergedStudentData;
+
+        // Check for draft
         const draft = loadDraft(cls, session, subject, examName);
         if (draft && draft.length > 0) {
-            // Merge draft marks into student data — use unique key, not just roll ID
             studentData = studentData.map(s => {
                 const key = `${s.id}_${(s.class || '').replace(/\s+/g, '_')}_${(s.name || '').replace(/\s+/g, '_')}_${(s.group || '').replace(/\s+/g, '_')}_${(s.session || '').replace(/\s+/g, '_')}`;
                 const draftStudent = draft.find(d => {
@@ -517,7 +565,6 @@ async function loadExamForEntry() {
             showNotification('পূর্বে সংরক্ষিত ড্রাফট পুনরায় লোড করা হয়েছে', 'info');
         }
 
-        // Create a virtual exam doc for in-memory manipulation
         currentExamDoc = {
             name: examName,
             subject: subject,
@@ -528,13 +575,11 @@ async function loadExamForEntry() {
             date: new Date().toLocaleDateString('bn-BD')
         };
 
-        // --- AUTOMATIC SORTING ---
         sortStudentsByGroupAndRoll(currentExamDoc.studentData);
-
         originalStudentData = JSON.parse(JSON.stringify(currentExamDoc.studentData));
         hasUnsavedChanges = false;
 
-        showExamInfo(currentExamDoc, currentExamDoc.studentData.length, true);
+        showExamInfo(currentExamDoc, currentExamDoc.studentCount, true);
         const config = getSubjectConfig(subject);
         renderRETable(currentExamDoc.studentData, config);
     }
@@ -576,9 +621,32 @@ function showExamInfo(exam, count, isNew = false) {
             <span><i class="fas fa-file-alt"></i> ${exam.name}</span>
             <span><i class="fas fa-school"></i> ${exam.class} | ${exam.session}</span>
             <span><i class="fas fa-users"></i> ${count} জন শিক্ষার্থী</span>
-            <span><i class="fas fa-chart-bar"></i> মোট: ${convertToBengaliDigits(totalMax)}</span>
+            <div class="re-group-legend" style="display:flex;gap:10px;font-size:0.85em;background:rgba(0,0,0,0.03);border:1px solid #e2e8f0;padding:4px 8px;border-radius:4px;margin: 2px 0;">
+               <span style="color:#ef4444;font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6em;vertical-align:middle;position:relative;top:-1px;"></i> বিজ্ঞান</span>
+               <span style="color:#3b82f6;font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6em;vertical-align:middle;position:relative;top:-1px;"></i> ব্যবসায়</span>
+               <span style="color:#22c55e;font-weight:bold;"><i class="fas fa-circle" style="font-size:0.6em;vertical-align:middle;position:relative;top:-1px;"></i> মানবিক</span>
+            </div>
+            <button id="toggleNamesBtn" class="re-toggle-name-btn ${hideNames ? 'active' : ''}">
+                <i class="fas ${hideNames ? 'fa-eye' : 'fa-eye-slash'}"></i> 
+                ${hideNames ? 'নাম দেখান' : 'নাম লুকান'}
+            </button>
             ${passMarkHtml}
         `;
+
+        // Toggle Visibility Listener
+        const toggleBtn = document.getElementById('toggleNamesBtn');
+        if (toggleBtn) {
+            toggleBtn.onclick = () => {
+                hideNames = !hideNames;
+                const table = document.getElementById('resultEntryTable');
+                if (table) {
+                    table.classList.toggle('re-hide-names', hideNames);
+                }
+                toggleBtn.classList.toggle('active', hideNames);
+                toggleBtn.innerHTML = `<i class="fas ${hideNames ? 'fa-eye' : 'fa-eye-slash'}"></i> ${hideNames ? 'নাম দেখান' : 'নাম লুকান'}`;
+                console.log(`[RE Table] 🔄 Column visibility toggled. Names hidden: ${hideNames}`);
+            };
+        }
     }
 }
 
@@ -707,15 +775,16 @@ function updateTableHeaders(config) {
 
     thead.innerHTML = `
         <tr>
-            <th style="width:50px;">রোল</th>
-            <th>নাম</th>
-            <th>গ্রুপ</th>
-            <th style="width:80px;">লিখিত${passHint(writtenMax, writtenPass)}</th>
-            <th style="width:80px;">এমসিকিউ${passHint(mcqMax, mcqPass)}</th>
-            <th style="width:80px;">ব্যবহারিক${passHint(practicalMax, practicalPass)}</th>
-            <th style="width:70px;">মোট</th>
-            <th style="width:60px;">গ্রেড</th>
-            <th style="width:70px;">স্ট্যাটাস</th>
+            <th class="re-col-sl">SL</th>
+            <th class="re-col-roll">রোল</th>
+            <th class="re-col-name">নাম</th>
+            <th class="re-col-group">গ্রুপ</th>
+            <th class="re-col-written">লিখিত${passHint(writtenMax, writtenPass)}</th>
+            <th class="re-col-mcq">এমসিকিউ${passHint(mcqMax, mcqPass)}</th>
+            <th class="re-col-practical">ব্যবহারিক${passHint(practicalMax, practicalPass)}</th>
+            <th class="re-col-total">মোট</th>
+            <th class="re-col-grade">গ্রেড</th>
+            <th class="re-col-status">স্ট্যাটাস</th>
         </tr>
     `;
 }
@@ -760,30 +829,31 @@ function renderRETable(students, config) {
 
         return `
             <tr data-student-key="${uniqueKey}" class="${groupClass} ${isFail ? 'row-fail' : ''} ${isAbsent ? 'row-absent' : ''}">
-                <td><strong>${s.id}</strong></td>
-                <td>${s.name || '-'}</td>
-                <td>${s.group || '-'}</td>
-                <td>
+                <td class="re-col-sl">${i + 1}</td>
+                <td class="re-col-roll"><strong>${s.id}</strong></td>
+                <td class="re-col-name">${s.name || '-'}</td>
+                <td class="re-col-group">${s.group || '-'}</td>
+                <td class="re-col-written">
                     <input type="number" class="re-mark-input" data-field="written"
                         value="${written}" min="0" max="${writtenMax}" step="0.5"
                         placeholder="${writtenMax > 0 ? '/' + writtenMax : '-'}"
                         ${writtenMax === 0 ? 'disabled' : ''}>
                 </td>
-                <td>
+                <td class="re-col-mcq">
                     <input type="number" class="re-mark-input" data-field="mcq"
                         value="${mcqMax === 0 ? '' : mcq}" min="0" max="${mcqMax}" step="0.5"
                         placeholder="${mcqMax > 0 ? '/' + mcqMax : '-'}"
                         ${mcqMax === 0 ? 'disabled' : ''}>
                 </td>
-                <td>
+                <td class="re-col-practical">
                     <input type="number" class="re-mark-input" data-field="practical"
                         value="${practicalMax === 0 ? '' : practical}" min="0" max="${practicalMax}" step="0.5"
                         placeholder="${practicalMax > 0 ? '/' + practicalMax : '-'}"
                         ${practicalMax === 0 ? 'disabled' : ''}>
                 </td>
-                <td class="total-cell">${total}</td>
-                <td><span class="grade-badge">${grade}</span></td>
-                <td><span class="status-badge ${isFail ? 'fail' : isAbsent ? 'absent' : 'pass'}">${status || 'পাস'}</span></td>
+                <td class="re-col-total total-cell">${total}</td>
+                <td class="re-col-grade"><span class="grade-badge">${grade}</span></td>
+                <td class="re-col-status"><span class="status-badge ${isFail ? 'fail' : isAbsent ? 'absent' : 'pass'}">${status || 'পাস'}</span></td>
             </tr>
         `;
     }).join('');
@@ -1047,6 +1117,7 @@ async function saveMarks() {
             const stats = calculateStatistics(currentExamDoc.studentData, statsOptions);
 
             const success = await updateExam(currentExamDoc.docId, {
+                group: document.getElementById('reGroup')?.value || 'all',
                 studentData: currentExamDoc.studentData,
                 studentCount: currentExamDoc.studentData.length,
                 stats: stats

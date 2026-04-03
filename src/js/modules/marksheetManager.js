@@ -4,7 +4,13 @@
  * @module marksheetManager
  */
 
-import { getSavedExams, getExamConfigs, getSettings } from '../firestoreService.js';
+import { 
+    getSavedExams, 
+    getExamConfigs, 
+    getSettings,
+    getStudentLookupMap,
+    generateStudentDocId 
+} from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits } from '../utils.js';
 import { compressImage } from '../imageUtils.js';
@@ -125,12 +131,15 @@ export async function populateMSDropdowns() {
         const studentMap = new Map();
         currentFilteredExams.forEach(exam => {
             if (exam.studentData) {
-                exam.studentData.forEach(s => {
+                exam.studentData.forEach(async s => {
                     const sGroup = s.group || '';
                     if (msGroup !== 'all' && sGroup !== msGroup) return;
 
                     const key = `${s.id}_${sGroup}`;
                     if (!studentMap.has(key)) {
+                        // We can't easily do async inside forEach like this if we want it to be fast
+                        // But populateMSDropdowns is already async. 
+                        // Wait, updateStudentDropdown is defined inside populateMSDropdowns.
                         studentMap.set(key, { id: s.id, name: s.name, group: sGroup });
                     }
                 });
@@ -139,15 +148,28 @@ export async function populateMSDropdowns() {
         const studentSelect = document.getElementById('msStudent');
         if (studentSelect) {
             studentSelect.innerHTML = '<option value="all">সকল শিক্ষার্থী</option>';
-            [...studentMap.values()].sort((a, b) => {
-                const groupA = a.group.toLowerCase();
-                const groupB = b.group.toLowerCase();
-                if (groupA < groupB) return -1;
-                if (groupA > groupB) return 1;
+            
+            // Get lookup map for names
+            getStudentLookupMap().then(lookupMap => {
+                [...studentMap.values()].sort((a, b) => {
+                    const groupA = a.group.toLowerCase();
+                    const groupB = b.group.toLowerCase();
+                    if (groupA < groupB) return -1;
+                    if (groupA > groupB) return 1;
 
-                return (parseInt(convertToEnglishDigits(String(a.id))) || 0) - (parseInt(convertToEnglishDigits(String(b.id))) || 0);
-            }).forEach(s => {
-                studentSelect.innerHTML += `<option value="${s.id}_${s.group}">${s.id} - ${s.name}</option>`;
+                    return (parseInt(convertToEnglishDigits(String(a.id))) || 0) - (parseInt(convertToEnglishDigits(String(b.id))) || 0);
+                }).forEach(s => {
+                    const studentKey = generateStudentDocId({
+                        id: s.id,
+                        group: s.group,
+                        class: classSelect.value,
+                        session: sessionSelect.value
+                    });
+                    const latest = lookupMap.get(studentKey);
+                    const displayName = latest ? (latest.name || s.name) : s.name;
+                    
+                    studentSelect.innerHTML += `<option value="${s.id}_${s.group}">${s.id} - ${displayName}</option>`;
+                });
             });
         }
     };
@@ -230,6 +252,8 @@ async function generateMarksheets() {
         return;
     }
 
+    const lookupMap = await getStudentLookupMap();
+
     const subjectsSet = new Set(relevantExams.map(e => e.subject).filter(Boolean));
     let subjects = [...subjectsSet];
 
@@ -303,9 +327,17 @@ async function generateMarksheets() {
                 }
 
                 if (!studentAgg.has(key)) {
+                    const studentKey = generateStudentDocId({
+                        id: s.id,
+                        group: sGroup,
+                        class: cls,
+                        session: session
+                    });
+                    const latest = lookupMap.get(studentKey);
+
                     studentAgg.set(key, {
                         id: s.id,
-                        name: s.name,
+                        name: latest ? (latest.name || s.name) : s.name,
                         group: sGroup,
                         class: cls,
                         session: session,

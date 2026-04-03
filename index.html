@@ -657,24 +657,27 @@
           <button id="reDiscardBtn" class="dm-btn dm-report"><i class="fas fa-undo"></i> বাতিল</button>
         </div>
         <!-- Result Entry Table -->
-        <div id="resultEntryTableWrapper" class="table-container" style="display: none;">
+        <div id="resultEntryTableWrapper" class="result-entry-container" style="display: none;">
           <div id="reExamInfo" class="re-exam-info"></div>
-          <table class="data-table result-entry-table" id="resultEntryTable">
-            <thead id="reTableHead">
-              <tr>
-                <th style="width:50px;">রোল</th>
-                <th>নাম</th>
-                <th>গ্রুপ</th>
-                <th style="width:80px;">লিখিত</th>
-                <th style="width:80px;">এমসিকিউ</th>
-                <th style="width:80px;">ব্যবহারিক</th>
-                <th style="width:70px;">মোট</th>
-                <th style="width:60px;">গ্রেড</th>
-                <th style="width:70px;">স্ট্যাটাস</th>
-              </tr>
-            </thead>
-            <tbody id="reTableBody"></tbody>
-          </table>
+          <div class="table-container">
+            <table class="data-table result-entry-table" id="resultEntryTable">
+              <thead id="reTableHead">
+                <tr>
+                  <th class="re-col-sl">SL</th>
+                  <th class="re-col-roll">রোল</th>
+                  <th class="re-col-name">নাম</th>
+                  <th class="re-col-group">গ্রুপ</th>
+                  <th class="re-col-written">লিখিত</th>
+                  <th class="re-col-mcq">এমসিকিউ</th>
+                  <th class="re-col-practical">ব্যবহারিক</th>
+                  <th class="re-col-total">মোট</th>
+                  <th class="re-col-grade">গ্রেড</th>
+                  <th class="re-col-status">স্ট্যাটাস</th>
+                </tr>
+              </thead>
+              <tbody id="reTableBody"></tbody>
+            </table>
+          </div>
         </div>
         <div id="reEmptyState" class="empty-state-msg">
           <i class="fas fa-clipboard-list" style="font-size: 2rem; opacity: 0.3;"></i>

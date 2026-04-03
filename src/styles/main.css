@@ -2396,6 +2396,18 @@ body.is-super-admin .admin-only:not(.app-page) {
   .data-table td:nth-child(2) {
     min-width: 220px !important;
   }
+  
+  /* OVERRIDE for result entry table where Roll is 2nd column */
+  .result-entry-table th:nth-child(2),
+  .result-entry-table td:nth-child(2) {
+    min-width: unset !important;
+  }
+  
+  /* OVERRIDE for student management table where Roll is 2nd column */
+  #studentManagementTable th:nth-child(2),
+  #studentManagementTable td:nth-child(2) {
+    min-width: unset !important;
+  }
 
   /* Professional Scrollbar */
   .table-container::-webkit-scrollbar {
@@ -8855,6 +8867,156 @@ body:not(.dark-mode) .nav-btn {
   font-weight: 600;
 }
 
+/* Result Entry Table Enhancements */
+.re-toggle-name-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 10px rgba(67, 97, 238, 0.2);
+}
+
+.re-toggle-name-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3);
+  filter: brightness(1.1);
+}
+
+.re-toggle-name-btn.active {
+  background: #dc2626;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2);
+}
+
+.re-col-sl {
+  color: #718096;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  width: 1% !important;
+  white-space: nowrap;
+  padding: 8px 10px !important;
+}
+
+.re-col-roll {
+  font-weight: 700;
+  width: 1% !important;
+  white-space: nowrap;
+  padding: 8px 15px !important;
+  text-align: left !important;
+}
+
+/* 🚀 THE PERFECT SOLUTION: ZERO GAP Column Hiding */
+.re-hide-names .re-col-name {
+  display: none !important;
+  visibility: collapse !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+/* Mobile Responsiveness for Result Entry Table */
+@media (max-width: 768px) {
+  #resultEntryTableWrapper {
+    margin-top: 10px;
+    padding: 0 !important;
+  }
+  
+  .result-entry-table {
+    display: table;
+    margin: 0;
+    table-layout: auto;
+    border-collapse: collapse;
+    width: auto !important; /* Take only necessary width, ELIMINATE GAPS */
+    min-width: unset !important;
+  }
+  
+  .re-mark-input {
+    min-width: 55px !important;
+    max-width: 75px !important;
+    width: 100% !important;
+    height: 38px !important;
+    font-size: 1rem !important;
+    padding: 2px 4px !important;
+    margin: 0 auto !important;
+    display: block !important;
+  }
+  
+  /* Hide columns when toggled - Ultra Compact for Mobile Entry */
+  /* Compact layout on mobile */
+  .re-exam-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+  }
+  
+  /* Mobile Padding Reset - ZERO GAP EXPERIENCE - High Specificity */
+  table.result-entry-table th.re-col-sl, table.result-entry-table td.re-col-sl,
+  table.result-entry-table th.re-col-roll, table.result-entry-table td.re-col-roll,
+  table.result-entry-table th.re-col-name, table.result-entry-table td.re-col-name {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    width: 1px !important; /* Hug content */
+    white-space: nowrap !important;
+  }
+  
+  table.result-entry-table th.re-col-written, table.result-entry-table td.re-col-written,
+  table.result-entry-table th.re-col-mcq, table.result-entry-table td.re-col-mcq,
+  table.result-entry-table th.re-col-practical, table.result-entry-table td.re-col-practical {
+    width: 1% !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+  
+  .re-col-name {
+    width: auto !important; /* Allow name to take natural space but not stretch others */
+  }
+  
+  /* Super Compact columns for mobile - ZERO GAPS */
+  .re-hide-names .re-col-sl { 
+    width: 1px !important; /* Force minimum width */
+    white-space: nowrap;
+    padding: 8px 10px 8px 5px !important;
+  }
+  .re-hide-names .re-col-roll { 
+    width: 1px !important; 
+    white-space: nowrap;
+    padding: 8px 15px 8px 5px !important; 
+    text-align: left !important;
+  }
+  .re-hide-names .re-col-written,
+  .re-hide-names .re-col-mcq,
+  .re-hide-names .re-col-practical { 
+    width: 70px !important; 
+    padding: 8px 5px !important;
+  }
+  
+  /* Compact header badges on mobile to keep columns tight */
+  .re-hide-names thead th span.badge {
+    font-size: 0.6rem !important;
+    padding: 1px 3px !important;
+  }
+  
+  .re-toggle-name-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Pass Mark Info in Exam Info Bar */
 .re-pass-info {
   display: inline-flex;
@@ -13817,23 +13979,23 @@ body.is-teacher #reGroupContainer {
 .re-row-humanities { background-color: #f0fdf4 !important; }
 
 /* Highlight Roll and Group text */
-.re-row-science td:first-child strong { color: #e11d48 !important; }
-.re-row-business td:first-child strong { color: #2563eb !important; }
-.re-row-humanities td:first-child strong { color: #16a34a !important; }
+.re-row-science td.re-col-roll strong, .re-row-science td.re-col-roll { color: #e11d48 !important; }
+.re-row-business td.re-col-roll strong, .re-row-business td.re-col-roll { color: #2563eb !important; }
+.re-row-humanities td.re-col-roll strong, .re-row-humanities td.re-col-roll { color: #16a34a !important; }
 
 /* Result Entry Group Highlighting (Text Only) */
-.re-row-science td:first-child strong,
-.re-row-science td:nth-child(3) { 
+.re-row-science td.re-col-roll strong, .re-row-science td.re-col-roll,
+.re-row-science td.re-col-name { 
     color: #ef4444 !important; /* Bold Red (Tailwind Red 500) */
     font-weight: 800 !important; 
 }
-.re-row-business td:first-child strong,
-.re-row-business td:nth-child(3) { 
+.re-row-business td.re-col-roll strong, .re-row-business td.re-col-roll,
+.re-row-business td.re-col-name { 
     color: #3b82f6 !important; /* Bold Blue (Tailwind Blue 500) */
     font-weight: 800 !important; 
 }
-.re-row-humanities td:first-child strong,
-.re-row-humanities td:nth-child(3) { 
+.re-row-humanities td.re-col-roll strong, .re-row-humanities td.re-col-roll,
+.re-row-humanities td.re-col-name { 
     color: #22c55e !important; /* Bold Green (Tailwind Green 500) */
     font-weight: 800 !important; 
 }
@@ -15731,6 +15893,10 @@ body.sr-bulk-printing-active .print-only {
 
     table.data-table {
         min-width: 700px !important;
+    }
+    
+    table.result-entry-table {
+        min-width: unset !important;
     }
 
     /* Card Layouts */
