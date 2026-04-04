@@ -384,7 +384,8 @@ export function initTeacherAssignmentUI() {
                 developerCredit: developerCredit
             };
 
-            const container = document.getElementById('tcCardPreviewContainer');
+            const container = document.getElementById('teacherCardPreview');
+            if (!container) return;
             container.innerHTML = renderTeacherInfoCardHTML(currentExportData);
             document.getElementById('teacherInfoCardModal').classList.add('active');
 
@@ -1156,7 +1157,8 @@ function renderTeacherInfoCardHTML(data) {
 }
 
 /**
- * Print Bulk Teacher Cards (2x3 grid on A4 Landscape)
+ * Print Bulk Teacher Cards (3x2 grid on A4 Landscape)
+ * Includes ALL unique teachers from the users list
  */
 async function printBulkTeacherCards() {
     setLoading(true, '#teacherAssignmentPage');
@@ -1170,17 +1172,27 @@ async function printBulkTeacherCards() {
         const logoUrl = adSettings.logoUrl || '';
         const developerCredit = settings.developerCredit || null;
 
-        // Get assignments and unique teacher IDs
+        // Get all assignments and group by teacher UID
         const assignments = await getTeacherAssignments();
-        const teachersMap = new Map();
+        const assignmentsMap = new Map();
         assignments.forEach(asg => {
-            if (!teachersMap.has(asg.uid)) {
-                teachersMap.set(asg.uid, []);
+            if (!assignmentsMap.has(asg.uid)) {
+                assignmentsMap.set(asg.uid, []);
             }
-            teachersMap.get(asg.uid).push(asg);
+            assignmentsMap.get(asg.uid).push(asg);
         });
 
-        const teacherUids = Array.from(teachersMap.keys()).sort((a, b) => {
+        // Collect ALL unique teachers: from assignments + from users list (non-super_admin)
+        const allTeacherUids = new Set();
+        assignments.forEach(asg => allTeacherUids.add(asg.uid));
+        allUsers.forEach(user => {
+            if (user.role !== 'super_admin') {
+                allTeacherUids.add(user.uid);
+            }
+        });
+
+        // Sort by name
+        const teacherUids = Array.from(allTeacherUids).sort((a, b) => {
             const uA = allUsers.find(u => u.uid === a) || {};
             const uB = allUsers.find(u => u.uid === b) || {};
             return (uA.displayName || '').localeCompare(uB.displayName || '');
@@ -1200,7 +1212,7 @@ async function printBulkTeacherCards() {
         
         teacherUids.forEach((uid, index) => {
             const user = allUsers.find(u => u.uid === uid) || {};
-            const tAssignments = teachersMap.get(uid) || [];
+            const tAssignments = assignmentsMap.get(uid) || [];
 
             // Every 6 cards, create a new A4 page (2x3 grid)
             if (index % 6 === 0) {
