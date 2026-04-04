@@ -1090,14 +1090,22 @@ function renderTeacherInfoCardHTML(data) {
     // Developer Credit Logic
     let devCreditHtml = '';
     const dev = data.developerCredit;
-    if (dev && dev.enabled !== false) {
-        devCreditHtml = `
-            <div class="tc-dev-credit">
-                ${dev.text || 'Developed By:'} 
-                <span class="tc-dev-name">${dev.name || 'Developer'}</span> | 
-                ডেভেলপার প্রোফাইল লিংকঃ <a href="${dev.link || '#'}" target="_blank" style="color: var(--tc-theme-accent)">${dev.link || 'ভিজিট করুন'}</a>
-            </div>
-        `;
+    if (dev) {
+        if (typeof dev === 'string') {
+            devCreditHtml = `
+                <div class="tc-dev-credit">
+                    ${dev}
+                </div>
+            `;
+        } else if (dev.enabled !== false) {
+            devCreditHtml = `
+                <div class="tc-dev-credit">
+                    ${dev.text || 'Developed By:'} 
+                    <span class="tc-dev-name">${dev.name || 'Developer'}</span> | 
+                    ডেভেলপার প্রোফাইল লিংকঃ <a href="${dev.link || '#'}" target="_blank" style="color: var(--tc-theme-accent)">${dev.link || 'ভিজিট করুন'}</a>
+                </div>
+            `;
+        }
     }
 
     return `
@@ -1208,17 +1216,43 @@ async function printBulkTeacherCards() {
         }
 
         // Create grid(s) for printing
+        let currentPage;
         let currentGrid;
+        
         teacherUids.forEach((uid, index) => {
-            // Every 8 cards, create a new grid (if we want to support multiple pages)
-            if (index % 8 === 0) {
+            // Every 6 cards, create a new A4 page
+            if (index % 6 === 0) {
+                currentPage = document.createElement('div');
+                currentPage.className = 'a4-landscape-page tc-print-page';
+                
                 currentGrid = document.createElement('div');
                 currentGrid.className = 'tc-bulk-grid';
-                if (index > 0) {
-                    currentGrid.style.pageBreakBefore = 'always';
-                    currentGrid.style.marginTop = '20mm';
+                currentPage.appendChild(currentGrid);
+                
+                const footer = document.createElement('div');
+                footer.className = 'tc-print-footer';
+                const pageNum = Math.floor(index / 6) + 1;
+                const totalPages = Math.ceil(teacherUids.length / 6);
+                
+                let devText = 'Developed by Mustafa Rahman';
+                if (developerCredit && typeof developerCredit === 'object') {
+                    if (developerCredit.enabled !== false) {
+                        devText = `${developerCredit.text || 'Developed By:'} ${developerCredit.name || 'Mustafa Rahman'}`;
+                    } else {
+                        devText = '';
+                    }
+                } else if (typeof developerCredit === 'string') {
+                    devText = developerCredit;
                 }
-                bulkContainer.appendChild(currentGrid);
+
+                footer.innerHTML = `
+                    <span style="font-weight: 500;">মুদ্রণে: ${instName}</span>
+                    <span style="opacity:0.7; font-size: 0.85em;">${devText}</span>
+                    <span style="font-weight: 500;">পৃষ্ঠা ${pageNum} / ${totalPages}</span>
+                `;
+                currentPage.appendChild(footer);
+                
+                bulkContainer.appendChild(currentPage);
             }
 
             const user = allUsers.find(u => u.uid === uid);
