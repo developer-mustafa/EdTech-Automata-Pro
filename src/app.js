@@ -59,6 +59,7 @@ import { initAdmitCardManager, populateACDropdowns } from './js/modules/admitCar
 import { initRoutineManager } from './js/modules/routineManager.js';
 import AccessControlManager from './js/modules/accessControlManager.js';
 import { initStudentResultsManager } from './js/modules/studentResultsManager.js';
+import { initNoticeManager, updateNoticeAcl } from './js/modules/noticeManager.js';
 
 /**
  * Recalculate student grades/statuses using CURRENT subject config.
@@ -159,6 +160,11 @@ async function init() {
                 state.currentExamSession = loadedExam.session;
                 state.currentExamClass = loadedExam.class;
                 state.isViewingSavedExam = true;
+                
+                // Automatically sync UI filters to highlight the active loaded test
+                state.savedExamsClassFilter = loadedExam.class || 'all';
+                state.savedExamsSessionFilter = loadedExam.session || 'all';
+                
                 defaultLoaded = true;
             }
         }
@@ -173,6 +179,11 @@ async function init() {
                 state.currentExamSession = defaultExam.session;
                 state.currentExamClass = defaultExam.class;
                 state.isViewingSavedExam = true;
+
+                // Automatically sync UI filters to highlight the active default test
+                state.savedExamsClassFilter = defaultExam.class || 'all';
+                state.savedExamsSessionFilter = defaultExam.session || 'all';
+
                 defaultLoaded = true;
             }
         }
@@ -187,6 +198,7 @@ async function init() {
             renderUI: (user) => {
                 updateProfileUI(user, state.isAdmin, state.isSuperAdmin, state.userRole);
                 updateNavVisibility();
+                updateNoticeAcl(state.isSuperAdmin || state.isAdmin, state.userRole);
                 updateViews();
                 renderSavedExams();
                 
@@ -238,8 +250,12 @@ async function init() {
         // Marksheet Settings Sync (College Name, Address, Logo)
         state.onMarksheetSettingsUnsubscribe = await subscribeToMarksheetSettings((msData) => {
             console.log('Marksheet settings updated, refreshing dashboard header...');
-            updateViews();
+            updateProfileUI(state.auth?.currentUser, state.isAdmin, state.isSuperAdmin, state.userRole);
         });
+
+        // Initialize News Bulletin & Notice Board
+        await initNoticeManager();
+        updateNoticeAcl(state.isSuperAdmin || state.isAdmin, state.userRole);
 
         initSubjectConfigManager();
         initClassMappingManager();
@@ -1296,6 +1312,10 @@ function initEventListeners() {
             state.currentExamSession = exam.session;
             state.currentExamClass = exam.class;
             state.isViewingSavedExam = true;
+
+            // Automatically sync UI filters to highlight the active loaded test
+            state.savedExamsClassFilter = exam.class || 'all';
+            state.savedExamsSessionFilter = exam.session || 'all';
 
             // Save to localStorage for persistence
             localStorage.setItem('loadedExamId', exam.docId || '');

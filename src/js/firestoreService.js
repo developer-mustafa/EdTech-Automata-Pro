@@ -39,7 +39,8 @@ export const COLLECTIONS = {
     teacher_assignments: 'teacher_assignments',
     examConfigs: 'examConfigs',
     academicStructure: 'academicStructure',
-    accessControl: 'accessControl'
+    accessControl: 'accessControl',
+    notices: 'notices'
 };
 
 // Memory cache for expensive read operations
@@ -1668,5 +1669,92 @@ export function subscribeToAccessControl(callback) {
         } else {
             callback(null);
         }
+    });
+}
+
+// ==========================================
+// NOTICES COLLECTION OPERATIONS
+// ==========================================
+
+/**
+ * Save or update a notice
+ * @param {Object} noticeData - Notice data object
+ * @returns {Promise<string|null>} - Document ID or null
+ */
+export async function saveNotice(noticeData) {
+    try {
+        const docId = noticeData.docId || `NOTICE_${Date.now()}`;
+        const docRef = doc(db, COLLECTIONS.notices, docId);
+        
+        const data = {
+            ...noticeData,
+            updatedAt: serverTimestamp()
+        };
+        
+        if (!noticeData.docId) {
+            data.createdAt = serverTimestamp();
+            data.docId = docId;
+        }
+
+        await setDoc(docRef, data, { merge: true });
+        return docId;
+    } catch (error) {
+        console.error('নোটিশ সেভ করতে সমস্যা:', error);
+        return null;
+    }
+}
+
+/**
+ * Get all notices ordered by creation date
+ * @returns {Promise<Array>} - Array of notice documents
+ */
+export async function getNotices() {
+    try {
+        const noticesRef = collection(db, COLLECTIONS.notices);
+        const q = query(noticesRef, orderBy('createdAt', 'desc'));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => ({
+            ...doc.data(),
+            docId: doc.id
+        }));
+    } catch (error) {
+        console.error('নোটিশ লোড করতে সমস্যা:', error);
+        return [];
+    }
+}
+
+/**
+ * Delete a notice
+ * @param {string} docId - Document ID
+ * @returns {Promise<boolean>} - Success status
+ */
+export async function deleteNotice(docId) {
+    try {
+        await deleteDoc(doc(db, COLLECTIONS.notices, docId));
+        return true;
+    } catch (error) {
+        console.error('নোটিশ মুষতে সমস্যা:', error);
+        return false;
+    }
+}
+
+/**
+ * Subscribe to real-time notice updates
+ * @param {Function} callback - Callback for updates
+ * @returns {Function} - Unsubscribe function
+ */
+export function subscribeToNotices(callback) {
+    const noticesRef = collection(db, COLLECTIONS.notices);
+    const q = query(noticesRef, orderBy('createdAt', 'desc'));
+
+    return onSnapshot(q, (snapshot) => {
+        const notices = snapshot.docs.map(doc => ({
+            ...doc.data(),
+            docId: doc.id
+        }));
+        callback(notices);
+    }, (error) => {
+        console.error('নোটিশ সিঙ্ক সমস্যা:', error);
     });
 }

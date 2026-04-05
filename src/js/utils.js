@@ -371,18 +371,36 @@ export function getFailedStudents(data, options = {}) {
 /**
  * Show notification
  * @param {string} message - Notification message
+ * @param {string} type - Notification type (success, error, info, warning)
  */
-export function showNotification(message) {
+export function showNotification(message, type = 'info') {
+    // Remove if any existing notification with same message (prevent spam)
+    const existing = Array.from(document.querySelectorAll('.notification')).find(n => n.textContent === message);
+    if (existing) existing.remove();
+
     const notification = document.createElement('div');
-    notification.className = 'notification';
-    notification.textContent = message;
+    notification.className = `notification ${type}`;
+    
+    // Add icon based on type
+    const icons = {
+        success: '<i class="fas fa-check-circle"></i>',
+        error: '<i class="fas fa-exclamation-circle"></i>',
+        warning: '<i class="fas fa-exclamation-triangle"></i>',
+        info: '<i class="fas fa-info-circle"></i>'
+    };
+    
+    notification.innerHTML = `${icons[type] || icons.info} <span>${message}</span>`;
     document.body.appendChild(notification);
 
+    // Auto remove after delay
     setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
-    }, 3000);
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 4000);
 }
 
 export function convertToEnglishDigits(str) {
