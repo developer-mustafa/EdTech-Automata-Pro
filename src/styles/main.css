@@ -2214,14 +2214,15 @@ body.is-super-admin .admin-only:not(.app-page) {
 /* ── Compact Header for Saved Exams (No pointer) ── */
 .saved-exams-header-compact {
   display: flex;
-  align-items: center;
-  padding: 8px 12px; /* Reduced to fix excessive internal white gap */
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px;
   background-color: var(--card-bg);
-  /* This is the crisp white background */
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
   border: 1px solid var(--border-color);
-  margin-bottom: 10px; /* Reduced from 20px to fix big unseemly gap before cards */
+  margin-bottom: 15px;
+  gap: 10px;
 }
 
 /* ── Modern Visibility Toggle Button ── */
@@ -9635,11 +9636,11 @@ body:not(.dark-mode) .nav-btn {
   overflow: hidden;
   border: none !important;
   background: var(--card-bg) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2),
-    0 0 15px rgba(255, 215, 0, 0.3) !important;
-  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1),
+    0 0 15px rgba(255, 215, 0, 0.2) !important;
   z-index: 1;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  min-height: 100%; /* Ensure same height on grid */
 }
 
 /* Moving Animated Border Layer */
@@ -9671,6 +9672,13 @@ body:not(.dark-mode) .nav-btn {
   z-index: -1;
 }
 
+/* Standard height fix for all cards to prevent default card looking bigger */
+.exam-card {
+  height: 100%;
+  display: flex !important;
+  flex-direction: column;
+}
+
 /* Royal Highlights */
 .exam-card.is-default .exam-card-title-minimal strong {
   color: #d4af37;
@@ -9685,23 +9693,43 @@ body:not(.dark-mode) .nav-btn {
 }
 
 @keyframes heartbeat {
-  0% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.2);
-  }
-
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 /* Dark mode adjustment for royal card */
 [data-theme="dark"] .exam-card.is-default::after {
   background: #1e293b;
-  /* Deeper dark background for royal pop */
+}
+
+/* Default Exam Message Styling */
+.default-exam-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(67, 97, 238, 0.05));
+  border: 1px dashed rgba(212, 175, 55, 0.4);
+  border-radius: 8px;
+  color: #d4af37;
+  font-size: 0.8rem;
+  font-weight: 700;
+  width: 100%;
+  justify-content: center;
+}
+
+.dark-mode .default-exam-msg {
+  background: rgba(255, 215, 0, 0.08);
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 /* Load button enhancement when default */
@@ -19241,47 +19269,47 @@ body.sr-bulk-printing-active .print-only {
 .notice-bulletin-wrapper {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid var(--primary);
-  border-left: 4px solid var(--primary);
-  border-radius: 8px;
-  height: 36px;
+  background: var(--card-bg);
+  border: 1px solid rgba(67, 97, 238, 0.15);
+  border-radius: 12px;
+  height: 38px;
   overflow: hidden;
-  flex: 1;
-  min-width: 200px; /* Reduced to fit better on laptops */
-  box-shadow: 0 4px 15px rgba(67, 97, 238, 0.1);
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
   transition: all 0.3s ease;
-  margin-left: 5px;
+  margin-top: 8px;
+  padding: 0;
 }
 
 .dark-mode .notice-bulletin-wrapper {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(67, 97, 238, 0.4);
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(67, 97, 238, 0.2);
 }
 
 .notice-bulletin-label {
   background: var(--primary);
   color: white;
-  padding: 0 12px;
+  padding: 0 16px;
   height: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 800;
   white-space: nowrap;
   position: relative;
   z-index: 2;
+  border-radius: 12px 0 0 12px;
 }
 
 .notice-bulletin-label::after {
   content: '';
   position: absolute;
-  right: -10px;
+  right: -12px;
   top: 0;
-  border-left: 10px solid var(--primary);
-  border-top: 18px solid transparent;
-  border-bottom: 18px solid transparent;
+  border-left: 12px solid var(--primary);
+  border-top: 19px solid transparent;
+  border-bottom: 19px solid transparent;
 }
 
 .notice-bulletin-content {
@@ -19289,6 +19317,7 @@ body.sr-bulk-printing-active .print-only {
   overflow: hidden;
   position: relative;
   height: 100%;
+  padding-left: 20px;
 }
 
 .notice-scroller {
@@ -19297,7 +19326,6 @@ body.sr-bulk-printing-active .print-only {
   height: 100%;
   white-space: nowrap;
   animation: noticeMarquee 30s linear infinite;
-  padding-left: 20px;
 }
 
 .notice-scroller:hover {

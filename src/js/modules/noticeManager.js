@@ -5,6 +5,7 @@
 
 import { saveNotice, getNotices, deleteNotice, subscribeToNotices } from '../firestoreService.js';
 import { formatDateBengali, showNotification } from '../utils.js';
+import { navigateTo } from './pageRouter.js';
 
 let state = {
     notices: [],
@@ -123,6 +124,13 @@ function setupEventListeners() {
         localStorage.setItem('bulletinEnabled', state.bulletinEnabled);
         updateBulletinVisibility();
     });
+
+    // Bulletin Navigation
+    if (elements.noticeBulletinWrapper) {
+        elements.noticeBulletinWrapper.addEventListener('click', () => {
+            navigateTo('notices');
+        });
+    }
 
     // Modal Control
     elements.addNoticeBtn?.addEventListener('click', () => {
@@ -267,10 +275,12 @@ function renderNotices() {
                              <i class="fas fa-hashtag text-[12px] opacity-70"></i> নোটিশ নং: ${noticeNoBng}
                         </span>
                         
+                        ${state.isAdmin ? `
                         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity no-print">
                             <button class="notice-edit-btn w-7 h-7 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-indigo-600 transition-colors flex items-center justify-center p-0 border-0" data-id="${notice.docId}"><i class="fas fa-edit text-xs"></i></button>
                             <button class="notice-delete-btn w-7 h-7 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-red-600 transition-colors flex items-center justify-center p-0 border-0" data-id="${notice.docId}"><i class="fas fa-trash-alt text-xs"></i></button>
                         </div>
+                        ` : ''}
                     </div>
 
                     <div class="flex-1 min-w-0">

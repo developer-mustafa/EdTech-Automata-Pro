@@ -192,7 +192,7 @@
       <button class="page-nav-btn" data-page="student-results">
         <i class="fas fa-search"></i> <span>ফলাফল</span>
       </button>
-      <button class="page-nav-btn super-admin-only" data-page="notices" id="navNoticeBtn">
+      <button class="page-nav-btn" data-page="notices" id="navNoticeBtn">
         <i class="fas fa-bullhorn"></i> <span>নোটিশ</span>
       </button>
 
@@ -313,19 +313,19 @@
               <div id="savedExamsClassFilters" class="class-filter-container">
                 <!-- ক্লাস ফিল্টারসমূহ এখানে দেখা যাবে -->
               </div>
-              <span id="savedExamsCount" class="exams-count-badge">মোট: ০টি এক্সাম</span>
-              
-              <!-- --- DYNAMIC NOTICE BULLETIN (MARQUEE) --- -->
-              <div id="noticeBulletinWrapper" class="notice-bulletin-wrapper" style="display: none;">
-                <div class="notice-bulletin-label">
-                  <i class="fas fa-bullhorn"></i> <span>সর্বশেষ নোটিশ:</span>
-                </div>
-                <div class="notice-bulletin-content" id="noticeBulletinContent">
-                  <!-- Notices will scroll here dynamically -->
-                  <div class="notice-scroller" id="noticeScroller">
-                    <span class="notice-item-placeholder">লোড হচ্ছে...</span>
-                  </div>
-                </div>
+            </div>
+            <span id="savedExamsCount" class="exams-count-badge">মোট: ০টি এক্সাম</span>
+          </div>
+
+          <!-- --- DYNAMIC NOTICE BULLETIN (MARQUEE) --- -->
+          <div id="noticeBulletinWrapper" class="notice-bulletin-wrapper cursor-pointer" style="display: none;">
+            <div class="notice-bulletin-label">
+              <i class="fas fa-bullhorn"></i> <span>সর্বশেষ নোটিশ:</span>
+            </div>
+            <div class="notice-bulletin-content" id="noticeBulletinContent">
+              <!-- Notices will scroll here dynamically -->
+              <div class="notice-scroller" id="noticeScroller">
+                <span class="notice-item-placeholder">লোড হচ্ছে...</span>
               </div>
             </div>
           </div>

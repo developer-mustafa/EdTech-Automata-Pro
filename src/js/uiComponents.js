@@ -1291,13 +1291,24 @@ export function renderSavedExamsList(container, exams, options = {}) {
                 </div>
 
                 <div class="exam-card-actions-compact">
-                    <button class="card-btn-min load-btn ${isActiveLoad ? 'is-active' : ''}" title=" এক্সাম লোড.." ${shouldHideLoadBtn ? 'style="display: none"' : ''}><i class="fas fa-eye"></i> ${isActiveLoad ? 'আন-লোড' : (state.currentUser ? 'লোড করুন' : 'এই পরীক্ষার ফলাফল দেখতে ক্লিক করুন')} </button>
-                    <label class="pin-toggle super-admin-only" title="ডিফল্ট হিসেবে সেট করুন">
-                        <input type="checkbox" class="pin-checkbox" ${exam.docId === defaultExamId ? 'checked' : ''}>
-                        <span class="pin-slider"></span>
-                    </label>
-                    <button class="card-btn-min edit-btn" style="display: ${canEdit ? 'inline-flex' : 'none'}" title="এডিট"><i class="fas fa-edit"></i></button>
-                    <button class="card-btn-min delete-btn super-admin-only" title="মুছুন"><i class="fas fa-trash"></i></button>
+                    ${isDefault && !state.isSuperAdmin ? `
+                        <div class="default-exam-msg" title="এই এক্সাম সুপার এডমিন কর্তৃক নির্ধারিত">
+                            <i class="fas fa-shield-alt"></i> <span>এই এক্সাম সুপার এডমিন কর্তৃক নির্ধারিত</span>
+                        </div>
+                    ` : `
+                        <button class="card-btn-min load-btn ${isActiveLoad ? 'is-active' : ''}" title=" এক্সাম লোড.." ${shouldHideLoadBtn ? 'style="display: none"' : ''}>
+                            <i class="fas fa-eye"></i> ${isActiveLoad ? 'আন-লোড' : (state.currentUser ? 'লোড করুন' : 'এই পরীক্ষার ফলাফল দেখতে ক্লিক করুন')}
+                        </button>
+                    `}
+                    
+                    <div class="admin-actions super-admin-only">
+                        <label class="pin-toggle" title="ডিফল্ট হিসেবে সেট করুন">
+                            <input type="checkbox" class="pin-checkbox" ${exam.docId === defaultExamId ? 'checked' : ''}>
+                            <span class="pin-slider"></span>
+                        </label>
+                        <button class="card-btn-min edit-btn" style="display: ${canEdit ? 'inline-flex' : 'none'}" title="এডিট"><i class="fas fa-edit"></i></button>
+                        <button class="card-btn-min delete-btn" title="মুছুন"><i class="fas fa-trash"></i></button>
+                    </div>
                 </div>
             </div>
         `;
