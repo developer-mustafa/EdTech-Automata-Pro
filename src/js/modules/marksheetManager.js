@@ -429,10 +429,14 @@ async function generateMarksheets() {
     }
     previewArea.innerHTML = marksheetsHtml;
 
-    // Render QRs after HTML is set
-    setTimeout(async () => {
+    // Render QRs - Explicitly await to ensure they exist before user can print
+    try {
         await renderMarksheetQRCodes(previewArea);
-    }, 100);
+    } catch (qrErr) {
+        console.error("QR rendering failed in main flow:", qrErr);
+    }
+
+
 
     // Load developer credit settings before rendering
     state.developerCredit = await getSettings('developerCredit');
@@ -983,28 +987,29 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     const headerRow = isCombinedMode ? `
         <tr>
-            <th class="ms-th-sl">ক্রঃ</th>
-            <th class="ms-th-subject">বিষয়ের নাম</th>
-            <th class="ms-th-subject">পত্র সমূহ</th>
-            <th class="ms-th-num">পূর্ণমান</th>
-            <th class="ms-th-num">CQ</th>
-            <th class="ms-th-num">MCQ</th>
-            <th class="ms-th-num">ব্যবহারিক </th>
-            <th class="ms-th-num">প্রাপ্ত নম্বর</th>
-            <th class="ms-th-num">গড়</th>
-            <th class="ms-th-grade">গ্রেড</th>
-            <th class="ms-th-gp">GPA</th>
+            <th class="ms-th-sl" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ক্রঃ</th>
+            <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">বিষয়ের নাম</th>
+            <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পত্র সমূহ</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পূর্ণমান</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">CQ</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">MCQ</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ব্যবহারিক </th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">প্রাপ্ত নম্বর</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">গড়</th>
+            <th class="ms-th-grade" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">গ্রেড</th>
+            <th class="ms-th-gp" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">GPA</th>
         </tr>` : `
         <tr>
-            <th class="ms-th-sl">ক্রঃ</th>
-            <th class="ms-th-subject">বিষয়ের নাম</th>
-            <th class="ms-th-num">পূর্ণমান</th>
-            <th class="ms-th-num">লিখিত</th>
-            <th class="ms-th-num">MCQ</th>
-            <th class="ms-th-num">ব্যবহারিক</th>
-            <th class="ms-th-num">প্রাপ্ত নম্বর</th>
-            <th class="ms-th-grade">গ্রেড</th>
-            <th class="ms-th-gp">GPA</th>
+            <th class="ms-th-sl" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ক্রঃ</th>
+            <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">বিষয়ের নাম</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পূর্ণমান</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">লিখিত</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">MCQ</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ব্যবহারিক</th>
+            <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">প্রাপ্ত নম্বর</th>
+            <th class="ms-th-grade" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">গ্রেড</th>
+            <th class="ms-th-gp" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">GPA</th>
+
         </tr>`;
 
     // Final result text should use pass/fail logic
@@ -2079,9 +2084,9 @@ export function applyCombinedPaperLogic(studentsArray, currentSubjects, rules, a
 }
 
 /**
- * Render QR Codes for all generated marksheets
+ * Render QR Codes for all generated marksheets and convert to Images for Print Reliability
  */
-async function renderMarksheetQRCodes(container) {
+export async function renderMarksheetQRCodes(container) {
     const canvases = container.querySelectorAll('.ms-mr-qr-canvas');
     if (!canvases.length) return;
 
@@ -2093,17 +2098,36 @@ async function renderMarksheetQRCodes(container) {
             const liveLink = window.location.origin + window.location.pathname + '#student-results?uid=' + uid + '&exam=' + encodeURIComponent(exam);
             const qrData = `Student Marksheet Verification\nID: ${uid}\nName: ${name}\nExam: ${exam}\nLink: ${liveLink}`;
 
+            // 1. Generate QR onto the hidden canvas with Ultra-High Resolution
             await QRCode.toCanvas(canvas, qrData, {
-                width: 200, // Higher resolution for better scanning
+                width: 600, // Ultra-High Resolution for sharpest print
                 margin: 0,
-                color: { dark: '#1e293b', light: '#ffffff' },
-                errorCorrectionLevel: 'M'
+                color: { dark: '#000000', light: '#ffffff' }, // Pure black for max contrast
+                errorCorrectionLevel: 'Q' // Faster scanning on physical prints
             });
-            canvas.style.width = '130px';
-            canvas.style.height = '130px';
+
+            // 2. Convert Canvas to High-Quality Image
+            const qrImageUrl = canvas.toDataURL("image/png", 1.0);
+            
+            // 3. Inject optimized image
+            const wrapper = canvas.parentElement;
+            if (wrapper) {
+                const img = document.createElement('img');
+                img.src = qrImageUrl;
+                img.classList.add('ms-qr-printable-img');
+                img.style.width = '130px'; // Increased size for visibility
+                img.style.height = '130px';
+                img.style.display = 'block';
+                img.style.imageRendering = 'pixelated'; // Prevent blurring
+                
+                // Clear and update
+                wrapper.innerHTML = '';
+                wrapper.appendChild(img);
+            }
+
 
         } catch (err) {
-            console.error('Marksheet QR generation failed:', err);
+            console.error('Marksheet QR generation/conversion failed:', err);
         }
     }
 }

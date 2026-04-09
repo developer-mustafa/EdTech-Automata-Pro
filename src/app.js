@@ -41,24 +41,9 @@ import {
 import { getChartTitle } from './js/chartModule.js';
 import { getSavedExams, subscribeToSettings, getSettings, subscribeToSubjectConfigs, getSubjectConfigs } from './js/firestoreService.js';
 
-import { handleUserManagement } from './js/modules/userMgmtManager.js';
-import { initSubjectConfigManager } from './js/modules/subjectConfigManager.js';
-import { initClassMappingManager, populateSubjectDropdown } from './js/modules/classMappingManager.js';
 
-// New Feature Modules
 import { initPageRouter, updateNavVisibility } from './js/modules/pageRouter.js';
-import { initTeacherAssignmentUI, loadTeacherAssignmentData } from './js/modules/teacherAssignmentManager.js';
-import { initAccessRequestUI, loadAccessRequests, initAccessRequestNotifications } from './js/modules/accessRequestManager.js';
-import { initStudentManager, loadStudents } from './js/modules/studentManager.js';
-import { initResultEntryManager, populateREDropdowns } from './js/modules/resultEntryManager.js';
-import { initMarksheetManager, populateMSDropdowns, subscribeToMarksheetSettings } from './js/modules/marksheetManager.js';
-import { initMarksheetRulesManager, populateMarksheetSettingsDropdowns } from './js/modules/marksheetRulesManager.js';
-import { initExamConfigManager, loadExamConfigs, populateExamNameDropdown } from './js/modules/examConfigManager.js';
-import { initAcademicSettingsManager } from './js/modules/academicSettingsManager.js';
-import { initAdmitCardManager, populateACDropdowns } from './js/modules/admitCardManager.js';
-import { initRoutineManager } from './js/modules/routineManager.js';
 import AccessControlManager from './js/modules/accessControlManager.js';
-import { initStudentResultsManager } from './js/modules/studentResultsManager.js';
 import { initNoticeManager, updateNoticeAcl } from './js/modules/noticeManager.js';
 
 /**
@@ -133,16 +118,11 @@ async function init() {
         // Fetch settings and exams first to know the default
         const [settings, exams] = await Promise.all([getSettings(), fetchExams()]);
 
-        // Wait for profile UI to finish role sync
-        await setupAuthListener();
-
-        // Initialize super-admin only notifications
-        if (state.isSuperAdmin) {
-            state.onAccessReqUnsubscribe = initAccessRequestNotifications();
-        }
 
         // Initialize Academic Settings (Dynamic Structure)
+        const { initAcademicSettingsManager } = await import('./js/modules/academicSettingsManager.js');
         await initAcademicSettingsManager();
+
         if (settings) state.defaultExamId = settings.defaultExamId;
 
         // Load subject configs FIRST (needed for recalculation on exam load)
@@ -194,18 +174,43 @@ async function init() {
             state.isInitialized = true;
         }
 
+
+        const initializedModules = new Set();
+
         state.onAuthUnsubscribe = setupAuthListener({
-            renderUI: (user) => {
+            renderUI: async (user) => {
                 updateProfileUI(user, state.isAdmin, state.isSuperAdmin, state.userRole);
                 updateNavVisibility();
                 updateNoticeAcl(state.isSuperAdmin || state.isAdmin, state.userRole);
                 updateViews();
                 renderSavedExams();
                 
+                // Initialize super-admin only notifications if not already done
+                if (state.isSuperAdmin && !state.onAccessReqUnsubscribe) {
+                    const { initAccessRequestNotifications } = await import('./js/modules/accessRequestManager.js');
+                    state.onAccessReqUnsubscribe = initAccessRequestNotifications();
+                }
+
                 // Refresh dynamic dropdowns if active on those pages
                 const currentHash = window.location.hash.replace('#', '') || 'dashboard';
-                if (currentHash === 'result-entry') populateREDropdowns();
-                if (currentHash === 'marksheet') populateMSDropdowns();
+                const basePage = currentHash.split('?')[0];
+
+                if (basePage === 'result-entry') {
+                    const { populateREDropdowns, initResultEntryManager } = await import('./js/modules/resultEntryManager.js');
+                    if (!initializedModules.has('result-entry')) {
+                        initResultEntryManager();
+                        initializedModules.add('result-entry');
+                    }
+                    populateREDropdowns();
+                }
+                if (basePage === 'marksheet') {
+                    const { populateMSDropdowns, initMarksheetManager } = await import('./js/modules/marksheetManager.js');
+                    if (!initializedModules.has('marksheet')) {
+                        initMarksheetManager();
+                        initializedModules.add('marksheet');
+                    }
+                    populateMSDropdowns();
+                }
             }
         });
 
@@ -248,43 +253,117 @@ async function init() {
         });
 
         // Marksheet Settings Sync (College Name, Address, Logo)
-        state.onMarksheetSettingsUnsubscribe = await subscribeToMarksheetSettings((msData) => {
-            console.log('Marksheet settings updated, refreshing dashboard header...');
-            updateProfileUI(state.auth?.currentUser, state.isAdmin, state.isSuperAdmin, state.userRole);
-        });
+        const initMarksheetSettingsSub = async () => {
+             const { subscribeToMarksheetSettings } = await import('./js/modules/marksheetManager.js');
+             state.onMarksheetSettingsUnsubscribe = await subscribeToMarksheetSettings((msData) => {
+                console.log('Marksheet settings updated, refreshing dashboard header...');
+                updateProfileUI(state.auth?.currentUser, state.isAdmin, state.isSuperAdmin, state.userRole);
+            });
+        };
+        initMarksheetSettingsSub();
 
         // Initialize News Bulletin & Notice Board
         await initNoticeManager();
         updateNoticeAcl(state.isSuperAdmin || state.isAdmin, state.userRole);
 
+        const { initSubjectConfigManager } = await import('./js/modules/subjectConfigManager.js');
+        const { initClassMappingManager } = await import('./js/modules/classMappingManager.js');
+        
         initSubjectConfigManager();
         initClassMappingManager();
 
         // Initialize new feature modules
         initPageRouter(async (pageId) => {
-            // Lazy-load page data on navigation
-            if (pageId === 'teacher-assignment') await loadTeacherAssignmentData();
-            if (pageId === 'students') await loadStudents();
-            if (pageId === 'result-entry') await populateREDropdowns();
-            if (pageId === 'marksheet') await populateMSDropdowns();
-            if (pageId === 'exam-config') await loadExamConfigs();
-            if (pageId === 'marksheet-settings') await populateMarksheetSettingsDropdowns();
-            if (pageId === 'admit-card') await populateACDropdowns();
-            if (pageId === 'access-requests') await loadAccessRequests();
+            // Lazy-load page data and initialize modules on navigation
+            if (pageId === 'teacher-assignment') {
+                const { initTeacherAssignmentUI, loadTeacherAssignmentData } = await import('./js/modules/teacherAssignmentManager.js');
+                if (!initializedModules.has('teacher-assignment')) {
+                    initTeacherAssignmentUI();
+                    initializedModules.add('teacher-assignment');
+                }
+                await loadTeacherAssignmentData();
+            }
+            if (pageId === 'students') {
+                const { initStudentManager, loadStudents } = await import('./js/modules/studentManager.js');
+                if (!initializedModules.has('students')) {
+                    initStudentManager();
+                    initializedModules.add('students');
+                }
+                await loadStudents();
+            }
+            if (pageId === 'result-entry') {
+                const { initResultEntryManager, populateREDropdowns } = await import('./js/modules/resultEntryManager.js');
+                if (!initializedModules.has('result-entry')) {
+                    initResultEntryManager();
+                    initializedModules.add('result-entry');
+                }
+                await populateREDropdowns();
+            }
+            if (pageId === 'marksheet') {
+                const { initMarksheetManager, populateMSDropdowns } = await import('./js/modules/marksheetManager.js');
+                if (!initializedModules.has('marksheet')) {
+                    initMarksheetManager();
+                    initializedModules.add('marksheet');
+                }
+                await populateMSDropdowns();
+            }
+            if (pageId === 'exam-config') {
+                const { initExamConfigManager, loadExamConfigs } = await import('./js/modules/examConfigManager.js');
+                if (!initializedModules.has('exam-config')) {
+                    initExamConfigManager();
+                    initializedModules.add('exam-config');
+                }
+                await loadExamConfigs();
+            }
+            if (pageId === 'marksheet-settings') {
+                const { initMarksheetRulesManager, populateMarksheetSettingsDropdowns } = await import('./js/modules/marksheetRulesManager.js');
+                if (!initializedModules.has('marksheet-rules')) {
+                    initMarksheetRulesManager();
+                    initializedModules.add('marksheet-rules');
+                }
+                await populateMarksheetSettingsDropdowns();
+            }
+            if (pageId === 'admit-card') {
+                const { initAdmitCardManager, populateACDropdowns } = await import('./js/modules/admitCardManager.js');
+                if (!initializedModules.has('admit-card')) {
+                    initAdmitCardManager();
+                    initializedModules.add('admit-card');
+                }
+                await populateACDropdowns();
+            }
+            if (pageId === 'access-requests') {
+                const { initAccessRequestUI, loadAccessRequests, initAccessRequestNotifications } = await import('./js/modules/accessRequestManager.js');
+                if (!initializedModules.has('access-requests')) {
+                    initAccessRequestUI();
+                    initAccessRequestNotifications();
+                    initializedModules.add('access-requests');
+                }
+                await loadAccessRequests();
+            }
+            if (pageId === 'academic-settings') {
+                const { initAcademicSettingsManager } = await import('./js/modules/academicSettingsManager.js');
+                if (!initializedModules.has('academic-settings')) {
+                    initAcademicSettingsManager();
+                    initializedModules.add('academic-settings');
+                }
+            }
+            if (pageId === 'routine') {
+                const { initRoutineManager } = await import('./js/modules/routineManager.js');
+                if (!initializedModules.has('routine')) {
+                    initRoutineManager();
+                    initializedModules.add('routine');
+                }
+            }
+            if (pageId === 'student-results') {
+                const { initStudentResultsManager } = await import('./js/modules/studentResultsManager.js');
+                if (!initializedModules.has('student-results')) {
+                    initStudentResultsManager();
+                    initializedModules.add('student-results');
+                }
+            }
         });
-        initTeacherAssignmentUI();
 
-        initStudentManager();
-        initResultEntryManager();
-        initMarksheetManager();
-        initMarksheetRulesManager();
-        initExamConfigManager();
-        initAdmitCardManager();
-        initRoutineManager();
-        initAccessRequestUI();
-        initAccessRequestNotifications();
         AccessControlManager.init();
-        initStudentResultsManager();
 
         // Listen for exam data updates from Result Entry
         window.addEventListener('examDataUpdated', async () => {
@@ -749,7 +828,8 @@ function initEventListeners() {
             sortOrder: state.currentSortOrder,
             statusFilter: state.currentStatusFilter,
             searchTerm: state.currentSearchTerm,
-            fullData: state.studentData // Added full data for stats
+            fullData: state.studentData,
+            developerCredit: state.settings?.developerCredit || null
         });
     });
     elements.downloadFailedBtn?.addEventListener('click', () => {
@@ -788,7 +868,8 @@ function initEventListeners() {
             gradeFilter: state.currentGradeFilter,
             statusFilter: state.currentStatusFilter,
             searchTerm: state.currentSearchTerm,
-            fullData: state.studentData // Added full data for stats
+            fullData: state.studentData,
+            developerCredit: state.settings?.developerCredit || null
         });
     });
 
@@ -1206,29 +1287,35 @@ function initEventListeners() {
     elements.closeEditModalBtn?.addEventListener('click', () => elements.editExamModal.classList.remove('active'));
 
     // Modal Class & Session Selection Listeners
-    elements.examClass?.addEventListener('change', () => {
+    elements.examClass?.addEventListener('change', async () => {
         const classVal = elements.examClass.value;
         const sessionVal = elements.examSession?.value || '';
+        const { populateSubjectDropdown } = await import('./js/modules/classMappingManager.js');
+        const { populateExamNameDropdown } = await import('./js/modules/examConfigManager.js');
         populateSubjectDropdown(elements.examSubject, classVal);
         populateExamNameDropdown(elements.examName, classVal, sessionVal);
     });
 
-    elements.examSession?.addEventListener('change', () => {
+    elements.examSession?.addEventListener('change', async () => {
         const classVal = elements.examClass?.value || '';
         const sessionVal = elements.examSession.value;
+        const { populateExamNameDropdown } = await import('./js/modules/examConfigManager.js');
         populateExamNameDropdown(elements.examName, classVal, sessionVal);
     });
 
-    elements.editExamClass?.addEventListener('change', () => {
+    elements.editExamClass?.addEventListener('change', async () => {
         const classVal = elements.editExamClass.value;
         const sessionVal = elements.editExamSession?.value || '';
+        const { populateSubjectDropdown } = await import('./js/modules/classMappingManager.js');
+        const { populateExamNameDropdown } = await import('./js/modules/examConfigManager.js');
         populateSubjectDropdown(elements.editSubjectName, classVal);
         populateExamNameDropdown(elements.editExamName, classVal, sessionVal);
     });
 
-    elements.editExamSession?.addEventListener('change', () => {
+    elements.editExamSession?.addEventListener('change', async () => {
         const classVal = elements.editExamClass?.value || '';
         const sessionVal = elements.editExamSession.value;
+        const { populateExamNameDropdown } = await import('./js/modules/examConfigManager.js');
         populateExamNameDropdown(elements.editExamName, classVal, sessionVal);
     });
 
@@ -1242,7 +1329,8 @@ function initEventListeners() {
     });
 
     // User Management
-    elements.toolbarUserMgmtBtn?.addEventListener('click', () => {
+    elements.toolbarUserMgmtBtn?.addEventListener('click', async () => {
+        const { handleUserManagement } = await import('./js/modules/userMgmtManager.js');
         handleUserManagement();
         elements.userManagementModal.classList.add('active');
     });

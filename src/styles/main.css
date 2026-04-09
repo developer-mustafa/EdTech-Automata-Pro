@@ -4598,6 +4598,25 @@ body.dark-mode .subject-tag:hover {
   clear: both;
 }
 
+.current-roll-display {
+  background: #1e293b;
+  color: #ffffff !important;
+  font-weight: 800;
+  min-width: 45px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  margin: 0 8px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.current-roll-display span {
+  color: #ffffff !important;
+  font-size: 1.1rem;
+}
+
 .pagination-controls {
   display: flex;
   gap: 6px;
@@ -12159,9 +12178,25 @@ body.is-super-admin td.admin-only {
   white-space: nowrap;
 }
 
-.ms-table thead tr {
-  background: linear-gradient(180deg, #0d5e2e, #0a4a24);
-  color: #fff;
+.ms-table thead tr th {
+  background: #0d5e2e !important; 
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border-bottom: 2px solid #063a1c !important; /* Force a dark line even if bg disappears */
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  /* Add filter to force darkness even in high-contrast mode */
+  filter: brightness(0.85) contrast(1.2); 
+}
+
+@media print {
+  .ms-table thead tr th {
+     background-color: #0d5e2e !important;
+     color: white !important;
+     -webkit-print-color-adjust: exact !important;
+     print-color-adjust: exact !important;
+     border: 1px solid #000 !important;
+  }
 }
 
 .ms-table th {
@@ -14868,6 +14903,15 @@ body.is-super-admin td.admin-only {
 
 .ms-page.theme-elite .ms-table thead tr {
   background: #1a2333 !important;
+  color: #fff !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.ms-page.theme-elite .ms-table thead tr th {
+  color: #fff !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 
 .ms-page.theme-elite .ms-table th {

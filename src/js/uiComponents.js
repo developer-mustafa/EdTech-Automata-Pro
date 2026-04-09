@@ -633,30 +633,39 @@ export function printFailedStudents(data, options = {}) {
     .business-group { background: #fffbeb !important; color: #b45309 !important; font-weight: 700; }
     .arts-group { background: #fdf2f8 !important; color: #be185d !important; font-weight: 700; }
     
-    .ftr-soft { color: #10b981; font-weight: 800; border-left: 2px solid #e2e8f0; margin-left: 8px; padding-left: 8px; }
-    
-    /* Watermark & Transparency Fix */
-    .watermark {
+    /* Premium Footer Design */
+    .ftr {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 300px;
-      height: 300px;
-      background: ${options.watermarkUrl ? `url('${options.watermarkUrl}')` : 'none'} no-repeat center center;
-      background-size: contain;
-      opacity: ${options.watermarkOpacity || 0.08};
-      pointer-events: none;
-      z-index: -1;
+      bottom: 0px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      padding: 15px 0;
+      background: white;
+      border-top: 1.5px solid #0f172a;
     }
-    table, tr, td, th { background: transparent !important; }
-    body > div:not(.watermark) { position: relative; z-index: 1; background: transparent !important; }
+    .ftr-dev { font-size: 11px; color: #0f172a; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ftr-contact { font-size: 10px; color: #334155; margin-top: 4px; font-weight: 600; }
+    .ftr-live-wrapper { margin-top: 8px; display: flex; justify-content: center; }
+    .ftr-live-badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      padding: 3px 15px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid #dbeafe;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Courier New', monospace;
+    }
 
     @media print {
       body { padding: 0; margin: 0; }
       .section, .g-card { break-inside: avoid; }
       thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
+      tfoot { display: table-header-group; }
     }
   </style>
 </head>
@@ -732,9 +741,13 @@ export function printFailedStudents(data, options = {}) {
 
   <!-- Persistent Footer -->
   <div class="ftr">
-    <div class="ftr-dev">সফটওয়্যার নির্মাতা: মোস্তফা রাহমান, সিনিয়র সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
-    <div class="ftr-contact">যোগাযোগ: ০১৮৪০-৬৪৩৯৪৬ <span class="ftr-soft">অটোমেটেড এক্সাম এনালিষ্ট সফটওয়্যার</span></div>
-    <div class="ftr-contact" style="margin-top: 2px; color: #3b82f6; font-weight: 700;">${window.location.host}</div>
+    <div class="ftr-dev">${options.developerCredit?.text || 'সফটওয়্যার নির্মাতা:'} ${options.developerCredit?.name || 'মোস্তফা রাহমান'}</div>
+    <div class="ftr-contact">যোগাযোগ: ${options.developerCredit?.contact || '০১৮৪০-৬৪৩৯৪৬'} | অটোমেটেড এক্সাম অ্যানালাইসিস সফটওয়্যার</div>
+    <div class="ftr-live-wrapper">
+      <div class="ftr-live-badge">
+        <i class="fas fa-globe"></i> ${options.developerCredit?.link || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'students-performance.web.app' : window.location.hostname)}
+      </div>
+    </div>
   </div>
 
   <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); }</script>
@@ -900,24 +913,33 @@ export function printAllStudents(data, options = {}) {
     .s-fail { color: #ef4444; font-weight: 800; }
     .s-abs { color: #94a3b8; font-weight: 700; }
     
-    .ftr-soft { color: #10b981; font-weight: 800; border-left: 2px solid #e2e8f0; margin-left: 8px; padding-left: 8px; }
-    
-    /* Watermark & Transparency Fix */
-    .watermark {
+    /* Premium Footer Design */
+    .ftr {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 300px;
-      height: 300px;
-      background: ${options.watermarkUrl ? `url('${options.watermarkUrl}')` : 'none'} no-repeat center center;
-      background-size: contain;
-      opacity: ${options.watermarkOpacity || 0.08};
-      pointer-events: none;
-      z-index: -1;
+      bottom: 0px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      padding: 15px 0;
+      background: white;
+      border-top: 1.5px solid #0f172a;
     }
-    table, tr, td, th { background: transparent !important; }
-    body > div:not(.watermark) { position: relative; z-index: 1; background: transparent !important; }
+    .ftr-dev { font-size: 11px; color: #0f172a; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ftr-contact { font-size: 10px; color: #334155; margin-top: 4px; font-weight: 600; }
+    .ftr-live-wrapper { margin-top: 8px; display: flex; justify-content: center; }
+    .ftr-live-badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      padding: 3px 15px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid #dbeafe;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Courier New', monospace;
+    }
 
     @media print {
       body { padding: 0; margin: 0; }
@@ -998,9 +1020,13 @@ export function printAllStudents(data, options = {}) {
   </table>
 
   <div class="ftr">
-    <div class="ftr-dev">সফটওয়্যার নির্মাতা: মোস্তফা রাহমান, সিনিয়র সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
-    <div class="ftr-contact">যোগাযোগ: ০১৮৪০-৬৪৩৯৪৬ <span class="ftr-soft">অটোমেটেড এক্সাম এনালিষ্ট সফটওয়্যার</span></div>
-    <div class="ftr-contact" style="margin-top: 2px; color: #3b82f6; font-weight: 700;">${window.location.host}</div>
+    <div class="ftr-dev">${options.developerCredit?.text || 'সফটওয়্যার নির্মাতা:'} ${options.developerCredit?.name || 'মোস্তফা রাহমান'}</div>
+    <div class="ftr-contact">যোগাযোগ: ${options.developerCredit?.contact || '০১৮৪০-৬৪৩৯৪৬'} | অটোমেটেড এক্সাম অ্যানালাইসিস সফটওয়্যার</div>
+    <div class="ftr-live-wrapper">
+      <div class="ftr-live-badge">
+        <i class="fas fa-globe"></i> ${options.developerCredit?.link || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'students-performance.web.app' : window.location.hostname)}
+      </div>
+    </div>
   </div>
 
   <script>window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); }</script>
