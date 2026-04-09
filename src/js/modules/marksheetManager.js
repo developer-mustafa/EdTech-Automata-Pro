@@ -2030,13 +2030,14 @@ async function renderMarksheetQRCodes(container) {
             const qrData = `Student Marksheet Verification\nID: ${uid}\nName: ${name}\nExam: ${exam}\nLink: ${liveLink}`;
 
             await QRCode.toCanvas(canvas, qrData, {
-                width: 150,
+                width: 200, // Higher resolution for better scanning
                 margin: 0,
                 color: { dark: '#1e293b', light: '#ffffff' },
                 errorCorrectionLevel: 'M'
             });
-            canvas.style.width = '100px';
-            canvas.style.height = '100px';
+            canvas.style.width = '130px';
+            canvas.style.height = '130px';
+
         } catch (err) {
             console.error('Marksheet QR generation failed:', err);
         }
