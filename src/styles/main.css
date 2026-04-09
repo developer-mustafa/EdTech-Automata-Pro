@@ -21343,6 +21343,21 @@ a.sidebar-contact-item:hover {
   background: #fdfdfd !important;
   display: flex !important;
   flex-direction: column !important;
+  gap: 5px !important;
+}
+
+.ms-comment-lines {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-around !important;
+  padding: 5px 0 !important;
+}
+
+.ms-dot-line {
+  border-bottom: 1px dotted #cbd5e1 !important;
+  height: 24px !important;
+  width: 100% !important;
 }
 
 .ms-qr-column {
@@ -21352,6 +21367,7 @@ a.sidebar-contact-item:hover {
   justify-content: center !important;
   text-align: center !important;
 }
+
 
 .ms-qr-canvas-wrapper {
   background: #fff !important;

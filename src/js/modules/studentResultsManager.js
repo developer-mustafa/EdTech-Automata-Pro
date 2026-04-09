@@ -672,18 +672,31 @@ export async function initStudentResultsManager() {
             const paramsString = hash.split('?')[1];
             const params = new URLSearchParams(paramsString);
             const uid = params.get('uid');
-            const exam = params.get('exam');
+            const exam = params.get('exam'); // Named exam in URL
             
             if (uid && searchInput) {
                 searchInput.value = uid;
                 if (clearBtn) clearBtn.style.display = 'flex';
                 
-                // If exam info is present, we could potentially auto-select or highlight it. 
-                // For now, let's trigger search immediately.
+                // Auto-select exam if present
+                if (exam) {
+                    const examDropdown = document.getElementById('srSearchExam');
+                    if (examDropdown) {
+                        // Check if option exists, otherwise we'll just search all
+                        const options = Array.from(examDropdown.options);
+                        const match = options.find(opt => opt.value === exam || opt.text === exam);
+                        if (match) {
+                            examDropdown.value = match.value;
+                        }
+                    }
+                }
+                
+                // Trigger search immediately.
                 setTimeout(handleSearch, 300);
             }
         }
     };
+
 
     checkQRParams();
     window.addEventListener('hashchange', checkQRParams);

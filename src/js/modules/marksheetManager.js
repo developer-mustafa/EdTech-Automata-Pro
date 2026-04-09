@@ -14,6 +14,7 @@ import {
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits } from '../utils.js';
 import { compressImage } from '../imageUtils.js';
+import QRCode from 'qrcode';
 import { generateStudentUniqueId } from './studentResultsManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 
@@ -1176,7 +1177,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     
                     <div class="ms-extra-box ms-comments-box">
                         <span class="ms-extra-title">মন্তব্য:</span>
-                        <div style="flex:1;"></div>
+                        <div class="ms-comment-lines">
+                            <div class="ms-dot-line"></div>
+                            <div class="ms-dot-line"></div>
+                            <div class="ms-dot-line"></div>
+                        </div>
                     </div>
                     
                     <div class="ms-extra-box ms-qr-column">
