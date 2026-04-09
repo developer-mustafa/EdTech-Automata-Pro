@@ -21044,9 +21044,11 @@ a.sidebar-contact-item:hover {
     box-shadow: none !important;
     page-break-after: always;
     break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
     position: relative;
     margin: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     background: white !important;
     border: none !important;
     font-size: var(--ac-base-font-size, 14px);
@@ -21054,13 +21056,15 @@ a.sidebar-contact-item:hover {
   }
 
   body.ac-printing .ac-page-portrait {
-    height: 296mm !important;
-    max-height: 296mm !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
   }
 
   body.ac-printing .ac-page-landscape {
-    height: 209mm !important;
-    max-height: 209mm !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
   }
 
   body.ac-printing .ac-page:last-child {
