@@ -15922,9 +15922,9 @@ input:checked+.toggle-slider:before {
 
 .ac-pill-left,
 .sp-pill-left {
-  padding: 8px 15px;
+  padding: 6px 15px;
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 0.9rem;
   background-color: var(--grp-color, #10b981);
   color: #fff !important;
   text-transform: uppercase;
@@ -15938,8 +15938,6 @@ input:checked+.toggle-slider:before {
 
 .ac-pill-right,
 .sp-pill-right {
-  padding: 8px 20px;
-  font-weight: 800;
   font-size: 1rem;
   color: var(--grp-text, #059669) !important;
   letter-spacing: -0.1px;
