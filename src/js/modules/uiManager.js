@@ -38,6 +38,8 @@ export const elements = {
     viewButtons: null,
     syncStatus: null,
     loadingOverlay: null,
+    
+    // Analysis & Search Panels
     analysisView: null,
     analysisStudentId: null,
     analyzeBtn: null,
@@ -46,18 +48,11 @@ export const elements = {
     analysisType: null,
     analysisMaxMarks: null,
     analysisSearchResults: null,
-    printBtn: null,
-    prevRollBtn: null,
-    nextRollBtn: null,
-    prevRollNum: null,
-    currentRollNum: null,
-    nextRollNum: null,
     analysisSessionSelect: null,
     analysisSubjectSelect: null,
     analysisExamSelect: null,
     analysisContextInfo: null,
     downloadAnalysisImage: null,
-    toolbarUserMgmtBtn: null,
     inlineSearchPanel: null,
     inlineSearchCandidates: null,
     inlineHistorySection: null,
@@ -66,96 +61,22 @@ export const elements = {
     inlineAnalysisType: null,
     inlineAnalysisMaxMarks: null,
     inlineDownloadBtn: null,
-
-    // Login & Access Modals
-    loginModal: null,
-    closeLoginModal: null,
-    googleLoginBtn: null,
-    emailLoginForm: null,
-    loginTabs: null,
-    openRequestAccessBtn: null,
-    requestAccessModal: null,
-    closeRequestAccessModal: null,
-    requestAccessForm: null,
-    downloadBtn: null,
-    downloadFailedBtn: null,
-    downloadGroupStatsBtn: null,
-    adminToggle: null,
-    editConfigModal: null,
-    closeEditConfigModal: null,
-    editConfigForm: null,
-    editConfigDocId: null,
-    editConfigExamName: null,
-    editConfigClass: null,
-    editConfigSession: null,
-    editConfigExamDate: null,
-    openClassMappingBtn: null,
-    classSubjectMappingModal: null,
-    closeClassMappingBtn: null,
-    mappingClassSelect: null,
-    mappingSubjectInput: null,
-    addMappingSubjectBtn: null,
-    mappingSubjectsContainer: null,
-    saveMappingBtn: null,
-    examClass: null,
-    examSession: null,
-    examSubject: null,
-    confirmModal: null,
-    confirmCancelBtn: null,
-    confirmDeleteBtn: null,
-    confirmMessage: null,
-    savedExamsToggle: null,
-    savedExamsCollapse: null,
-    savedExamsIcon: null,
-    savedExamsPagination: null,
-    savedExamsClassFilters: null,
-    savedExamsCount: null,
-    chartSectionToggle: null,
-    chartSectionCollapse: null,
-    chartSectionIcon: null,
-    profileModal: null,
-    userName: null,
-    userEmail: null,
-    userPhoto: null,
-    modalLogoutBtn: null,
-    closeProfileBtn: null,
-    closeProfileIcon: null,
-    userManagementModal: null,
-    closeUserManagementBtn: null,
-    userListBody: null,
-    subjectSettingsBtn: null,
-    subjectSettingsModal: null,
-    closeSubjectSettingsBtn: null,
-    subjectSearch: null,
-    savedConfigsList: null,
-    addNewSubjectBtn: null,
-    configSubjectName: null,
-    configWrittenMax: null,
-    configWrittenPass: null,
-    configMcqMax: null,
-    configMcqPass: null,
-    configPracticalMax: null,
-    configPracticalPass: null,
-    configPracticalOptional: null,
-    configTotalMax: null,
-    calcTotalPreview: null,
-    deleteSubjectBtn: null,
-    saveSubjectConfigBtn: null,
-    subjectCount: null,
-    resetFiltersBtn: null,
-    contactDevBtn: null,
-    contactModal: null,
-    closeContactModal: null,
-    loadExamConfirmModal: null,
-    loadExamConfirmName: null,
-    loadExamConfirmBtn: null,
-    loadExamCancelBtn: null,
-    closeContactModalBtn: null,
-    formTitle: null,
-    userMgmtSearch: null,
+    
     statSuperAdminCount: null,
     statAdminCount: null,
-    statUserCount: null
+    statUserCount: null,
+    
+    // Dashboard Controls
+    printBtn: null,
+    downloadBtn: null,
+    prevRollBtn: null,
+    nextRollBtn: null,
+    currentRollNum: null,
+    prevRollNum: null,
+    nextRollNum: null,
+
+    // Notice Board Elements
+    noticeBoardContainer: null
 };
 
 export function updateProfileUI(user, isAdmin, isSuperAdmin, role) {
@@ -256,7 +177,7 @@ export function initDOMReferences() {
     elements.closeProfileBtn = document.getElementById('closeProfileBtn');
     elements.closeProfileIcon = document.getElementById('closeProfileIcon');
 
-    // Analysis View Elements
+    // Restore Analysis & Search References
     elements.analysisView = document.getElementById('analysisView');
     elements.analysisStudentId = document.getElementById('analysisStudentId');
     elements.analyzeBtn = document.getElementById('analyzeBtn');
@@ -270,15 +191,25 @@ export function initDOMReferences() {
     elements.analysisExamSelect = document.getElementById('analysisExamSelect');
     elements.analysisContextInfo = document.getElementById('analysisContextInfo');
     elements.downloadAnalysisImage = document.getElementById('downloadAnalysisImage');
+    
+    elements.inlineSearchPanel = document.getElementById('inlineSearchPanel');
+    elements.inlineSearchCandidates = document.getElementById('inlineSearchCandidates');
+    elements.inlineHistorySection = document.getElementById('inlineHistorySection');
+    elements.inlineStudentDetails = document.getElementById('inlineStudentDetails');
+    elements.inlineHistoryChart = document.getElementById('inlineHistoryChart');
+    elements.inlineAnalysisType = document.getElementById('inlineAnalysisType');
+    elements.inlineAnalysisMaxMarks = document.getElementById('inlineAnalysisMaxMarks');
+    elements.inlineDownloadBtn = document.getElementById('inlineDownloadBtn');
+
+    // Restore Dashboard Control References
     elements.printBtn = document.getElementById('printBtn');
+    elements.downloadBtn = document.getElementById('downloadBtn');
     elements.prevRollBtn = document.getElementById('prevRollBtn');
     elements.nextRollBtn = document.getElementById('nextRollBtn');
-    elements.prevRollNum = document.getElementById('prevRollNum');
     elements.currentRollNum = document.getElementById('currentRollNum');
+    elements.prevRollNum = document.getElementById('prevRollNum');
     elements.nextRollNum = document.getElementById('nextRollNum');
-    elements.analysisSessionSelect = document.getElementById('analysisSessionSelect');
-    elements.analysisSubjectSelect = document.getElementById('analysisSubjectSelect');
-    elements.downloadAnalysisImage = document.getElementById('downloadAnalysisImage');
+
     elements.latestExamLabel = document.getElementById('latestExamLabel');
 
     // Inline Search Elements

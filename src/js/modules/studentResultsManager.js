@@ -381,9 +381,14 @@ async function displayStudentMarksheet(studentResult) {
         examDisplayName = uniqueExamNames[0];
     }
 
-    const html = renderSingleMarksheet(studentAgg, displaySubjects, examDisplayName, session, null, rules, allOptSubs);
+    const html = await renderSingleMarksheet(studentAgg, displaySubjects, examDisplayName, session, null, rules, allOptSubs);
 
     previewArea.innerHTML = html;
+
+    // Render QR Codes for the student results page marksheet
+    const { renderMarksheetQRCodes } = await import('./marksheetManager.js');
+    await renderMarksheetQRCodes(previewArea);
+
 
     // Robust Auto-fit zoom for mobile devices
     const containerWidth = previewArea.clientWidth || window.innerWidth;
