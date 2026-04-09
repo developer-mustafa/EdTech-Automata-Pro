@@ -15417,7 +15417,8 @@ input:checked+.toggle-slider:before {
 
 .ac-header-text {
   text-align: center;
-  flex: 1;
+  flex: 0 1 auto;
+  padding-right: 20px; /* offset logo to visually center text */
   min-width: 0;
   display: flex;
   flex-direction: column;
