@@ -81,9 +81,13 @@ export function navigateTo(pageId) {
     });
 
     // Update hash
-    if (window.location.hash !== `#${pageId}`) {
+    const currentHash = window.location.hash.replace('#', '');
+    const currentBasePage = currentHash.split('?')[0];
+
+    if (currentBasePage !== pageId) {
         history.replaceState(null, '', `#${pageId}`);
     }
+
 
     // Scroll to top
     window.scrollTo(0, 0);
@@ -133,14 +137,17 @@ export function initPageRouter(callback) {
 
     // Listen for hash changes (back/forward navigation, direct URL entry)
     window.addEventListener('hashchange', () => {
-        const hash = window.location.hash.replace('#', '') || 'dashboard';
+        const fullHash = window.location.hash.replace('#', '') || 'dashboard';
+        const pageId = fullHash.split('?')[0];
+        
         const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control', 'student-results', 'notices'];
-        if (validPages.includes(hash)) {
+        
+        if (validPages.includes(pageId)) {
             // Role protection for direct hash entry
-            if ((hash === 'exam-config' || hash === 'academic-settings' || hash === 'access-control') && state.userRole !== 'super_admin') {
+            if ((pageId === 'exam-config' || pageId === 'academic-settings' || pageId === 'access-control') && state.userRole !== 'super_admin') {
                 navigateTo('dashboard');
             } else {
-                navigateTo(hash);
+                navigateTo(pageId);
             }
         }
     });
@@ -149,12 +156,15 @@ export function initPageRouter(callback) {
     updateNavVisibility();
 
     // Handle initial hash
-    const currentHash = window.location.hash.replace('#', '') || 'dashboard';
+    const fullHash = window.location.hash.replace('#', '') || 'dashboard';
+    const initialPage = fullHash.split('?')[0];
+    
     const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control', 'student-results', 'notices'];
-    if (initialPages.includes(currentHash) && currentHash !== 'dashboard') {
-        navigateTo(currentHash);
+    if (initialPages.includes(initialPage) && initialPage !== 'dashboard') {
+        navigateTo(initialPage);
     }
 }
+
 
 export function updateNavVisibility() {
     const navTabs = document.getElementById('pageNavTabs');
