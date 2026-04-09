@@ -15401,14 +15401,15 @@ input:checked+.toggle-slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 55px;
+  height: 55px;
+  margin-right: -4px;
   background: transparent;
 }
 
 .ac-logo {
-  width: 32px !important;
-  height: 32px !important;
+  width: 48px !important;
+  height: 48px !important;
   object-fit: contain;
   aspect-ratio: 1 / 1;
   /* Force perfect square */
@@ -16090,14 +16091,15 @@ input:checked+.toggle-slider:before {
   }
 
   .ac-logo-container {
-    width: 32px;
-    height: 32px;
+    width: 45px;
+    height: 45px;
+    margin-right: -2px;
     flex-shrink: 0;
   }
 
   .ac-logo {
-    width: 26px !important;
-    height: 26px !important;
+    width: 40px !important;
+    height: 40px !important;
   }
 
   .ac-header-text h3 {
