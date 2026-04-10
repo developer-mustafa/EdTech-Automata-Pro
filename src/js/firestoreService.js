@@ -94,6 +94,7 @@ export async function getUnifiedStudents() {
             group: s.group || '',
             class: s.class || '',
             session: s.session || '',
+            status: s.status !== undefined ? s.status : true,
             _examDocIds: []
         });
     });
@@ -120,6 +121,7 @@ export async function getUnifiedStudents() {
                     studentMap.set(key, {
                         ...studentDataForId,
                         name: s.name,
+                        status: true, // Default status for exam-only students
                         _examDocIds: exam.docId ? [exam.docId] : [],
                         _isFromExamOnly: true
                     });
@@ -197,6 +199,7 @@ export async function addStudent(studentData) {
         const docRef = doc(db, COLLECTIONS.students, docId);
         await setDoc(docRef, {
             ...studentData,
+            status: studentData.status !== undefined ? studentData.status : true, // Default to true
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             docId: docId // Store ID in document too
@@ -267,6 +270,7 @@ export async function bulkImportStudents(studentsArray) {
                 const newDocRef = doc(db, COLLECTIONS.students, docId);
                 batch.set(newDocRef, {
                     ...student,
+                    status: student.status !== undefined ? student.status : true, // Default to true
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                     docId: docId

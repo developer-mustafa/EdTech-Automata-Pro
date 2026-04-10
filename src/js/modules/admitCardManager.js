@@ -716,14 +716,17 @@ async function generateCards(type) {
                         name: latest ? (latest.name || s.name) : s.name,
                         group: sGroup,
                         class: cls,
-                        session: session
+                        session: session,
+                        status: latest ? (latest.status !== undefined ? latest.status : true) : true
                     });
                 }
             });
         }
     });
 
-    let studentsArray = [...studentAgg.values()].sort((a, b) => {
+    let studentsArray = [...studentAgg.values()]
+        .filter(s => s.status !== false)
+        .sort((a, b) => {
         // Primary sort: Group Alphabetically
         const groupA = a.group.toLowerCase();
         const groupB = b.group.toLowerCase();

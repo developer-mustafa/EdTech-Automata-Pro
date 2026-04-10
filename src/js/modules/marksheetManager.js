@@ -362,6 +362,7 @@ async function generateMarksheets() {
                         group: sGroup,
                         class: cls,
                         session: session,
+                        status: latest ? (latest.status !== undefined ? latest.status : true) : true,
                         subjects: {}
                     });
                 }
@@ -378,7 +379,9 @@ async function generateMarksheets() {
         }
     });
 
-    let studentsArray = [...studentAgg.values()].sort((a, b) => {
+    let studentsArray = [...studentAgg.values()]
+        .filter(s => s.status !== false)
+        .sort((a, b) => {
         // Primary sort: Group Alphabetically
         const groupA = a.group.toLowerCase();
         const groupB = b.group.toLowerCase();
@@ -397,10 +400,6 @@ async function generateMarksheets() {
         showNotification('শিক্ষার্থী পাওয়া যায়নি', 'error');
         return;
     }
-
-    // Load developer credit settings before rendering
-    const globalSettings = await getSettings();
-    state.developerCredit = globalSettings?.developerCredit || null;
 
     const examDisplayName = examName === '__all__' ? 'সমন্বিত ফলাফল' : (examName || 'পরীক্ষা');
 
