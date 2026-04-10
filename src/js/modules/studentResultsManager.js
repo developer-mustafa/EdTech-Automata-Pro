@@ -239,6 +239,7 @@ async function searchByUniqueId(searchId, filters = {}) {
     // Fetch latest student details for all matches
     const lookupMap = await getStudentLookupMap();
     const results = Array.from(matches.values());
+    const finalResults = [];
 
     results.forEach(res => {
         const studentInfo = {
@@ -251,22 +252,24 @@ async function searchByUniqueId(searchId, filters = {}) {
         const latest = lookupMap.get(studentKey);
 
         if (latest) {
+            // Check if student is disabled
+            if (latest.status === false) {
+                return; // Skip disabled student
+            }
+
             // Override with latest data from management
             res.name = latest.name || res.name;
-            // Add other fields if needed for UI (Father's Name etc. if added to public search later)
             res.fatherName = latest.fatherName || '';
             res.mobile = latest.mobile || '';
-            
-            // Re-generate Unique ID if name changed (to keep it deterministic if generated on the fly)
-            // But wait, the Unique ID in the search is what the user entered. 
-            // If the name changed, the NEW Unique ID might be different. 
-            // This is a tricky part. If user searches by OLD UID, we should still find them but show NEW name.
         }
+        finalResults.push(res);
     });
+
+    if (finalResults.length === 0) return null;
 
     // If an examName filter is set, we return the match that contains that exam
     // Otherwise we return the first match.
-    return results[0];
+    return finalResults[0];
 }
 
 /**
@@ -1294,6 +1297,14 @@ async function handleBulkPrint() {
         const allExams = await getSavedExams();
         const relevantExams = allExams.filter(e => e.class === selClass && e.session === selSession);
 
+        const { getUnifiedStudents } = await import('../firestoreService.js');
+        const registryStudents = await getUnifiedStudents();
+        const lookupMap = new Map();
+        registryStudents.forEach(s => {
+            const key = `${s.id}_${s.group || ''}_${s.class || ''}_${s.session || ''}`;
+            lookupMap.set(key, s);
+        });
+
         const studentsMap = new Map();
         relevantExams.forEach(exam => {
             if (exam.studentData) {
@@ -1303,6 +1314,11 @@ async function handleBulkPrint() {
 
                     const key = `${s.id}_${stGroup}`;
                     if (!studentsMap.has(key)) {
+                        // Check status from registry
+                        const registryKey = `${s.id}_${stGroup}_${selClass}_${selSession}`;
+                        const registryStudent = lookupMap.get(registryKey);
+                        if (registryStudent && registryStudent.status === false) return;
+
                         studentsMap.set(key, s);
                     }
                 });

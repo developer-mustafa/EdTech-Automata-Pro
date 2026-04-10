@@ -40,6 +40,7 @@ async function collectStudents() {
             session: s.session || '',
             fatherName: s.fatherName || '',
             mobile: s.mobile || '',
+            status: s.status !== undefined ? s.status : true,
             _examDocIds: []
         });
     });
@@ -68,6 +69,7 @@ async function collectStudents() {
                     studentMap.set(key, {
                         ...studentDataForId,
                         name: s.name,
+                        status: true,
                         _examDocIds: [exam.docId],
                         _isFromExamOnly: true // Flag to indicate this student isn't in the main buffer
                     });
@@ -196,6 +198,13 @@ function renderStudentTable() {
             </td>
             <td class="admin-only">
                 <div class="action-btn-group">
+                    <button class="status-toggle-btn ${s.status === false ? 'disabled' : 'enabled'}" 
+                            data-index="${start + i}" 
+                            title="${s.status === false ? 'এনাবল করুন' : 'ডিজেবল করুন'}"
+                            style="margin-right: 5px; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
+                        <i class="fas ${s.status === false ? 'fa-toggle-off' : 'fa-toggle-on'}"></i>
+                        ${s.status === false ? 'নিস্ক্রিয়' : 'সক্রিয়'}
+                    </button>
                     <button class="action-btn edit-student-btn" data-index="${start + i}" title="এডিট">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -213,6 +222,30 @@ function renderStudentTable() {
             const student = filteredStudents[idx];
             if (student) {
                 openEditStudentModal(student);
+            }
+        });
+    });
+
+    // Status toggle handler
+    tbody.querySelectorAll('.status-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const idx = parseInt(btn.dataset.index);
+            const student = filteredStudents[idx];
+            if (!student || !student.docId) {
+                showNotification('এই শিক্ষার্থীর কোনো প্রোফাইল নেই। প্রথমে প্রোফাইল আপডেট করুন।', 'warning');
+                return;
+            }
+
+            const newStatus = !student.status;
+            const { updateStudent } = await import('../firestoreService.js');
+            const success = await updateStudent(student.docId, { status: newStatus });
+            
+            if (success) {
+                student.status = newStatus;
+                showNotification(`শিক্ষার্থী ${newStatus ? 'সক্রিয়' : 'নিস্ক্রিয়'} করা হয়েছে`);
+                renderStudentTable();
+            } else {
+                showNotification('স্ট্যাটাস পরিবর্তন করতে সমস্যা হয়েছে', 'error');
             }
         });
     });
@@ -296,6 +329,9 @@ export function openAddStudentModal() {
     if (fName) fName.value = '';
     if (mobile) mobile.value = '';
 
+    const statusSelect = document.getElementById('studentFormStatus');
+    if (statusSelect) statusSelect.value = 'true';
+
     modal.classList.add('active');
 }
 
@@ -326,6 +362,9 @@ function openEditStudentModal(student) {
     const mobile = document.getElementById('studentFormMobile');
     if (fName) fName.value = student.fatherName || '';
     if (mobile) mobile.value = student.mobile || '';
+
+    const statusSelect = document.getElementById('studentFormStatus');
+    if (statusSelect) statusSelect.value = student.status === false ? 'false' : 'true';
 
     modal.classList.add('active');
 }
@@ -463,6 +502,7 @@ export async function initStudentManager() {
             const fatherName = document.getElementById('studentFormFatherName')?.value.trim() || '';
             const mobileRaw = document.getElementById('studentFormMobile')?.value.trim() || '';
             const mobile = convertToEnglishDigits(mobileRaw);
+            const status = document.getElementById('studentFormStatus').value === 'true';
             const existingDocId = document.getElementById('editStudentDocId').value;
 
             if (!name || !roll) {
@@ -482,7 +522,8 @@ export async function initStudentManager() {
                     group,
                     session,
                     fatherName,
-                    mobile
+                    mobile,
+                    status
                 });
             } else {
                 // Add mode
@@ -493,7 +534,8 @@ export async function initStudentManager() {
                     group,
                     session,
                     fatherName,
-                    mobile
+                    mobile,
+                    status
                 });
                 success = !!newDocId;
             }
