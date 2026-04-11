@@ -181,6 +181,9 @@
       <button class="page-nav-btn" data-page="marksheet">
         <i class="fas fa-file-alt"></i> <span>মার্কশীট</span>
       </button>
+      <button class="page-nav-btn" data-page="report">
+        <i class="fas fa-chart-pie"></i> <span>রিপোর্ট</span>
+      </button>
       <button class="page-nav-btn" data-page="admit-card">
         <i class="fas fa-id-card"></i> <span>এডমিট ও সিট প্লান</span>
       </button>
@@ -1274,6 +1277,56 @@
     </div>
   </div>
 
+  <!-- ========== PAGE: REPORT (রিপোর্ট) ========== -->
+  <div id="reportPage" class="app-page" style="display: none;">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-main-unified">
+          <h2 class="card-title"><i class="fas fa-chart-pie"></i> পরীক্ষার সামারি রিপোর্ট</h2>
+          <div class="header-actions-group">
+            <button id="reportSettingsBtn" class="dm-btn dm-report super-admin-only" style="display:none;">
+              <i class="fas fa-cog"></i> <span class="dm-btn-text">রিপোর্ট সেটিংস</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="result-entry-selectors">
+        <div class="selector-group"><label>শ্রেণি</label><select id="rptClass" class="form-control"
+            data-dynamic="class"></select></div>
+        <div class="selector-group"><label>সেশন</label><select id="rptSession" class="form-control"
+            data-dynamic="session"></select></div>
+        <div class="selector-group"><label>পরীক্ষা</label><select id="rptExamName" class="form-control"></select></div>
+        <button id="rptGenerateBtn" class="dm-btn dm-save"><i class="fas fa-file-alt"></i> <span
+            class="dm-btn-text">রিপোর্ট তৈরি</span></button>
+        <button id="rptResetBtn" class="dm-btn dm-report"><i class="fas fa-sync-alt"></i> <span
+            class="dm-btn-text">রিসেট</span></button>
+        <button id="rptPrintBtn" class="dm-btn dm-report" style="display:none;"><i class="fas fa-print"></i> <span
+            class="dm-btn-text">প্রিন্ট</span></button>
+      </div>
+      <div class="marksheet-preview-wrapper">
+        <div class="preview-header marksheet-main-preview-header" style="display: none;" id="rptPreviewHeader">
+          <div class="preview-header-left">
+            <h4><i class="fas fa-search-plus"></i> ভিউ কাস্টমাইজেশন</h4>
+          </div>
+          <div class="preview-header-actions">
+            <div class="zoom-control">
+              <i class="fas fa-search-minus"></i>
+              <input type="range" id="rptZoom" min="0.3" max="1.5" step="0.05" value="1.0" title="জুম">
+              <i class="fas fa-search-plus"></i>
+              <span id="rptZoomLevel">100%</span>
+            </div>
+          </div>
+        </div>
+        <div id="reportPreview" class="marksheet-preview-area">
+          <div class="empty-state-msg">
+            <i class="fas fa-chart-bar" style="font-size: 2rem; opacity: 0.3;"></i>
+            <p>রিপোর্ট দেখতে শ্রেণি, সেশন ও পরীক্ষা নির্বাচন করে "রিপোর্ট তৈরি" বাটনে ক্লিক করুন।</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== PAGE: PUBLIC STUDENT RESULTS (ফলাফল) ========== -->
   <div id="studentResultsPage" class="app-page" style="display: none;">
     <div class="card sr-main-card">
@@ -1497,7 +1550,7 @@
         <!-- Result Publication Control -->
         <div
           style="background: var(--bg-color); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-top: 12px;">
-          
+
           <!-- Publication Master Switch (Published/Draft) -->
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <span style="font-size: 0.85rem; font-weight:700;"><i class="fas fa-bullhorn"
@@ -1513,7 +1566,8 @@
           </div>
 
           <!-- Deadline Control -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-top: 8px; border-top: 1px dashed var(--border-color);">
+          <div
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-top: 8px; border-top: 1px dashed var(--border-color);">
             <span style="font-size: 0.85rem; font-weight:700;"><i class="fas fa-clock"
                 style="color:var(--primary);margin-right:4px;"></i> শিডিউল পাবলিশ (Deadline)</span>
             <label class="ac-toggle-pill" style="margin:0;">
@@ -1527,7 +1581,8 @@
             <button id="acSaveResultDeadlineBtn" class="dm-btn dm-save" title="সেভ করুন"><i
                 class="fas fa-save"></i></button>
           </div>
-          <p class="ac-hint" style="margin-top:6px; font-size:0.75rem;"><i class="fas fa-info-circle"></i> অন থাকলে নির্ধারিত সময়ের পূর্বে ফলাফল পাবলিক হবে না।</p>
+          <p class="ac-hint" style="margin-top:6px; font-size:0.75rem;"><i class="fas fa-info-circle"></i> অন থাকলে
+            নির্ধারিত সময়ের পূর্বে ফলাফল পাবলিক হবে না।</p>
         </div>
 
       </div>
@@ -3913,6 +3968,50 @@
       </div>
       <!-- Hidden Export Wrapper for Desktop-style Landscape Capture -->
       <div id="teacherCardExportWrapper" class="tc-export-wrapper"></div>
+    </div>
+  </div>
+
+  <!-- Report Settings Modal -->
+  <div id="reportSettingsModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <span class="close" id="closeReportSettingsBtn">&times;</span>
+      <h2 style="margin-bottom: 5px; color: var(--primary-color);"><i class="fas fa-cog"></i> রিপোর্ট সেটিংস</h2>
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">রিপোর্টের বিস্তারিত ফলাফল টেবিল থেকে যে
+        বিষয়গুলো বাদ দিতে চান সেগুলো অফ করে দিন।</p>
+
+      <div class="form-group">
+        <label><i class="fas fa-eye-slash"></i> বিষয় হাইড/আনহাইড করুন</label>
+        <div id="reportSubjectVisibilityList" class="subject-visibility-list"
+          style="max-height: 300px; overflow-y: auto; padding-right: 5px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <!-- Subjects will be populated here -->
+          <div class="empty-state-msg">
+            <p>কোনো বিষয় পাওয়া যায়নি। আগে ডেটা লোড করুন।</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px; margin-bottom: 20px;">
+        <div
+          style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 12px; border-radius: 8px;">
+          <div>
+            <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 2px;">ঐচ্ছিক বিষয় বিবেচনা
+              (Optional Handling)</label>
+            <span style="font-size: 0.75rem; color: #64748b;">চালু থাকলে ঐচ্ছিক বিষয়ে ফেল করলেও শিক্ষার্থীকে 'পাশ' ধরা
+              হবে। (বোর্ড স্ট্যান্ডার্ড)</span>
+          </div>
+          <div class="ms-toggle-wrapper">
+            <input type="checkbox" id="reportConsiderOptional" class="ms-toggle-input">
+            <label for="reportConsiderOptional" class="ms-toggle-label"></label>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button id="saveReportSettingsBtn" class="btn-primary"
+          style="width: 100%; transition: all 0.3s; font-weight: 600;">
+          <i class="fas fa-save"></i> সেটিংস সংরক্ষণ করুন
+        </button>
+      </div>
     </div>
   </div>
 

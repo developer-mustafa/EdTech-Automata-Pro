@@ -1278,7 +1278,8 @@ export function renderSavedExamsList(container, exams, options = {}) {
       ? calculateStatistics(exam.studentData, {
         writtenPass: (config.writtenPass !== undefined && config.writtenPass !== '') ? Number(config.writtenPass) : undefined,
         mcqPass: (config.mcqPass !== undefined && config.mcqPass !== '') ? Number(config.mcqPass) : undefined,
-        practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0
+        practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0,
+        totalPass: (config.totalPass !== undefined && config.totalPass !== '') ? Number(config.totalPass) : undefined
       })
       : (exam.stats || {});
 

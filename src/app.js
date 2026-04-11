@@ -336,6 +336,14 @@ async function init() {
                 }
                 await populateACDropdowns();
             }
+            if (pageId === 'report') {
+                const { initReportManager, populateReportDropdowns } = await import('./js/modules/reportManager.js');
+                if (!initializedModules.has('report')) {
+                    initReportManager();
+                    initializedModules.add('report');
+                }
+                await populateReportDropdowns();
+            }
             if (pageId === 'access-requests') {
                 const { initAccessRequestUI, loadAccessRequests, initAccessRequestNotifications } = await import('./js/modules/accessRequestManager.js');
                 if (!initializedModules.has('access-requests')) {
@@ -411,11 +419,14 @@ function updateViews() {
         subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
     }
 
+    // SMART THRESHOLD: Determine if we have a real user-defined configuration
+    const hasConfig = !!(subjectConfig && Object.keys(subjectConfig).length > 2); // docId & updatedAt always exist if saved
+    
     const subjectOptions = {
-        writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : FAILING_THRESHOLD.written,
-        mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : FAILING_THRESHOLD.mcq,
-        practicalPass: (subjectConfig.practicalPass !== undefined && subjectConfig.practicalPass !== '') ? Number(subjectConfig.practicalPass) : 0,
-        totalPass: (subjectConfig.total !== undefined && subjectConfig.total !== '') ? Number(subjectConfig.total) * 0.33 : FAILING_THRESHOLD.total,
+        writtenPass: hasConfig ? (Number(subjectConfig.writtenPass) || 0) : FAILING_THRESHOLD.written,
+        mcqPass: hasConfig ? (Number(subjectConfig.mcqPass) || 0) : FAILING_THRESHOLD.mcq,
+        practicalPass: hasConfig ? (Number(subjectConfig.practicalPass) || 0) : 0,
+        totalPass: hasConfig ? (Number(subjectConfig.totalPass) || (Number(subjectConfig.total) * 0.33) || 0) : FAILING_THRESHOLD.total,
         criteria: state.currentChartType
     };
 

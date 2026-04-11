@@ -1121,6 +1121,7 @@ async function saveMarks() {
                 writtenPass: (config.writtenPass !== undefined && config.writtenPass !== '') ? Number(config.writtenPass) : undefined,
                 mcqPass: (config.mcqPass !== undefined && config.mcqPass !== '') ? Number(config.mcqPass) : undefined,
                 practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0,
+                totalPass: (config.totalPass !== undefined && config.totalPass !== '') ? Number(config.totalPass) : undefined,
             };
             const stats = calculateStatistics(currentExamDoc.studentData, statsOptions);
 
