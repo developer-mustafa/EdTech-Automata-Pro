@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Utilities Module - Helper functions for student data processing
  * @module utils
  */
@@ -30,11 +30,11 @@ export function normalizeText(str) {
  * @returns {boolean} - True if value indicates absence
  */
 export function isValueAbsent(value) {
+export function isValueAbsent(value) {
     if (value === null || value === undefined) return true;
-    if (value === '') return true;
+    if (value === '' || value === 0 || value === '0') return true; // Treating 0 as absent based on user requirement
     if (typeof value === 'string') {
         const lowerVal = value.toLowerCase().trim();
-        if (lowerVal === 'absent' || lowerVal === 'অনুপস্থিত') {
             return true;
         }
     }
@@ -60,8 +60,8 @@ export function isAbsent(student) {
         // If all components are absent, check total
         const totalValue = student.total;
         // A student is only absent if total is ALSO truly absent (null/empty/string 'absent')
-        // We consider the student absent if all components are blank and total is 0 (auto-calculated from empty fields)
-        if (isValueAbsent(totalValue) || totalValue === 0 || totalValue === '0') {
+        // We do NOT treat 0 as absent here because 0 is a valid score.
+        if (isValueAbsent(totalValue)) {
             return true;
         }
     }
@@ -107,7 +107,7 @@ export function determineStatus(student, options = {}) {
     const practical = student.practical === null || student.practical === '' || student.practical === undefined ? null : Number(student.practical);
 
     // Subject Configuration Priority System:
-    // Only check a component if its pass mark > 0 AND the user actually has a mark entered for it (aligning with marksheet logic)
+    // Only check a component if its pass mark > 0 AND the student has a value for it
     let failed = false;
 
     // Check Written (CQ)

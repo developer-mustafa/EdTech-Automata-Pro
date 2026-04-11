@@ -86,7 +86,7 @@ export async function subscribeToMarksheetSettings(callback) {
 /**
  * Save marksheet settings to Firestore
  */
-async function saveMarksheetSettings(settings) {
+export async function saveMarksheetSettings(settings) {
     try {
         const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
         const { db } = await import('../firebase.js');
