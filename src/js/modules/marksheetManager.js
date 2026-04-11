@@ -32,6 +32,8 @@ let marksheetSettings = {
     rowDensity: 'normal',
     hiddenSubjects: [],
     historyExams: [],
+    showSummary: true,
+    showGradeScale: true,
     signatures: [
         { label: 'শ্রেণি শিক্ষক', url: '' },
         { label: 'পরীক্ষা কমিটি', url: '' },
@@ -329,23 +331,13 @@ async function generateMarksheets() {
     }
     // ------------------------------------------
 
-    // Build student aggregation
+    // Build student aggregation (UNFILTERED - for accurate exam summary)
     const studentAgg = new Map();
     relevantExams.forEach(exam => {
         if (exam.studentData) {
             exam.studentData.forEach(s => {
                 const sGroup = s.group || '';
-
-                // Group filtering
-                if (selectedGroup !== 'all' && sGroup !== selectedGroup) {
-                    return;
-                }
-
-                // Individual student filtering
                 const key = `${s.id}_${sGroup}`;
-                if (studentSelection !== 'all' && studentSelection !== key) {
-                    return;
-                }
 
                 if (!studentAgg.has(key)) {
                     const studentKey = generateStudentDocId({
@@ -379,18 +371,22 @@ async function generateMarksheets() {
         }
     });
 
-    let studentsArray = [...studentAgg.values()]
+    // ALL active students for the exam summary (unfiltered by group/student)
+    const allStudentsForSummary = [...studentAgg.values()]
         .filter(s => s.status !== false)
         .sort((a, b) => {
-            // Primary sort: Group Alphabetically
             const groupA = a.group.toLowerCase();
             const groupB = b.group.toLowerCase();
             if (groupA < groupB) return -1;
             if (groupA > groupB) return 1;
-
-            // Secondary sort: Roll number
             return (parseInt(convertToEnglishDigits(String(a.id))) || 0) - (parseInt(convertToEnglishDigits(String(b.id))) || 0);
         });
+
+    // Filtered students for DISPLAY (apply group + individual student filter)
+    let studentsArray = allStudentsForSummary.filter(s => {
+        if (selectedGroup !== 'all' && s.group !== selectedGroup) return false;
+        return true;
+    });
 
     if (studentSelection !== 'all') {
         studentsArray = studentsArray.filter(s => `${s.id}_${s.group}` === studentSelection);
@@ -420,12 +416,152 @@ async function generateMarksheets() {
     // ------------------------------------------
 
     const previewArea = document.getElementById('marksheetPreview');
-    let marksheetsHtml = '';
     const subjectConfigs = await getExamConfigs() || {};
 
-    for (const student of studentsArray) {
-        marksheetsHtml += await renderSingleMarksheet(student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs);
+    // --- Exam Summary: Two-Pass Rendering for 100% Accuracy ---
+    // Pass 1: Render ALL active students' marksheets (without summary) to count pass/fail
+    //         This ensures the summary uses the EXACT same logic as each marksheet's own
+    //         pass/fail determination (including hidden subjects, optional handling,
+    //         combined papers, component pass marks, etc.)
+    const allRenderedData = [];
+    for (const student of allStudentsForSummary) {
+        const html = await renderSingleMarksheet(student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null);
+        allRenderedData.push({
+            html,
+            key: `${student.id}_${student.group}`,
+            group: student.group,
+            subjects: student.subjects
+        });
     }
+
+    // Count totals from rendered marksheets — GROUP-WISE breakdown
+    const groupStats = new Map();
+    const overallGradeCounts = { 'A+': 0, 'A': 0, 'A-': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
+
+    for (const item of allRenderedData) {
+        const group = item.group || 'অন্যান্য';
+        if (!groupStats.has(group)) {
+            groupStats.set(group, { total: 0, examinees: 0, pass: 0, fail: 0 });
+        }
+        const gs = groupStats.get(group);
+        gs.total++;
+
+        // A student is an "examinee" if they have ANY non-zero marks in ANY subject criteria
+        const hasAnyMarks = Object.values(item.subjects).some(data =>
+            ((data.written || 0) > 0 || (data.mcq || 0) > 0 || (data.practical || 0) > 0 || (data.total || 0) > 0)
+        );
+        if (!hasAnyMarks) continue;
+
+        gs.examinees++;
+
+        // Count pass/fail by detecting the CSS class from the rendered marksheet HTML
+        if (item.html.includes('ms-result-pass')) {
+            gs.pass++;
+            const match = item.html.match(/<span class="ms-result-label">গ্রেড<\/span>\s*<span class="ms-result-value">\s*(A\+|A|A-|B|C|D)\s*<\/span>/);
+            if (match && overallGradeCounts[match[1]] !== undefined) {
+                overallGradeCounts[match[1]]++;
+            }
+        } else if (item.html.includes('ms-result-fail')) {
+            gs.fail++;
+            overallGradeCounts['F']++;
+        }
+    }
+
+    // Compute grand totals
+    let grandTotalStudents = 0, grandExaminees = 0, grandAbsent = 0, grandPass = 0, grandFail = 0;
+    for (const [, gs] of groupStats) {
+        const absent = gs.total - gs.examinees;
+        grandTotalStudents += gs.total;
+        grandExaminees += gs.examinees;
+        grandAbsent += absent;
+        grandPass += gs.pass;
+        grandFail += gs.fail;
+    }
+    const grandPassRate = grandExaminees > 0 ? ((grandPass / grandExaminees) * 100).toFixed(1) : '0.0';
+
+    // Build group rows for summary table
+    const groupRowsHtml = [...groupStats.entries()].map(([group, gs]) => {
+        const absent = gs.total - gs.examinees;
+        const passRate = gs.examinees > 0 ? ((gs.pass / gs.examinees) * 100).toFixed(1) : '0.0';
+        return `<tr>
+            <td>${group}</td>
+            <td>${gs.total}</td>
+            <td>${gs.examinees}</td>
+            <td>${absent}</td>
+            <td class="ms-sumtbl-pass">${gs.pass}</td>
+            <td class="ms-sumtbl-fail">${gs.fail}</td>
+            <td class="ms-sumtbl-rate">${passRate}%</td>
+        </tr>`;
+    }).join('');
+
+    // Build exam summary TABLE HTML
+    const examSummaryHtml = `
+        <div class="ms-exam-summary-section">
+            <table class="ms-exam-summary-tbl">
+                <caption>পরীক্ষার ফলাফল সামারি</caption>
+                <thead>
+                    <tr>
+                        <th>বিভাগ</th>
+                        <th>মোট</th>
+                        <th>পরীক্ষার্থী</th>
+                        <th>অনুপস্থিত</th>
+                        <th>পাশ</th>
+                        <th>ফেল</th>
+                        <th>পাশের হার</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${groupRowsHtml}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>সর্বমোট</td>
+                        <td>${grandTotalStudents}</td>
+                        <td>${grandExaminees}</td>
+                        <td>${grandAbsent}</td>
+                        <td class="ms-sumtbl-pass">${grandPass}</td>
+                        <td class="ms-sumtbl-fail">${grandFail}</td>
+                        <td class="ms-sumtbl-rate">${grandPassRate}%</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>`;
+
+    // Pass 2: Select marksheets to display and inject the summary and grade counts
+    let displayItems = allRenderedData;
+    // Apply group filter
+    if (selectedGroup !== 'all') {
+        displayItems = displayItems.filter(item => item.group === selectedGroup);
+    }
+    // Apply individual student filter
+    if (studentSelection !== 'all') {
+        displayItems = displayItems.filter(item => item.key === studentSelection);
+    }
+
+    const marksheetsHtml = displayItems.map(item => {
+        const ms = getMarksheetSettings();
+        let finalHtml = item.html;
+        
+        // Handle Summary Section
+        if (ms.showSummary !== false) {
+            finalHtml = finalHtml.replace('<!--EXAM_SUMMARY_PLACEHOLDER-->', examSummaryHtml);
+        } else {
+            finalHtml = finalHtml.replace('<!--EXAM_SUMMARY_PLACEHOLDER-->', '');
+        }
+
+        // Handle Grade Scale Counts
+        finalHtml = finalHtml.replace('<!--GS_AP-->', overallGradeCounts['A+']);
+        finalHtml = finalHtml.replace('<!--GS_A-->', overallGradeCounts['A']);
+        finalHtml = finalHtml.replace('<!--GS_AM-->', overallGradeCounts['A-']);
+        finalHtml = finalHtml.replace('<!--GS_B-->', overallGradeCounts['B']);
+        finalHtml = finalHtml.replace('<!--GS_C-->', overallGradeCounts['C']);
+        finalHtml = finalHtml.replace('<!--GS_D-->', overallGradeCounts['D']);
+        finalHtml = finalHtml.replace('<!--GS_F-->', overallGradeCounts['F']);
+        
+        return finalHtml;
+    }).join('');
+    // --- End Exam Summary ---
+
     previewArea.innerHTML = marksheetsHtml;
 
     // Render QRs - Explicitly await to ensure they exist before user can print
@@ -444,7 +580,7 @@ async function generateMarksheets() {
     const bulkBtn = document.getElementById('msPrintAllBtn');
     if (bulkBtn) bulkBtn.style.display = 'inline-flex';
 
-    showNotification(`${studentsArray.length} জন শিক্ষার্থীর মার্কশীট তৈরি হয়েছে ✅`);
+    showNotification(`${displayItems.length} জন শিক্ষার্থীর মার্কশীট তৈরি হয়েছে ✅`);
 
     // ... (rest of the function)
 
@@ -556,7 +692,7 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
                 gpa: allPassed ? finalGPA : -1,
                 total: totalMarks,
                 allPassed: allPassed,
-                displayGPA: finalGPA.toFixed(2)
+                displayGPA: allPassed ? finalGPA.toFixed(2) : '0.00'
             });
         });
 
@@ -579,7 +715,7 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
         if (studentRankIdx !== -1) {
             studentHistory.push({
                 name: examName,
-                gpa: results[studentRankIdx].allPassed ? results[studentRankIdx].displayGPA : results[studentRankIdx].displayGPA + ' (F)',
+                gpa: results[studentRankIdx].allPassed ? results[studentRankIdx].displayGPA : '0.00',
                 rank: studentRankIdx + 1,
                 groupRank: groupRankIdx !== -1 ? groupRankIdx + 1 : '-'
             });
@@ -600,7 +736,7 @@ const getMarkClass = (mark, passMark) => {
 };
 
 
-export async function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, rules = null, allOptSubs = [], allExams = [], subjectConfigs = {}) {
+export async function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, rules = null, allOptSubs = [], allExams = [], subjectConfigs = {}, examSummary = null) {
 
     const history = await getStudentExamsHistory(student, allExams, student.class, selectedSession, rules, subjectConfigs);
     const uid = student.uniqueId || generateStudentUniqueId(student.name, student.class, selectedSession, student.id, student.group);
@@ -980,12 +1116,28 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
     if (isCombinedMode) {
         const totalGP = compulsoryGP + optionalBonusGP;
         const finalGP = compulsoryCount > 0 ? Math.min(5.00, totalGP / compulsoryCount) : 0;
-        avgGPA = finalGP.toFixed(2);
+        avgGPA = allPassed ? finalGP.toFixed(2) : '0.00';
     } else {
-        avgGPA = visibleSubjects.length > 0 ? (totalGradePointSum / visibleSubjects.length).toFixed(2) : '0.00';
+        // In standard mode: if ANY subject has F grade, overall GPA = 0.00
+        if (allPassed) {
+            avgGPA = visibleSubjects.length > 0 ? (totalGradePointSum / visibleSubjects.length).toFixed(2) : '0.00';
+        } else {
+            avgGPA = '0.00';
+        }
     }
 
     const overallGrade = allPassed ? getGradeFromGP(parseFloat(avgGPA)) : 'F';
+
+    let studentRemark = '';
+    if (overallGrade === 'A+' || overallGrade === 'A') {
+        studentRemark = 'চমৎকার! উত্তম ফলাফল';
+    } else if (overallGrade === 'A-' || overallGrade === 'B') {
+        studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে যাও...';
+    } else if (overallGrade === 'C' || overallGrade === 'D') {
+        studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকের হেল্প নাও এবং চেষ্টার কমতি রেখো না';
+    } else if (overallGrade === 'F') {
+        studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে ফোকাস দাও';
+    }
 
     // Synchronize history table GPA to exactly match the current marksheet's calculated GPA
     history.forEach(h => {
@@ -1160,20 +1312,42 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         <span class="ms-result-label">মোট নম্বর</span>
                         <span class="ms-result-value">${grandTotal} / ${maxGrand}</span>
                     </div>
-                </div>
+                    </div>
+                    <!--EXAM_SUMMARY_PLACEHOLDER-->
 
                 <!-- Grade Scale Reference -->
-                <div class="ms-grade-scale">
+                <div class="ms-grade-scale" style="${ms.showGradeScale === false ? 'display: none !important;' : ''}">
                     <div class="ms-grade-scale-wrapper">
                         <span class="ms-gs-title" style="letter-spacing: 0.5px;">GRADING SCALE :</span>
                         <div class="ms-grade-badges">
-                            <span class="ms-gs-item gs-ap"><strong>A+</strong> (80-100) 5.00</span>
-                            <span class="ms-gs-item gs-a"><strong>A</strong> (70-79) 4.00</span>
-                            <span class="ms-gs-item gs-am"><strong>A-</strong> (60-69) 3.50</span>
-                            <span class="ms-gs-item gs-b"><strong>B</strong> (50-59) 3.00</span>
-                            <span class="ms-gs-item gs-c"><strong>C</strong> (40-49) 2.00</span>
-                            <span class="ms-gs-item gs-d"><strong>D</strong> (33-39) 1.00</span>
-                            <span class="ms-gs-item gs-f"><strong>F</strong> (0-32) 0.00</span>
+                            <div class="ms-gs-item gs-ap">
+                                <div class="ms-gs-top"><strong>A+</strong> (80-100) 5.00</div>
+                                <div class="ms-gs-bottom"><strong><!--GS_AP--></strong> জন</div>
+                            </div>
+                            <div class="ms-gs-item gs-a">
+                                <div class="ms-gs-top"><strong>A</strong> (70-79) 4.00</div>
+                                <div class="ms-gs-bottom"><strong><!--GS_A--></strong> জন</div>
+                            </div>
+                            <div class="ms-gs-item gs-am">
+                                <div class="ms-gs-top"><strong>A-</strong> (60-69) 3.50</div>
+                                <div class="ms-gs-bottom"><strong><!--GS_AM--></strong> জন</div>
+                            </div>
+                            <div class="ms-gs-item gs-b">
+                                <div class="ms-gs-top"><strong>B</strong> (50-59) 3.00</div>
+                                <div class="ms-gs-bottom"><strong><!--GS_B--></strong> জন</div>
+                            </div>
+                            <div class="ms-gs-item gs-c">
+                                <div class="ms-gs-top"><strong>C</strong> (40-49) 2.00</div>
+                                <div class="ms-gs-bottom"><strong><!--GS_C--></strong> জন</div>
+                            </div>
+                            <div class="ms-gs-item gs-d">
+                                <div class="ms-gs-top"><strong>D</strong> (33-39) 1.00</div>
+                                <div class="ms-gs-bottom"><strong><!--GS_D--></strong> জন</div>
+                            </div>
+                            <div class="ms-gs-item gs-f">
+                                <div class="ms-gs-top"><strong>F</strong> (0-32) 0.00</div>
+                                <div class="ms-gs-bottom" style="color: #dc2626 !important;"><strong><!--GS_F--></strong> জন</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1206,7 +1380,8 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     
                     <div class="ms-extra-box ms-comments-box">
                         <span class="ms-extra-title">মন্তব্য:</span>
-                        <div class="ms-comment-lines">
+                        <div class="ms-comment-lines" style="position: relative;">
+                            <div style="position: absolute; top: 0px; left: 8px; right: 4px; line-height: 22px; font-weight: 700; font-size: 0.78rem; color: #1e3a8a; font-style: italic; z-index: 10;">${studentRemark}</div>
                             <div class="ms-dot-line"></div>
                             <div class="ms-dot-line"></div>
                             <div class="ms-dot-line"></div>
@@ -1291,6 +1466,8 @@ async function updateSettingsLivePreview() {
         rowDensity: getVal('msRowDensity') || 'normal',
         watermarkUrl: marksheetSettings.watermarkUrl || '',
         watermarkOpacity: (document.getElementById('msWatermarkOpacity') ? parseInt(document.getElementById('msWatermarkOpacity').value) : 10) / 100,
+        showSummary: document.getElementById('msShowSummary') ? document.getElementById('msShowSummary').checked : true,
+        showGradeScale: document.getElementById('msShowGradeScale') ? document.getElementById('msShowGradeScale').checked : true,
         signatures: marksheetSettings.signatures || []
     };
 
@@ -1463,6 +1640,8 @@ function initMarksheetSettingsModal() {
             if (el('msBorderStyle')) el('msBorderStyle').value = marksheetSettings.borderStyle || 'double';
             if (el('msTypography')) el('msTypography').value = marksheetSettings.typography || 'default';
             if (el('msRowDensity')) el('msRowDensity').value = marksheetSettings.rowDensity || 'normal';
+            if (el('msShowSummary')) el('msShowSummary').checked = marksheetSettings.showSummary !== false;
+            if (el('msShowGradeScale')) el('msShowGradeScale').checked = marksheetSettings.showGradeScale !== false;
 
             // Render Signature Slots
             renderSignatureSlots();
@@ -1589,6 +1768,8 @@ function initMarksheetSettingsModal() {
                 watermarkOpacity: parseInt(document.getElementById('msWatermarkOpacity').value) / 100,
                 hiddenSubjects: marksheetSettings.hiddenSubjects || [],
                 historyExams: marksheetSettings.historyExams || [],
+                showSummary: document.getElementById('msShowSummary').checked,
+                showGradeScale: document.getElementById('msShowGradeScale').checked,
                 signatures: signatures.length > 0 ? signatures : [
                     { label: 'শ্রেণি শিক্ষক', url: '' },
                     { label: 'পরীক্ষা কমিটি', url: '' },
