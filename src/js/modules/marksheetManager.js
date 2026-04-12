@@ -1472,9 +1472,9 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                             <canvas class="ms-mr-qr-canvas" data-uid="${uid}" data-exam="${examDisplayName}" data-name="${student.name}"></canvas>
                         </div>
                         <div class="ms-qr-text-info" style="display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: -2px;">
-                            <div style="color: #0f172a; font-size: 0.53rem; font-weight: 800; margin-bottom: 0px; line-height: 1;">স্ক্যান এন্ড ভেরিফাই</div>
-                            <div style="font-size: 0.45rem; color: #3b82f6; font-weight: 700; margin-bottom: 2px;">${window.location.hostname}</div>
-                            <div class="ms-qr-uid" style="margin-top: 0; background: #f8fafc; width: 100%; padding: 2px 0; border-top: 1px dashed #cbd5e1; font-size: 0.65rem;">ID No. ${uid}</div>
+                            <div style="color: #0f172a; font-size: 0.58rem; font-weight: 800; margin-bottom: 1px; line-height: 1;">স্ক্যান এন্ড ভেরিফাই</div>
+                            <div style="font-size: 0.52rem; color: #2563eb; font-weight: 700; margin-bottom: 3px; letter-spacing: 0.2px; text-transform: lowercase;">${window.location.hostname}</div>
+                            <div class="ms-qr-uid" style="margin-top: 0; background: #f8fafc; width: 100%; padding: 3px 0; border-top: 1px dashed #cbd5e1; font-size: 0.65rem; color: #1e293b; font-weight: 700;">ID No. ${uid}</div>
                         </div>
                     </div>
                 </div>
