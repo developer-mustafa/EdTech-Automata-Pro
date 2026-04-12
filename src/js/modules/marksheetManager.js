@@ -597,7 +597,7 @@ async function generateMarksheets() {
     const bulkBtn = document.getElementById('msPrintAllBtn');
     const presentBtn = document.getElementById('msPrintPresentBtn');
     const absentBtn = document.getElementById('msPrintAbsentBtn');
-    
+
     if (bulkBtn) bulkBtn.style.display = 'inline-flex';
     if (presentBtn) presentBtn.style.display = 'inline-flex';
     if (absentBtn) absentBtn.style.display = 'inline-flex';
@@ -1191,11 +1191,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
     if (overallGrade === 'A+' || overallGrade === 'A') {
         studentRemark = 'আলহামদুলিল্লাহ! অসাধারণ ফলাফল, তোমার উত্তরোত্তর সফলতা কামনা করছি';
     } else if (overallGrade === 'A-' || overallGrade === 'B') {
-        studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে যাও...';
+        studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে এগিয়ে যাও,তোমার জন্য শুভকামনা';
     } else if (overallGrade === 'C' || overallGrade === 'D') {
-        studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকের হেল্প নাও এবং চেষ্টার কমতি রেখো না';
+        studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকদের হেল্প নাও,সমাধান কর এবং চেষ্টার কমতি রেখো না';
     } else if (overallGrade === 'F') {
-        studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে ফোকাস দাও';
+        studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে ফোকাস দেওয়া উচিত দ্রুত সমস্যা সমাধানের জন্য';
     }
 
     // Synchronize history table GPA to exactly match the current marksheet's calculated GPA
@@ -1404,32 +1404,32 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     <div class="ms-grade-scale-wrapper">
                         <span class="ms-gs-title" style="letter-spacing: 0.5px;">GRADING SCALE :</span>
                         <div class="ms-grade-badges">
-                            <div class="ms-gs-item gs-ap">
-                                <div class="ms-gs-top" style="font-size: 0.62rem;"><strong>A+</strong> <span style="font-weight: 500;">(80-100)</span> <strong>5.00</strong></div>
+                            <div class="ms-gs-item gs-ap" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.61rem; white-space: nowrap;"><strong>A+</strong> <span style="font-weight: 500;">(80-100)</span> <strong>5.00</strong></div>
                                 <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_AP--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-a">
-                                <div class="ms-gs-top" style="font-size: 0.62rem;"><strong>A</strong> <span style="font-weight: 500;">(70-79)</span> <strong>4.00</strong></div>
+                            <div class="ms-gs-item gs-a" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.61rem; white-space: nowrap;"><strong>A</strong> <span style="font-weight: 500;">(70-79)</span> <strong>4.00</strong></div>
                                 <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_A--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-am">
-                                <div class="ms-gs-top" style="font-size: 0.62rem;"><strong>A-</strong> <span style="font-weight: 500;">(60-69)</span> <strong>3.50</strong></div>
+                            <div class="ms-gs-item gs-am" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.61rem; white-space: nowrap;"><strong>A-</strong> <span style="font-weight: 500;">(60-69)</span> <strong>3.50</strong></div>
                                 <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_AM--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-b">
-                                <div class="ms-gs-top" style="font-size: 0.62rem;"><strong>B</strong> <span style="font-weight: 500;">(50-59)</span> <strong>3.00</strong></div>
+                            <div class="ms-gs-item gs-b" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.61rem; white-space: nowrap;"><strong>B</strong> <span style="font-weight: 500;">(50-59)</span> <strong>3.00</strong></div>
                                 <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_B--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-c">
-                                <div class="ms-gs-top" style="font-size: 0.62rem;"><strong>C</strong> <span style="font-weight: 500;">(40-49)</span> <strong>2.00</strong></div>
+                            <div class="ms-gs-item gs-c" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.61rem; white-space: nowrap;"><strong>C</strong> <span style="font-weight: 500;">(40-49)</span> <strong>2.00</strong></div>
                                 <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_C--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-d">
-                                <div class="ms-gs-top" style="font-size: 0.62rem;"><strong>D</strong> <span style="font-weight: 500;">(33-39)</span> <strong>1.00</strong></div>
+                            <div class="ms-gs-item gs-d" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.61rem; white-space: nowrap;"><strong>D</strong> <span style="font-weight: 500;">(33-39)</span> <strong>1.00</strong></div>
                                 <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_D--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-f">
-                                <div class="ms-gs-top" style="font-size: 0.62rem;"><strong>F</strong> <span style="font-weight: 500;">(0-32)</span> <strong>0.00</strong></div>
+                            <div class="ms-gs-item gs-f" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.61rem; white-space: nowrap;"><strong>F</strong> <span style="font-weight: 500;">(0-32)</span> <strong>0.00</strong></div>
                                 <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800; color: #dc2626 !important;"><strong><!--GS_F--></strong> জন</div>
                             </div>
                         </div>
@@ -2148,7 +2148,7 @@ function bulkPrint(filter = 'all') {
     if (!previewArea) return;
 
     let allPages = Array.from(previewArea.querySelectorAll('.ms-page'));
-    
+
     // Filter logic
     if (filter === 'absent') {
         allPages = allPages.filter(p => p.getAttribute('data-is-absent') === 'true');
@@ -2157,9 +2157,9 @@ function bulkPrint(filter = 'all') {
     }
 
     if (allPages.length === 0) {
-        const msg = filter === 'absent' ? 'কোনো অনুপস্থিত শিক্ষার্থীর মার্কশীট নেই' : 
-                    filter === 'present' ? 'কোনো উপস্থিত শিক্ষার্থীর মার্কশীট নেই' : 
-                    'প্রিন্ট করার জন্য কোনো মার্কশীট নেই';
+        const msg = filter === 'absent' ? 'কোনো অনুপস্থিত শিক্ষার্থীর মার্কশীট নেই' :
+            filter === 'present' ? 'কোনো উপস্থিত শিক্ষার্থীর মার্কশীট নেই' :
+                'প্রিন্ট করার জন্য কোনো মার্কশীট নেই';
         showNotification(msg, 'error');
         return;
     }
