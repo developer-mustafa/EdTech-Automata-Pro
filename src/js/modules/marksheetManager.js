@@ -9,14 +9,16 @@ import {
     getExamConfigs,
     getSettings,
     getStudentLookupMap,
-    generateStudentDocId
+    generateStudentDocId,
+    getClassSubjectMappings
 } from '../firestoreService.js';
 import { state } from './state.js';
-import { showNotification, convertToEnglishDigits } from '../utils.js';
+import { showNotification, convertToEnglishDigits, normalizeText } from '../utils.js';
 import { compressImage } from '../imageUtils.js';
 import QRCode from 'qrcode';
 import { generateStudentUniqueId } from './studentResultsManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
+import { showConfirmModal } from './uiManager.js';
 
 let marksheetSettings = {
     institutionName: '',
@@ -59,6 +61,7 @@ export async function loadMarksheetSettings() {
         const snap = await getDoc(docRef);
         if (snap.exists()) {
             Object.assign(marksheetSettings, snap.data());
+            try { localStorage.setItem('pa_marksheet_settings', JSON.stringify(marksheetSettings)); } catch (e) { }
         }
     } catch (e) {
         console.warn('মার্কশীট সেটিংস লোড করা যায়নি, ডিফল্ট ব্যবহার হচ্ছে');
@@ -78,6 +81,7 @@ export async function subscribeToMarksheetSettings(callback) {
     return onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             Object.assign(marksheetSettings, docSnap.data());
+            try { localStorage.setItem('pa_marksheet_settings', JSON.stringify(marksheetSettings)); } catch (e) { }
             if (callback) callback(marksheetSettings);
         }
     });
@@ -93,6 +97,7 @@ export async function saveMarksheetSettings(settings) {
         const docRef = doc(db, 'settings', 'marksheet_config');
         await setDoc(docRef, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
         Object.assign(marksheetSettings, settings);
+        try { localStorage.setItem('pa_marksheet_settings', JSON.stringify(marksheetSettings)); } catch (e) { }
         showNotification('মার্কশীট সেটিংস সংরক্ষণ হয়েছে ✅');
         return true;
     } catch (e) {
@@ -246,10 +251,14 @@ export async function populateMSDropdowns() {
     updateExamNames();
 }
 
+// Cache to prevent O(N^2) recalculations during batch generation
+const _examRankCache = new Map();
+
 /**
  * Generate marksheets
  */
 async function generateMarksheets() {
+    _examRankCache.clear(); // Clear cache at start of new generation
     const cls = document.getElementById('msClass')?.value;
     const session = document.getElementById('msSession')?.value;
     const examName = document.getElementById('msExamName')?.value;
@@ -262,6 +271,10 @@ async function generateMarksheets() {
     }
 
     await loadMarksheetSettings();
+
+    // Load developer credit settings properly before rendering
+    const globalSettings = await getSettings();
+    state.developerCredit = globalSettings?.developerCredit || null;
 
     const allExams = await getSavedExams();
     let relevantExams = allExams.filter(e => e.class === cls && e.session === session);
@@ -336,8 +349,10 @@ async function generateMarksheets() {
     relevantExams.forEach(exam => {
         if (exam.studentData) {
             exam.studentData.forEach(s => {
-                const sGroup = s.group || '';
-                const key = `${s.id}_${sGroup}`;
+                // Standardize group and roll for consistent keying
+                const sGroup = normalizeText(s.group || '');
+                const sRoll = convertToEnglishDigits(String(s.id || '').trim().replace(/^0+/, '')) || '0';
+                const key = `${sRoll}_${sGroup}`;
 
                 if (!studentAgg.has(key)) {
                     const studentKey = generateStudentDocId({
@@ -358,15 +373,27 @@ async function generateMarksheets() {
                         subjects: {}
                     });
                 }
-                studentAgg.get(key).subjects[exam.subject] = {
-                    written: s.written || 0,
-                    mcq: s.mcq || 0,
-                    practical: s.practical || 0,
-                    total: s.total || 0,
-                    grade: s.grade || '',
-                    gpa: s.gpa || '',
-                    status: s.status || ''
-                };
+
+                // Get existing subject data if any
+                const subjKey = normalizeText(exam.subject).replace(/\s+/g, '') || exam.subject;
+                const existingSubData = studentAgg.get(key).subjects[subjKey];
+
+                // Only overwrite or update if the new exam has actual marks or if no data exists yet.
+                const hasMarks = (s.written !== null && s.written !== '' && s.written > 0) ||
+                    (s.mcq !== null && s.mcq !== '' && s.mcq > 0) ||
+                    (s.practical !== null && s.practical !== '' && s.practical > 0);
+
+                if (!existingSubData || hasMarks) {
+                    studentAgg.get(key).subjects[subjKey] = {
+                        written: s.written || 0,
+                        mcq: s.mcq || 0,
+                        practical: s.practical || 0,
+                        total: s.total || 0,
+                        grade: s.grade || '',
+                        gpa: s.gpa || '',
+                        status: s.status || ''
+                    };
+                }
             });
         }
     });
@@ -389,7 +416,11 @@ async function generateMarksheets() {
     });
 
     if (studentSelection !== 'all') {
-        studentsArray = studentsArray.filter(s => `${s.id}_${s.group}` === studentSelection);
+        studentsArray = studentsArray.filter(s => {
+            const sRollForSel = convertToEnglishDigits(String(s.id));
+            const sGroupForSel = normalizeText(s.group || '');
+            return `${sRollForSel}_${sGroupForSel}` === studentSelection;
+        });
     }
 
     if (studentsArray.length === 0) {
@@ -425,7 +456,7 @@ async function generateMarksheets() {
     //         combined papers, component pass marks, etc.)
     const allRenderedData = [];
     for (const student of allStudentsForSummary) {
-        const html = await renderSingleMarksheet(student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null);
+        const html = await renderSingleMarksheet(student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, false);
         allRenderedData.push({
             html,
             key: `${student.id}_${student.group}`,
@@ -541,7 +572,7 @@ async function generateMarksheets() {
     const marksheetsHtml = displayItems.map(item => {
         const ms = getMarksheetSettings();
         let finalHtml = item.html;
-        
+
         // Handle Summary Section
         if (ms.showSummary !== false) {
             finalHtml = finalHtml.replace('<!--EXAM_SUMMARY_PLACEHOLDER-->', examSummaryHtml);
@@ -557,7 +588,7 @@ async function generateMarksheets() {
         finalHtml = finalHtml.replace('<!--GS_C-->', overallGradeCounts['C']);
         finalHtml = finalHtml.replace('<!--GS_D-->', overallGradeCounts['D']);
         finalHtml = finalHtml.replace('<!--GS_F-->', overallGradeCounts['F']);
-        
+
         return finalHtml;
     }).join('');
     // --- End Exam Summary ---
@@ -571,14 +602,14 @@ async function generateMarksheets() {
         console.error("QR rendering failed in main flow:", qrErr);
     }
 
-
-
-    // Load developer credit settings before rendering
-    state.developerCredit = await getSettings('developerCredit');
-
-    // Show bulk print button
+    // Show bulk print buttons
     const bulkBtn = document.getElementById('msPrintAllBtn');
+    const presentBtn = document.getElementById('msPrintPresentBtn');
+    const absentBtn = document.getElementById('msPrintAbsentBtn');
+
     if (bulkBtn) bulkBtn.style.display = 'inline-flex';
+    if (presentBtn) presentBtn.style.display = 'inline-flex';
+    if (absentBtn) absentBtn.style.display = 'inline-flex';
 
     showNotification(`${displayItems.length} জন শিক্ষার্থীর মার্কশীট তৈরি হয়েছে ✅`);
 
@@ -592,7 +623,7 @@ async function generateMarksheets() {
         if (window.innerWidth <= 768) {
             const zoomInput = document.getElementById('msMainZoom');
             const zoomLevelValue = document.getElementById('msMainZoomLevel');
-            const initialScale = window.innerWidth <= 480 ? 0.35 : 0.45;
+            const initialScale = window.innerWidth <= 480 ? 0.48 : 0.58;
             if (zoomInput) zoomInput.value = initialScale;
             if (zoomLevelValue) zoomLevelValue.innerText = Math.round(initialScale * 100) + '%';
             previewArea.style.setProperty('--ms-main-scale', initialScale);
@@ -619,11 +650,15 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
     }
 
     for (const examName of examSessions) {
-        const sessionExams = allExams.filter(e => e.class === cls && e.session === session && e.name === examName);
-        const subjects = [...new Set(sessionExams.map(e => e.subject).filter(Boolean))];
+        const cacheKey = `${cls}_${session}_${examName}`;
+        let results = _examRankCache.get(cacheKey);
 
-        const studentsInSession = new Map();
-        sessionExams.forEach(ex => {
+        if (!results) {
+            const sessionExams = allExams.filter(e => e.class === cls && e.session === session && e.name === examName);
+            const subjects = [...new Set(sessionExams.map(e => e.subject).filter(Boolean))];
+
+            const studentsInSession = new Map();
+            sessionExams.forEach(ex => {
             if (!ex.studentData) return;
             ex.studentData.forEach(s => {
                 const key = `${s.id}_${s.group || ''}`;
@@ -634,7 +669,7 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
             });
         });
 
-        const results = [];
+            results = [];
         studentsInSession.forEach(st => {
             let totalMarks = 0;
             let totalGPA = 0;
@@ -696,15 +731,17 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
             });
         });
 
-        results.sort((a, b) => {
-            if (a.allPassed && !b.allPassed) return -1;
-            if (!a.allPassed && b.allPassed) return 1;
-            if (a.allPassed) {
-                if (b.gpa !== a.gpa) return b.gpa - a.gpa;
+            results.sort((a, b) => {
+                if (a.allPassed && !b.allPassed) return -1;
+                if (!a.allPassed && b.allPassed) return 1;
+                if (a.allPassed) {
+                    if (b.gpa !== a.gpa) return b.gpa - a.gpa;
+                    return b.total - a.total;
+                }
                 return b.total - a.total;
-            }
-            return b.total - a.total;
-        });
+            });
+            _examRankCache.set(cacheKey, results);
+        }
 
         const studentGroup = student.group || '';
         const studentRankIdx = results.findIndex(r => r.key === `${student.id}_${studentGroup}`);
@@ -736,9 +773,9 @@ const getMarkClass = (mark, passMark) => {
 };
 
 
-export async function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, rules = null, allOptSubs = [], allExams = [], subjectConfigs = {}, examSummary = null) {
+export async function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, rules = null, allOptSubs = [], allExams = [], subjectConfigs = {}, examSummary = null, skipHeavyOps = false) {
 
-    const history = await getStudentExamsHistory(student, allExams, student.class, selectedSession, rules, subjectConfigs);
+    const history = skipHeavyOps ? [] : await getStudentExamsHistory(student, allExams, student.class, selectedSession, rules, subjectConfigs);
     const uid = student.uniqueId || generateStudentUniqueId(student.name, student.class, selectedSession, student.id, student.group);
 
     /**
@@ -825,18 +862,56 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             const isGroup = matchesList(groupSubs);
             const isOpt = matchesList(optSubs);
 
+            // Shared helper: check if student has marks for a subject
+            const checkMarks = (name) => {
+                const sSubjKey = normalizeText(name).replace(/\s+/g, '');
+                const data = student.subjects[sSubjKey];
+
+                // --- SUBJECT MAPPING OVERRIDE (NEW) ---
+                // If this student is explicitly mapped to this subject, they "have" it regardless of marks
+                const sRoll = String(student.id || '').trim().replace(/^0+/, '');
+                const sGroupNorm = normalizeText(student.group || '');
+                const isMapped = (ms.subjectMapping || []).some(m => {
+                    // Clean subject comparison
+                    const mapSubNorm = normalizeText(m.subject).replace(/\[.*?\]/g, '').replace(/\s+/g, '');
+                    const nameNorm = normalizeText(name).replace(/\[.*?\]/g, '').replace(/\s+/g, '');
+                    if (mapSubNorm !== nameNorm) return false;
+
+                    // Group match: keyword-based (মানবিক গ্রুপ matches মানবিক গ্রুপ, মানবিক, etc.)
+                    const mapGroupNorm = normalizeText(m.group);
+                    const groupMatch = sGroupNorm.includes(mapGroupNorm) || mapGroupNorm.includes(sGroupNorm);
+                    if (!groupMatch) return false;
+
+                    // Roll match
+                    return m.rolls.map(r => String(r).replace(/^0+/, '')).includes(sRoll);
+                });
+
+                if (isMapped) return true;
+
+                return !!data;
+            };
+            const papers = isObj ? (subjObj.papers || []) : [subjName];
+
             // If it's only in the optional list (and not general/group)
-            // Show only if student has marks in this subject or its papers
+            // Show if student has marks OR is mapped to this subject
             if (isOpt && !isGeneral && !isGroup) {
-                const checkMarks = (name) => {
-                    const data = student.subjects[name];
-                    return data && (data.total > 0 || data.written > 0 || data.mcq > 0 || data.practical > 0);
-                };
+                const hasData = checkMarks(subjName) || papers.some(p => checkMarks(p));
+                // Show if has data OR if it's the only optional subject defined for this group
+                if (!hasData && optSubs.length > 2) return false; 
+                // (length > 2 because a single subject might have 2 papers, so we allow 1-2 papers)
+            }
 
-                const papers = isObj ? (subjObj.papers || []) : [subjName];
-                const studentHasMarks = checkMarks(subjName) || papers.some(p => checkMarks(p));
+            // 1.5. Alternative Subject Logic (Electives)
+            if (rules.alternativePairs && rules.alternativePairs.length > 0) {
+                const altPair = rules.alternativePairs.find(p => norm(p.sub1) === normSubjName || norm(p.sub2) === normSubjName);
+                if (altPair) {
+                    const partner = norm(altPair.sub1) === normSubjName ? altPair.sub2 : altPair.sub1;
+                    const hasMarks = checkMarks(subjName) || papers.some(p => checkMarks(p));
+                    const partnerHasMarks = checkMarks(partner);
 
-                if (!studentHasMarks) return false;
+                    // If partner has marks and current one doesn't, hide it
+                    if (partnerHasMarks && !hasMarks) return false;
+                }
             }
 
             return isGeneral || isGroup || isOpt;
@@ -897,10 +972,12 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
         if (isCombinedMode && isObj && subjObj.isCombined) {
             const papers = subjObj.papers || [];
-            const combinedData = student.subjects[subjName] || {};
+            const sSubjKey = normalizeText(subjName).replace(/\s+/g, '');
+            const combinedData = student.subjects[sSubjKey] || {};
 
             return papers.map((paperName, pIdx) => {
-                const data = student.subjects[paperName] || {};
+                const pSubjKey = normalizeText(paperName).replace(/\s+/g, '');
+                const data = student.subjects[pSubjKey] || {};
                 const config = state.subjectConfigs?.[paperName] || { total: 100 };
                 const maxTotal = parseInt(config.total) || 100;
 
@@ -950,7 +1027,8 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     // We also check our custom pass marks here.
                     let isSubjectFail = false;
                     papers.forEach(p => {
-                        const pData = student.subjects[p] || {};
+                        const pSubjKey = normalizeText(p).replace(/\s+/g, '');
+                        const pData = student.subjects[pSubjKey] || {};
                         const pConfig = state.subjectConfigs?.[p] || {};
                         if (getMarkClass(pData.written, pConfig.writtenPass) === 'ms-mark-fail' ||
                             getMarkClass(pData.mcq, pConfig.mcqPass) === 'ms-mark-fail' ||
@@ -1005,7 +1083,8 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
         } else {
             // Single subject (either string or non-combined object)
             const subj = isObj ? subjObj.paper : subjObj;
-            const data = student.subjects[subj] || {};
+            const sSubjKey = normalizeText(subj).replace(/\s+/g, '');
+            const data = student.subjects[sSubjKey] || {};
             const total = data.total || 0;
             const config = state.subjectConfigs?.[subj] || { total: 100 };
             const maxTotal = parseInt(config.total) || 100;
@@ -1048,11 +1127,28 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     if (grade === 'F') allPassed = false;
                 }
             } else {
-                if (grade === 'F') allPassed = false;
+                // Single Paper Mode — Both ON/OFF: separate optional subject
+                if (isOptional) {
+                    if (grade !== 'F' && gp > 2.00) {
+                        optionalBonusGP = gp - 2.00;
+                    }
+                    // OFF: optional F = overall fail | ON: optional F ignored
+                    if (ms.boardStandardOptional !== true && grade === 'F') {
+                        allPassed = false;
+                    }
+                } else {
+                    compulsoryGP += gp;
+                    compulsoryCount++;
+                    if (grade === 'F') allPassed = false;
+                }
             }
 
             if (data.status === 'ফেল' || data.status === 'fail') {
-                if (!isCombinedMode || !isOptional) allPassed = false;
+                if (isCombinedMode || ms.boardStandardOptional === true) {
+                    if (!isOptional) allPassed = false;
+                } else {
+                    allPassed = false;
+                }
             }
 
             if (isCombinedMode) {
@@ -1118,9 +1214,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
         const finalGP = compulsoryCount > 0 ? Math.min(5.00, totalGP / compulsoryCount) : 0;
         avgGPA = allPassed ? finalGP.toFixed(2) : '0.00';
     } else {
-        // In standard mode: if ANY subject has F grade, overall GPA = 0.00
-        if (allPassed) {
-            avgGPA = visibleSubjects.length > 0 ? (totalGradePointSum / visibleSubjects.length).toFixed(2) : '0.00';
+        // Single Paper Mode (both ON/OFF): GPA = (Compulsory GP + Bonus) / Compulsory Count
+        if (allPassed && compulsoryCount > 0) {
+            const totalGP = compulsoryGP + optionalBonusGP;
+            const finalGP = Math.min(5.00, totalGP / compulsoryCount);
+            avgGPA = finalGP.toFixed(2);
         } else {
             avgGPA = '0.00';
         }
@@ -1130,13 +1228,13 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     let studentRemark = '';
     if (overallGrade === 'A+' || overallGrade === 'A') {
-        studentRemark = 'চমৎকার! উত্তম ফলাফল';
+        studentRemark = 'আলহামদুলিল্লাহ! অসাধারণ ফলাফল, তোমার উত্তরোত্তর সফলতা কামনা করছি';
     } else if (overallGrade === 'A-' || overallGrade === 'B') {
-        studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে যাও...';
+        studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে এগিয়ে যাও,তোমার জন্য শুভকামনা';
     } else if (overallGrade === 'C' || overallGrade === 'D') {
-        studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকের হেল্প নাও এবং চেষ্টার কমতি রেখো না';
+        studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকদের হেল্প নাও,সমাধান কর এবং চেষ্টার কমতি রেখো না';
     } else if (overallGrade === 'F') {
-        studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে ফোকাস দাও';
+        studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে আরো বেশি করে ফোকাস দিতে হবে।';
     }
 
     // Synchronize history table GPA to exactly match the current marksheet's calculated GPA
@@ -1184,10 +1282,12 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
     const signaturesToRender = ms.signatures || (ms.signatureLabels || ['শ্রেণি শিক্ষক', 'পরীক্ষা কমিটি', 'অধ্যক্ষ']).map(l => ({ label: l, url: '' }));
 
     const signatureHtml = signaturesToRender.map(sig =>
-        `<div class="ms-sig-block">
-            ${sig.url ? `<img src="${sig.url}" class="ms-sig-img" alt="Signature">` : ''}
-            <div class="ms-sig-line"></div>
-            <span>${sig.label}</span>
+        `<div class="ms-sig-block" style="display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 120px;">
+            <div style="height: 40px; display: flex; align-items: flex-end; justify-content: center; margin-bottom: 2px; width: 100%;">
+                ${sig.url ? `<img src="${sig.url}" class="ms-sig-img" alt="Signature" style="max-height: 40px; object-fit: contain;">` : ''}
+            </div>
+            <div class="ms-sig-line" style="width: 120px; border-bottom: 1.5px solid #333; margin: 0 auto 2px;"></div>
+            <span style="font-size: 0.78rem; font-weight: 700; color: #333;">${sig.label}</span>
         </div>`
     ).join('');
 
@@ -1204,16 +1304,27 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
         if (!text && !name) return '';
 
-        let content = `<span>${text} <strong>${name}</strong></span>`;
+        let content = `<span style="color: inherit;">${text} <strong>${name}</strong></span>`;
         if (link) {
-            content += `<br><a href="${link}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:2px;">${link}</a>`;
+            content += `<span style="margin: 0 6px; color: #cbd5e1;">|</span><a href="${link}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">${link}</a>`;
         }
 
-        return `<div class="${className}">${content.trim()}</div>`;
+        return `<div class="${className}" style="margin: 0; padding: 0; display: inline-block;">${content.trim()}</div>`;
     }
 
+    // Determine if student is absent (no marks in any subject)
+    const hasAnyMarks = Object.values(student.subjects || {}).some(data =>
+        ((data.written || 0) > 0 || (data.mcq || 0) > 0 || (data.practical || 0) > 0 || (data.total || 0) > 0)
+    );
+    const isAbsentMark = !hasAnyMarks;
+
     return `
-        <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" id="ms_page_${student.id}_${student.group}" style="--ms-primary: ${ms.primaryColor || '#4361ee'};">
+        <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" 
+             id="ms_page_${student.id}_${student.group}" 
+             data-student-id="${student.id}"
+             data-student-group="${student.group}"
+             data-is-absent="${isAbsentMark}"
+             style="--ms-primary: ${ms.primaryColor || '#4361ee'};">
             
             <div class="ms-actions-float no-print">
                 <button class="ms-btn-action ms-btn-print-single" onclick="window.printSingleMarksheet('ms_page_${student.id}_${student.group}')">
@@ -1296,6 +1407,18 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
                 <!-- Result Summary -->
                 <div class="ms-result-section">
+                    ${optionalBonusGP > 0 ? `
+                    <div class="ms-result-box" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border: 1px solid #a5d6a7;">
+                        <span class="ms-result-label" style="color: #2e7d32; font-size: 0.55rem;">ঐচ্ছিক বোনাস</span>
+                        <span class="ms-result-value" style="color: #1b5e20; font-size: 1.1rem;">+${optionalBonusGP.toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    ${grandTotal === 0 ? `
+                    <div class="ms-result-box" style="background: #ffffff; border: 1.5px solid #e53935;">
+                        <span class="ms-result-label" style="color: #e53935; font-size: 0.55rem;">স্ট্যাটাস</span>
+                        <span class="ms-result-value" style="color: #d32f2f; font-size: 1rem; font-weight: 700; letter-spacing: 1px;">অনুপস্থিত</span>
+                    </div>
+                    ` : ''}
                     <div class="ms-result-box">
                         <span class="ms-result-label">GPA</span>
                         <span class="ms-result-value ms-gpa-value">${avgGPA}</span>
@@ -1320,33 +1443,33 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     <div class="ms-grade-scale-wrapper">
                         <span class="ms-gs-title" style="letter-spacing: 0.5px;">GRADING SCALE :</span>
                         <div class="ms-grade-badges">
-                            <div class="ms-gs-item gs-ap">
-                                <div class="ms-gs-top"><strong>A+</strong> (80-100) 5.00</div>
-                                <div class="ms-gs-bottom"><strong><!--GS_AP--></strong> জন</div>
+                            <div class="ms-gs-item gs-ap" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>A+</strong> <span style="font-weight: 500;">(80-100)</span> <strong>5.00</strong></div>
+                                <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_AP--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-a">
-                                <div class="ms-gs-top"><strong>A</strong> (70-79) 4.00</div>
-                                <div class="ms-gs-bottom"><strong><!--GS_A--></strong> জন</div>
+                            <div class="ms-gs-item gs-a" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>A</strong> <span style="font-weight: 500;">(70-79)</span> <strong>4.00</strong></div>
+                                <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_A--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-am">
-                                <div class="ms-gs-top"><strong>A-</strong> (60-69) 3.50</div>
-                                <div class="ms-gs-bottom"><strong><!--GS_AM--></strong> জন</div>
+                            <div class="ms-gs-item gs-am" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>A-</strong> <span style="font-weight: 500;">(60-69)</span> <strong>3.50</strong></div>
+                                <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_AM--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-b">
-                                <div class="ms-gs-top"><strong>B</strong> (50-59) 3.00</div>
-                                <div class="ms-gs-bottom"><strong><!--GS_B--></strong> জন</div>
+                            <div class="ms-gs-item gs-b" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>B</strong> <span style="font-weight: 500;">(50-59)</span> <strong>3.00</strong></div>
+                                <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_B--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-c">
-                                <div class="ms-gs-top"><strong>C</strong> (40-49) 2.00</div>
-                                <div class="ms-gs-bottom"><strong><!--GS_C--></strong> জন</div>
+                            <div class="ms-gs-item gs-c" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>C</strong> <span style="font-weight: 500;">(40-49)</span> <strong>2.00</strong></div>
+                                <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_C--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-d">
-                                <div class="ms-gs-top"><strong>D</strong> (33-39) 1.00</div>
-                                <div class="ms-gs-bottom"><strong><!--GS_D--></strong> জন</div>
+                            <div class="ms-gs-item gs-d" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>D</strong> <span style="font-weight: 500;">(33-39)</span> <strong>1.00</strong></div>
+                                <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800;"><strong><!--GS_D--></strong> জন</div>
                             </div>
-                            <div class="ms-gs-item gs-f">
-                                <div class="ms-gs-top"><strong>F</strong> (0-32) 0.00</div>
-                                <div class="ms-gs-bottom" style="color: #dc2626 !important;"><strong><!--GS_F--></strong> জন</div>
+                            <div class="ms-gs-item gs-f" style="flex: 1 1 50px; min-width: 58px;">
+                                <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>F</strong> <span style="font-weight: 500;">(0-32)</span> <strong>0.00</strong></div>
+                                <div class="ms-gs-bottom" style="font-size: 0.68rem; font-weight: 800; color: #dc2626 !important;"><strong><!--GS_F--></strong> জন</div>
                             </div>
                         </div>
                     </div>
@@ -1354,28 +1477,43 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
                 <!-- Extra Sections: History, Comments, QR -->
                 <div class="ms-extra-grid">
-                    <div class="ms-extra-box ms-history-column">
+                    <div class="ms-extra-box ms-history-column" style="display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
                         <span class="ms-extra-title">পরীক্ষার ফলাফল ইতিহাস ও মেরিট পজিশন</span>
-                        <table class="ms-history-table">
-                            <thead>
-                                <tr>
-                                    <th style="width:40%; text-align:left;">পরীক্ষার নাম</th>
-                                    <th style="text-align:center !important;">GPA</th>
-                                    <th style="text-align:center !important;" title="সমন্বিত মেধাক্রম">সমন্বিত</th>
-                                    <th style="text-align:center !important;" title="বিভাগীয় মেধাক্রম">বিভাগীয়</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="ms-history-grid-container" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%;">
+                            <!-- Header Row -->
+                            <div style="display: grid; grid-template-columns: 42% 14% 22% 22%; width: 100%; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
+                                <div style="display: flex; align-items: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: left; padding: 2px;">পরীক্ষার নাম</div>
+                                <div style="display: flex; align-items: flex-end; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;">GPA</div>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="সমন্বিত">
+                                    <span>ক্লাস</span>
+                                    <span style="font-size:0.55rem; font-weight:800; color:#64748b; margin-top:2px; letter-spacing:0.3px;">RANK</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="বিভাগীয়">
+                                    <span>বিভাগীয়</span>
+                                    <span style="font-size:0.55rem; font-weight:800; color:#64748b; margin-top:2px; letter-spacing:0.3px;">RANK</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Data Rows -->
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
                                 ${history.length > 0 ? history.map(h => `
-                                    <tr>
-                                        <td style="text-align:left; vertical-align:middle;">${h.name}</td>
-                                        <td style="text-align:center !important; font-weight:600;">${h.gpa}</td>
-                                        <td style="text-align:center !important; font-weight:700; color:var(--ms-primary, #4361ee) !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"><span style="font-size: 0.9em; color:#64748b !important; font-weight:500;">Rank -</span> ${h.rank}</td>
-                                        <td style="text-align:center !important; font-weight:700; color:#16a34a !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"><span style="font-size: 0.9em; color:#64748b !important; font-weight:500;">Rank -</span> ${h.groupRank}</td>
-                                    </tr>
-                                `).join('') : '<tr><td colspan="4" style="text-align:center; opacity:0.5; padding: 10px 0;">হিস্টোরি নেই</td></tr>'}
-                            </tbody>
-                        </table>
+                                    <div style="display: grid; grid-template-columns: 42% 14% 22% 22%; width: 100%; border-bottom: 1px dashed #f1f5f9; padding: 6px 0; align-items: center;">
+                                        <div style="font-size: 0.72rem; font-weight: 600; color: #334155; text-align: left; padding: 2px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3;">${h.name}</div>
+                                        <div style="font-size: 0.8rem; font-weight: 700; color: #0f172a; text-align: center; padding: 2px;">${h.gpa}</div>
+                                        <div style="text-align: center; padding: 2px;">
+                                            <div style="display: inline-block; background: rgba(67, 97, 238, 0.08); color: var(--ms-primary, #4361ee); padding: 4px 6px; border-radius: 4px; font-size: 0.85rem; font-weight: 800; line-height: 1; min-width: 38px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                                                ${h.rank}<span style="font-size: 0.6rem; font-weight: 700; margin-left: 1px;">তম</span>
+                                            </div>
+                                        </div>
+                                        <div style="text-align: center; padding: 2px;">
+                                            <div style="display: inline-block; background: rgba(22, 163, 74, 0.08); color: #16a34a; padding: 4px 6px; border-radius: 4px; font-size: 0.85rem; font-weight: 800; line-height: 1; min-width: 38px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                                                ${h.groupRank}<span style="font-size: 0.6rem; font-weight: 700; margin-left: 1px;">তম</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('') : '<div style="text-align:center; font-size: 0.75rem; opacity:0.5; padding: 10px 0; width: 100%;">হিস্টোরি নেই</div>'}
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="ms-extra-box ms-comments-box">
@@ -1388,27 +1526,33 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         </div>
                     </div>
                     
-                    <div class="ms-extra-box ms-qr-column">
-                        <div class="ms-qr-canvas-wrapper">
+                    <div class="ms-extra-box ms-qr-column" style="justify-content: space-between; padding: 2px !important; padding-bottom: 0 !important;">
+                        <div class="ms-qr-canvas-wrapper" style="margin-bottom: -4px; padding: 0;">
                             <canvas class="ms-mr-qr-canvas" data-uid="${uid}" data-exam="${examDisplayName}" data-name="${student.name}"></canvas>
                         </div>
-                        <div class="ms-qr-uid">ID No. ${uid}</div>
+                        <div class="ms-qr-text-info" style="display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: -2px;">
+                            <div style="color: #0f172a; font-size: 0.58rem; font-weight: 800; margin-bottom: 1px; line-height: 1;">স্ক্যান এন্ড ভেরিফাই</div>
+                            <div style="font-size: 0.62rem; color: #2563eb; font-weight: 700; margin-bottom: 0px; letter-spacing: 0.2px; text-transform: lowercase;">${window.location.hostname}</div>
+                            <div class="ms-qr-uid" style="margin-top: 0; background: #f8fafc; width: 100%; padding: 3px 0; border-top: 1px dashed #cbd5e1; font-size: 0.65rem; color: #1e293b; font-weight: 700;">ID No. ${uid}</div>
+                        </div>
                     </div>
                 </div>
 
 
                 <!-- Signatures -->
-                <div class="ms-flex-spacer"></div>
-                <div class="ms-signatures-section">
+                <div class="ms-flex-spacer" style="flex-grow: 1;"></div>
+                <div class="ms-signatures-section" style="position: relative; display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px; padding: 0 10px;">
                     ${signatureHtml}
                 </div>
 
-                <!-- Footer -->
-                <div class="ms-footer">
-                    <span>জেনারেটেড  তারিখ: ${todayDate}</span>
-                    <span>এটি কম্পিউটার জেনারেটেড ফলাফল পত্র</span>
+                <!-- Footer with safe flexible inline layout -->
+                <div class="ms-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding: 8px 0 10px 0;">
+                    <span style="white-space: nowrap;">জেনারেটেড তারিখ: ${todayDate}</span>
+                    <div style="text-align: center; white-space: nowrap; padding: 0 4px;">
+                        ${getDeveloperCreditHtml('ms-dev-credit')}
+                    </div>
+                    <span style="white-space: nowrap;">এটি কম্পিউটার জেনারেটেড ফলাফল পত্র</span>
                 </div>
-                ${getDeveloperCreditHtml('ms-dev-credit')}
             </div>
         </div>
     `;
@@ -1642,6 +1786,7 @@ function initMarksheetSettingsModal() {
             if (el('msRowDensity')) el('msRowDensity').value = marksheetSettings.rowDensity || 'normal';
             if (el('msShowSummary')) el('msShowSummary').checked = marksheetSettings.showSummary !== false;
             if (el('msShowGradeScale')) el('msShowGradeScale').checked = marksheetSettings.showGradeScale !== false;
+            if (el('msBoardStandardOptional')) el('msBoardStandardOptional').checked = marksheetSettings.boardStandardOptional === true;
 
             // Render Signature Slots
             renderSignatureSlots();
@@ -1661,6 +1806,17 @@ function initMarksheetSettingsModal() {
             // Render checklists
             renderSubjectVisibilityToggles();
             renderHistoryExamsChecklist();
+
+            // Populate mapping dropdown (async load all subjects)
+            try {
+                const msMapSubSelect = document.getElementById('msMapSubject');
+                if (msMapSubSelect) await populateSubjectSelect(msMapSubSelect);
+            } catch (e) {
+                console.warn('Subject population failed:', e);
+            }
+
+            // Always render mappings even if dropdown fails
+            renderSubjectMappings();
 
             if (modal) modal.classList.add('active');
         });
@@ -1770,6 +1926,7 @@ function initMarksheetSettingsModal() {
                 historyExams: marksheetSettings.historyExams || [],
                 showSummary: document.getElementById('msShowSummary').checked,
                 showGradeScale: document.getElementById('msShowGradeScale').checked,
+                boardStandardOptional: document.getElementById('msBoardStandardOptional')?.checked || false,
                 signatures: signatures.length > 0 ? signatures : [
                     { label: 'শ্রেণি শিক্ষক', url: '' },
                     { label: 'পরীক্ষা কমিটি', url: '' },
@@ -2037,19 +2194,31 @@ window.printSingleMarksheet = function (containerId) {
 };
 
 /**
- * Bulk Print - Opens an isolated print window with all marksheets
+ * Bulk Print - Opens an isolated print window with all or filtered marksheets
+ * @param {string} filter - 'all', 'absent', or 'present'
  */
-function bulkPrint() {
+function bulkPrint(filter = 'all') {
     const previewArea = document.getElementById('marksheetPreview');
     if (!previewArea) return;
 
-    const allPages = previewArea.querySelectorAll('.ms-page');
+    let allPages = Array.from(previewArea.querySelectorAll('.ms-page'));
+
+    // Filter logic
+    if (filter === 'absent') {
+        allPages = allPages.filter(p => p.getAttribute('data-is-absent') === 'true');
+    } else if (filter === 'present') {
+        allPages = allPages.filter(p => p.getAttribute('data-is-absent') === 'false');
+    }
+
     if (allPages.length === 0) {
-        showNotification('প্রিন্ট করার জন্য কোনো মার্কশীট নেই', 'error');
+        const msg = filter === 'absent' ? 'কোনো অনুপস্থিত শিক্ষার্থীর মার্কশীট নেই' :
+            filter === 'present' ? 'কোনো উপস্থিত শিক্ষার্থীর মার্কশীট নেই' :
+                'প্রিন্ট করার জন্য কোনো মার্কশীট নেই';
+        showNotification(msg, 'error');
         return;
     }
 
-    const marksheetHtmlArray = Array.from(allPages).map(p => p.outerHTML);
+    const marksheetHtmlArray = allPages.map(p => p.outerHTML);
     const htmlContent = buildMarksheetPrintDocument(marksheetHtmlArray);
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) {
@@ -2069,9 +2238,20 @@ export async function initMarksheetManager() {
         generateBtn.addEventListener('click', generateMarksheets);
     }
 
+    // Print Buttons
     const printAllBtn = document.getElementById('msPrintAllBtn');
     if (printAllBtn) {
-        printAllBtn.addEventListener('click', bulkPrint);
+        printAllBtn.onclick = () => bulkPrint('all');
+    }
+
+    const printPresentBtn = document.getElementById('msPrintPresentBtn');
+    if (printPresentBtn) {
+        printPresentBtn.onclick = () => bulkPrint('present');
+    }
+
+    const printAbsentBtn = document.getElementById('msPrintAbsentBtn');
+    if (printAbsentBtn) {
+        printAbsentBtn.onclick = () => bulkPrint('absent');
     }
 
     const resetBtn = document.getElementById('msResetBtn');
@@ -2113,6 +2293,39 @@ export async function initMarksheetManager() {
 
     initMarksheetSettingsModal();
     await populateMSDropdowns();
+
+    // The mapping UI is now initialized via initStudentMappingUI triggered from app.js
+    // to ensure the bindings happen even when skipping the main marksheet view
+}
+
+/**
+ * Initialize Student-wise Mapping UI events and states
+ */
+export function initStudentMappingUI() {
+    const msMapSubjectSelect = document.getElementById('msMapSubject');
+    const msMapAddBtn = document.getElementById('msMapAddBtn');
+
+    // Check if dropdowns need re-populating (though populateMarksheetSettingsDropdowns shouldn't conflict)
+    if (msMapSubjectSelect && msMapSubjectSelect.options.length <= 1) {
+        populateSubjectSelect(msMapSubjectSelect);
+
+        window.addEventListener('hashchange', () => {
+            if (window.location.hash === '#marksheet-settings') {
+                populateSubjectSelect(msMapSubjectSelect);
+                renderSubjectMappings();
+            }
+        });
+    }
+
+    if (msMapAddBtn) {
+        // Rewrite click handler to perfectly catch user input and prevent defaults
+        msMapAddBtn.onclick = (e) => {
+            e.preventDefault();
+            addSubjectMapping();
+        };
+    }
+
+    renderSubjectMappings();
 }
 
 /**
@@ -2245,7 +2458,7 @@ export function applyCombinedPaperLogic(studentsArray, currentSubjects, rules, a
                 const data1 = student.subjects[p1];
                 const data2 = student.subjects[p2];
 
-                if (data1 || data2) {
+                if (data1 !== undefined || data2 !== undefined) {
                     const combinedData = {
                         written: (data1?.written || 0) + (data2?.written || 0),
                         mcq: (data1?.mcq || 0) + (data2?.mcq || 0),
@@ -2302,7 +2515,7 @@ export async function renderMarksheetQRCodes(container) {
                 width: 600, // Ultra-High Resolution for sharpest print
                 margin: 0,
                 color: { dark: '#000000', light: '#ffffff' }, // Pure black for max contrast
-                errorCorrectionLevel: 'Q' // Faster scanning on physical prints
+                errorCorrectionLevel: 'H' // Highest error correction for best print scanning
             });
 
             // 2. Convert Canvas to High-Quality Image
@@ -2314,10 +2527,13 @@ export async function renderMarksheetQRCodes(container) {
                 const img = document.createElement('img');
                 img.src = qrImageUrl;
                 img.classList.add('ms-qr-printable-img');
-                img.style.width = '130px'; // Increased size for visibility
-                img.style.height = '130px';
+                img.style.width = '100%'; // Make it fill the container
+                img.style.maxWidth = '165px'; // Allow it to grow significantly larger
+                img.style.height = 'auto';
+                img.style.objectFit = 'contain';
                 img.style.display = 'block';
                 img.style.imageRendering = 'pixelated'; // Prevent blurring
+                img.style.margin = '0 auto';
 
                 // Clear and update
                 wrapper.innerHTML = '';
@@ -2330,4 +2546,213 @@ export async function renderMarksheetQRCodes(container) {
         }
     }
 }
+
+/**
+ * Populate any select element with current available subjects
+ */
+async function populateSubjectSelect(selectElement) {
+    if (!selectElement) return;
+
+    const tryPopulate = async (retryCount = 0) => {
+        const subjects = await getAllAvailableSubjects();
+
+        if (subjects.length > 0) {
+            let html = '<option value="">বিষয় নির্বাচন করুন</option>';
+            subjects.forEach(sub => {
+                html += `<option value="${sub}">${sub}</option>`;
+            });
+            selectElement.innerHTML = html;
+            return true;
+        }
+
+        if (retryCount < 3) {
+            selectElement.innerHTML = '<option value="">লোড হচ্ছে...</option>';
+            setTimeout(() => tryPopulate(retryCount + 1), 1500);
+            return false;
+        } else {
+            selectElement.innerHTML = '<option value="">কোনো বিষয় খুঁজে পাওয়া যায়নি</option>';
+            return false;
+        }
+    };
+
+    await tryPopulate();
+}
+
+/**
+ * Add a new student-wise subject mapping
+ */
+async function addSubjectMapping() {
+    const subject = document.getElementById('msMapSubject').value;
+    const group = document.getElementById('msMapGroup').value;
+    const rollsInput = document.getElementById('msMapRolls').value;
+
+    if (!subject || !rollsInput) {
+        showNotification('বিষয় এবং রোল নম্বর প্রদান করুন', 'error');
+        return;
+    }
+
+    // Clean roll numbers
+    const rolls = rollsInput.split(',')
+        .map(r => r.trim())
+        .filter(r => r !== '' && !isNaN(r))
+        .map(r => parseInt(r));
+
+    if (rolls.length === 0) {
+        showNotification('সঠিক রোল নম্বর প্রদান করুন', 'error');
+        return;
+    }
+
+    if (!marksheetSettings.subjectMapping) {
+        marksheetSettings.subjectMapping = [];
+    }
+
+    // Add or update mapping
+    const existingIdx = marksheetSettings.subjectMapping.findIndex(m => m.subject === subject && m.group === group);
+    if (existingIdx > -1) {
+        // Merge rolls, unique
+        const combined = [...new Set([...marksheetSettings.subjectMapping[existingIdx].rolls, ...rolls])];
+        marksheetSettings.subjectMapping[existingIdx].rolls = combined;
+    } else {
+        marksheetSettings.subjectMapping.push({
+            subject,
+            group,
+            rolls
+        });
+    }
+
+    const success = await saveMarksheetSettings(marksheetSettings);
+
+    // Also sync to localStorage for resultEntryManager filter
+    try {
+        localStorage.setItem('pa_marksheet_settings', JSON.stringify(marksheetSettings));
+    } catch (e) { }
+
+    if (success) {
+        showNotification('সাবজেক্ট ম্যাপিং সংরক্ষিত হয়েছে ✅', 'success');
+        document.getElementById('msMapRolls').value = '';
+        renderSubjectMappings();
+    }
+}
+
+/**
+ * Render the list of subject mappings
+ */
+function renderSubjectMappings() {
+    const container = document.getElementById('msMappingList');
+    if (!container) return;
+
+    if (!marksheetSettings.subjectMapping || marksheetSettings.subjectMapping.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding: 20px; opacity: 0.5; font-size: 0.8rem;">কোনো ম্যাপিং নেই</div>';
+        return;
+    }
+
+    let html = '';
+    marksheetSettings.subjectMapping.forEach((m, idx) => {
+        html += `
+            <div class="ms-settings-item" style="border-left: 3px solid var(--primary-color, #3b82f6); margin-bottom: 8px; justify-content: space-between; align-items: start;">
+                <div style="flex:1;">
+                    <div style="font-weight: 800; font-size: 0.85rem; color: var(--text-color);">${m.subject}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                        <span class="badge" style="background: rgba(var(--primary-rgb, 59, 130, 246), 0.1); color: var(--primary-color, #3b82f6); padding: 2px 6px;">${m.group}</span>
+                    </div>
+                    <div style="font-size: 0.75rem; margin-top: 4px; overflow-wrap: break-word; color: var(--text-color); opacity: 0.85;">
+                        <strong>রোলসমূহ:</strong> ${m.rolls.join(', ')}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 4px; align-items: start;">
+                    <button onclick="window.editSubjectMapping(${idx})" class="btn-clear" style="color: var(--primary-color, #3b82f6); padding: 4px; border:none; background:transparent;" title="এডিট করুন">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="window.removeSubjectMapping(${idx})" class="btn-clear" style="color: #ef4444; padding: 4px; border:none; background:transparent;" title="মুছে ফেলুন">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+/**
+ * Remove a mapping entry
+ */
+window.removeSubjectMapping = (index) => {
+    const mapping = marksheetSettings.subjectMapping[index];
+    showConfirmModal(
+        'আপনি কি নিশ্চিত যে এই ম্যাপিংটি মুছে ফেলতে চান?',
+        async () => {
+            marksheetSettings.subjectMapping.splice(index, 1);
+            const success = await saveMarksheetSettings(marksheetSettings);
+
+            // Sync to local
+            try { localStorage.setItem('pa_marksheet_settings', JSON.stringify(marksheetSettings)); } catch (e) { }
+
+            if (success) {
+                showNotification('ম্যাপিং মুছে ফেলা হয়েছে ✅', 'success');
+                renderSubjectMappings();
+            }
+        },
+        `${mapping.subject}`,
+        `গ্রুপ: ${mapping.group} | রোল সংখ্যা: ${mapping.rolls.length}টি`
+    );
+};
+
+/**
+ * Edit a mapping entry
+ */
+window.editSubjectMapping = (index) => {
+    const mapping = marksheetSettings.subjectMapping[index];
+
+    // Populate form fields
+    const subjectEl = document.getElementById('msMapSubject');
+    if (subjectEl) subjectEl.value = mapping.subject;
+
+    const groupEl = document.getElementById('msMapGroup');
+    if (groupEl) groupEl.value = mapping.group;
+
+    const rollsEl = document.getElementById('msMapRolls');
+    if (rollsEl) {
+        rollsEl.value = mapping.rolls.join(', ');
+        rollsEl.focus();
+    }
+
+    // Remove the current entry from the DOM list immediately for clean UX
+    // It is deliberately NOT saved to DB until they hit Add Mapping.
+    marksheetSettings.subjectMapping.splice(index, 1);
+    renderSubjectMappings();
+};
+
+/**
+ * Get all available subject names for mapping dropdown.
+ * Uses the SAME proven pattern as marksheetRulesManager.js (lines 102-139).
+ */
+async function getAllAvailableSubjects() {
+    const metaKeys = ['updatedAt', 'id', 'session', 'class', 'status', 'examId'];
+
+    // 1. Primary: Class-Subject Mappings (Firestore or cached)
+    let mappingSubjects = [];
+    try {
+        let classSubjectMappings = state.classSubjectMapping || {};
+        if (Object.keys(classSubjectMappings).length === 0) {
+            classSubjectMappings = await getClassSubjectMappings();
+            state.classSubjectMapping = classSubjectMappings;
+        }
+        mappingSubjects = Object.entries(classSubjectMappings)
+            .filter(([key]) => !metaKeys.includes(key))
+            .flatMap(([, subs]) => Array.isArray(subs) ? subs : [])
+            .filter(Boolean);
+    } catch (e) {
+        console.warn('getAllAvailableSubjects: mapping fetch failed', e);
+    }
+
+    // 2. Fallback: Subject Configs + Saved Exams
+    const configSubjects = Object.keys(state.subjectConfigs || {}).filter(k => !metaKeys.includes(k));
+    const examSubjects = (state.savedExams || []).map(e => e.subject).filter(Boolean);
+
+    // 3. Combine, deduplicate, sort
+    return [...new Set([...mappingSubjects, ...configSubjects, ...examSubjects])]
+        .filter(s => s && typeof s === 'string' && s.length > 2)
+        .sort((a, b) => a.localeCompare(b, 'bn'));
+}
+
 

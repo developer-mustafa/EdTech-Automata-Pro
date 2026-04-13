@@ -1183,6 +1183,84 @@
             </div>
           </div>
 
+          <!-- Grouped 2-Column Responsive Layout -->
+          <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            
+            <!-- Alternative Subjects Card (Electives) -->
+            <div class="card ms-settings-card">
+              <div class="card-header" style="background: rgba(156, 39, 176, 0.1);">
+                <h4 style="margin:0; font-size: 1rem;"><i class="fas fa-exchange-alt"></i> বিকল্প বিষয় (Alternative Subjects)</h4>
+              </div>
+              <div class="card-body">
+                <p style="font-size: 0.75rem; color: #666; margin-bottom: 10px;">যেকোনো ২টি বিষয় সেট করুন যার মধ্যে একটি থাকলে অন্যটি শো করবে না।</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; align-items: start;">
+                  <!-- Left side: Inputs -->
+                  <div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                      <label style="font-size: 0.7rem;">বিষয়-১ (Subject 1)</label>
+                      <select id="msSetAltSubject1" class="form-control"></select>
+                    </div>
+                    <div class="input-group" style="display:flex; gap: 8px; margin-bottom: 15px; flex-direction: column;">
+                      <label style="font-size: 0.7rem;">বিষয়-২ (Subject 2)</label>
+                      <div style="display: flex; gap: 8px; width: 100%;">
+                          <select id="msSetAltSubject2" class="form-control" style="flex:1;"></select>
+                          <button id="msSetAltAddBtn" class="dm-btn dm-save"><i class="fas fa-plus"></i></button>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Right side: List -->
+                  <div id="msSetAltList" class="ms-settings-list" style="max-height: 250px; overflow-y: auto;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Student-wise Subject Mapping Card (NEW) -->
+            <div class="card ms-settings-card" id="msSubjectMappingPanel">
+              <div class="card-header" style="background: rgba(var(--primary-rgb), 0.1); border-left: 4px solid var(--primary-color);">
+                <h4 style="margin:0; font-size: 1rem;"><i class="fas fa-user-tag"></i> নির্ধারিত বিষয় ম্যাপিং (Student Core Subjects)</h4>
+              </div>
+              <div class="card-body">
+                <p style="font-size: 0.75rem; color: #666; margin-bottom: 12px;">নির্দিষ্ট রোলের জন্য কোনো বিষয় নির্ধারিত থাকলে এখানে সেট করুন।</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; align-items: start;">
+                  <!-- Left side: Inputs -->
+                  <div>
+                    <div class="form-group mb-2">
+                      <label style="font-size: 0.7rem;">বিষয় নির্বাচন করুন</label>
+                      <select id="msMapSubject" class="form-control"></select>
+                    </div>
+                    
+                    <div class="row g-2 mb-3">
+                      <div class="col-6">
+                        <label style="font-size: 0.7rem;">গ্রুপ</label>
+                        <select id="msMapGroup" class="form-control">
+                          <option value="বিজ্ঞান গ্রুপ">বিজ্ঞান</option>
+                          <option value="ব্যবসায় গ্রুপ">ব্যবসায়</option>
+                          <option value="মানবিক গ্রুপ">মানবিক</option>
+                        </select>
+                      </div>
+                      <div class="col-6">
+                        <label style="font-size: 0.7rem;">রোল (উদা: 9, 12, 15)</label>
+                        <input type="text" id="msMapRolls" class="form-control" placeholder="রোল লিখুন">
+                      </div>
+                    </div>
+
+                    <button id="msMapAddBtn" class="dm-btn dm-save" style="width: 100%; justify-content: center;">
+                      <i class="fas fa-plus-circle"></i> ম্যাপিং যোগ করুন
+                    </button>
+                  </div>
+
+                  <!-- Right side: List -->
+                  <div>
+                    <div id="msMappingList" class="ms-settings-list" style="max-height: 250px; overflow-y: auto;">
+                      <!-- Mapping items will be loaded here -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
           <!-- Paper Mapping Card -->
           <div class="card ms-settings-card" style="grid-column: 1 / -1;">
             <div class="card-header" style="background: rgba(33, 150, 243, 0.1);">
@@ -1191,17 +1269,17 @@
             </div>
             <div class="card-body">
               <div class="mapping-inputs"
-                style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; margin-bottom: 20px;">
+                style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; margin-bottom: 15px;">
                 <div class="m-input">
-                  <label style="font-size: 0.8rem; display:block;">প্রথম পত্র (Paper 1)</label>
+                  <label style="font-size: 0.7rem; display:block;">প্রথম পত্র (Paper 1)</label>
                   <select id="msSetCombPaper1" class="form-control"></select>
                 </div>
                 <div class="m-input">
-                  <label style="font-size: 0.8rem; display:block;">দ্বিতীয় পত্র (Paper 2)</label>
+                  <label style="font-size: 0.7rem; display:block;">দ্বিতীয় পত্র (Paper 2)</label>
                   <select id="msSetCombPaper2" class="form-control"></select>
                 </div>
                 <div class="m-input">
-                  <label style="font-size: 0.8rem; display:block;">সম্মিলিত নাম (Combined Name)</label>
+                  <label style="font-size: 0.7rem; display:block;">সম্মিলিত নাম (Combined Name)</label>
                   <input type="text" id="msSetCombCombinedName" class="form-control" placeholder="উদা: বাংলা বা ইংরেজি">
                 </div>
                 <div class="m-input" style="display: flex; align-items: flex-end;">
@@ -1210,7 +1288,7 @@
                 </div>
               </div>
               <div id="msSetCombList" class="mapping-list-grid"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;"></div>
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;"></div>
             </div>
           </div>
 
@@ -1248,8 +1326,14 @@
             class="dm-btn-text">মার্কশীট তৈরি করুন</span></button>
         <button id="msResetBtn" class="dm-btn dm-report"><i class="fas fa-sync-alt"></i> <span
             class="dm-btn-text">রিসেট</span></button>
-        <button id="msPrintAllBtn" class="dm-btn dm-report" style="display:none;"><i class="fas fa-print"></i> <span
-            class="dm-btn-text">বাল্ক প্রিন্ট</span></button>
+        <button id="msPrintPresentBtn" class="dm-btn dm-save" style="display:none; background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); margin-right: 8px;">
+          <i class="fas fa-user-check"></i> <span class="dm-btn-text">উপস্থিত প্রিন্ট</span>
+        </button>
+        <button id="msPrintAbsentBtn" class="dm-btn dm-report" style="display:none; background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);">
+          <i class="fas fa-user-times"></i> <span class="dm-btn-text">অনুপস্থিত প্রিন্ট</span>
+        </button>
+        <button id="msPrintAllBtn" class="dm-btn dm-report" style="display:none; opacity: 0.8;"><i class="fas fa-print"></i> <span
+            class="dm-btn-text">সব প্রিন্ট</span></button>
       </div>
       <div class="marksheet-preview-wrapper">
         <div class="preview-header marksheet-main-preview-header" style="display: none;" id="msMainPreviewHeader">
@@ -2886,6 +2970,19 @@
                     </div>
                     <label class="ac-sw">
                       <input type="checkbox" id="msShowGradeScale" checked>
+                      <span class="ac-sw-sl"></span>
+                    </label>
+                  </div>
+
+                  <div
+                    style="background: linear-gradient(135deg, rgba(156, 39, 176, 0.05), rgba(103, 58, 183, 0.05)); padding: 15px; border-radius: 12px; border: 1px solid rgba(156, 39, 176, 0.2); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <h4 style="margin: 0; font-size: 1rem; color: #7b1fa2;"><i class="fas fa-graduation-cap" style="margin-right: 5px;"></i>বোর্ড স্ট্যান্ডার্ড (ঐচ্ছিক বিষয়)</h4>
+                      <p style="margin: 5px 0 0; font-size: 0.75rem; opacity: 0.7;">চালু থাকলে: ঐচ্ছিক বিষয়ে ফেল করলেও পাশ + বোনাস GP যুক্ত হবে। বন্ধ থাকলে: সাধারণ নিয়মে + "অপশনাল সহ GPA" দেখাবে।
+                      </p>
+                    </div>
+                    <label class="ac-sw">
+                      <input type="checkbox" id="msBoardStandardOptional">
                       <span class="ac-sw-sl"></span>
                     </label>
                   </div>
