@@ -1309,6 +1309,11 @@ export async function renderSavedExamsList(container, exams, options = {}) {
     const participants = stats.participants || 0;
     const passed = stats.passedStudents || 0;
     const passRate = participants > 0 ? Math.round((passed / participants) * 100) : 0;
+    
+    // Calculate absent percentage
+    const absent = stats.absentStudents || 0;
+    const total = stats.totalStudents || 0;
+    const absentRate = total > 0 ? Math.round((absent / total) * 100) : 0;
 
     // Get color based on pass rate
     const barColor = passRate >= 80 ? '#27ae60' : passRate >= 50 ? '#f39c12' : '#e74c3c';
@@ -1341,7 +1346,11 @@ export async function renderSavedExamsList(container, exams, options = {}) {
                     <div class="stats-row-minimal">
                         <div class="stat-group">
                           <span class="stat-label-tiny">মোট</span>
-                          <div class="stat-bubble" title="শিক্ষার্থী"><i class="fas fa-users"></i> ${stats.totalStudents || 0}</div>
+                          <div class="stat-bubble" title="শিক্ষার্থী"><i class="fas fa-users"></i> ${total}</div>
+                        </div>
+                        <div class="stat-group">
+                          <span class="stat-label-tiny">অনুপস্থিত</span>
+                          <div class="stat-bubble warn" title="অনুপস্থিত"><i class="fas fa-user-slash"></i> ${absent}</div>
                         </div>
                         <div class="stat-group">
                           <span class="stat-label-tiny">পরীক্ষার্থী</span>
@@ -1357,11 +1366,14 @@ export async function renderSavedExamsList(container, exams, options = {}) {
                         </div>
                     </div>
 
-                    <div class="progress-section-minimal">
-                        <div class="progress-container-minimal">
-                          <div class="progress-fill-minimal" style="width: ${passRate}%; background: ${barColor}"></div>
+                    <div class="single-progress-section">
+                        <div class="progress-labels">
+                            <span style="color: ${barColor}">পাশের হার</span>
+                            <strong>${passRate}%</strong>
                         </div>
-                        <span class="pass-rate-minimal">${passRate}%</span>
+                        <div class="progress-container-minimal">
+                            <div class="progress-fill-minimal" style="width: ${passRate}%; background: ${barColor}"></div>
+                        </div>
                     </div>
                 </div>
 
