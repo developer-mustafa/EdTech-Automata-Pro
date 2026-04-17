@@ -88,9 +88,16 @@ export function createPerformanceChart(canvas, data, options = {}) {
     const limitedData = sortedData.slice(0, MAX_CHART_ENTRIES);
 
 
+    const showDetailsCheckbox = document.getElementById('showChartDetails');
+    const showDetails = showDetailsCheckbox ? showDetailsCheckbox.checked : false;
+
     // Prepare chart data
     const chartConfig = CHART_TYPES[chartType];
     const labels = limitedData.map((student) => {
+        if (!showDetails) {
+            return `${student.id}`;
+        }
+        
         let groupAbbr = '';
         if (student.group) {
             if (student.group.includes('বিজ্ঞান')) groupAbbr = 'S';

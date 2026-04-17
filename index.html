@@ -432,13 +432,14 @@
       </div>
 
       <!-- Main Chart Section -->
-      <div class="card">
-        <div class="section-toggle-header" id="chartSectionToggle">
-          <h2 class="card-title" id="chartTitle">মোট স্কোর র‌্যাঙ্কিং</h2>
-          <i class="fas fa-chevron-up toggle-icon" id="chartSectionIcon"></i>
-        </div>
-        <div id="chartSectionCollapse" class="collapse-container">
-          <div class="view-toggle">
+      <div class="card" style="overflow: visible;">
+        <div class="dashboard-chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+          <h2 class="card-title" id="chartTitle" style="margin-bottom: 0;">মোট স্কোর র‌্যাঙ্কিং</h2>
+          <div class="view-toggle" style="margin-bottom: 0px; align-items: center;">
+            <label class="chart-details-toggle" style="display: flex; align-items: center; gap: 6px; margin-right: 15px; font-size: 0.9rem; cursor: pointer; color: var(--text-color); font-weight: 600; user-select: none;">
+              <input type="checkbox" id="showChartDetails" checked style="cursor: pointer; width: 16px; height: 16px;">
+              বিস্তারিত দেখাও
+            </label>
             <button class="view-btn" id="downloadBtn"
               style="background: var(--success); color: white; border: none; margin-right: 10px;">
               <i class="fas fa-download"></i> ডাউনলোড
@@ -460,6 +461,8 @@
               এনালাইসিস
             </div>
           </div>
+        </div>
+        <div id="chartSectionCollapse">
           <div class="chart-container horizontal-chart" id="chartView">
             <canvas id="performanceChart"></canvas>
           </div>

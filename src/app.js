@@ -1491,15 +1491,7 @@ function initEventListeners() {
         });
     }
 
-    elements.chartSectionToggle?.addEventListener('click', () => {
-        const isCollapsed = elements.chartSectionCollapse.style.display === 'none';
-        elements.chartSectionCollapse.style.display = isCollapsed ? 'block' : 'none';
-
-        // Rotate icon: 0deg (up) when expanded, 180deg (down) when collapsed
-        if (elements.chartSectionIcon) {
-            elements.chartSectionIcon.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
-        }
-    });
+    document.getElementById('showChartDetails')?.addEventListener('change', updateViews);
 
     // Ensure it starts visible but properly styled
     if (elements.savedExamsCollapse) {
