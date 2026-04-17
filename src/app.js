@@ -44,7 +44,7 @@ import { getMarksheetSettings, loadMarksheetSettings } from './js/modules/marksh
 import { loadMarksheetRules, currentMarksheetRules } from './js/modules/marksheetRulesManager.js';
 
 
-import { initPageRouter, updateNavVisibility } from './js/modules/pageRouter.js';
+import { initPageRouter, updateNavVisibility, navigateTo } from './js/modules/pageRouter.js';
 import AccessControlManager from './js/modules/accessControlManager.js';
 import { initNoticeManager, updateNoticeAcl } from './js/modules/noticeManager.js';
 
@@ -792,9 +792,33 @@ function initEventListeners() {
             const candidates = await handleCandidateSearch(query, state.currentExamSession, state.currentExamClass);
             if (candidates.length > 0) {
                 elements.globalSearchResults.style.display = 'grid';
-                renderCandidateResults(elements.globalSearchResults, candidates, (student) => {
-                    transitionToAnalysis(student);
+                renderCandidateResults(elements.globalSearchResults, candidates, async (student) => {
+                    // 1. Hide dropdown and clear search field immediately
                     elements.globalSearchResults.style.display = 'none';
+                    if (elements.searchInput) {
+                        elements.searchInput.value = '';
+                    }
+
+                    // 2. Force navigate to dashboard page globally (await transition)
+                    await navigateTo('dashboard');
+                    
+                    // 3. Set dashboard UI view to analysis
+                    state.currentView = 'analysis';
+                    document.querySelectorAll('.view-toggle .view-btn').forEach(btn => btn.classList.remove('active'));
+                    const analysisBtn = document.querySelector('.view-toggle .view-btn[data-view="analysis"]');
+                    if (analysisBtn) analysisBtn.classList.add('active');
+                    
+                    // 4. Mount student data into analysis module
+                    transitionToAnalysis(student);
+                    
+                    // 5. Scroll directly to the analysis view
+                    const analysisContainer = document.getElementById('analysisView');
+                    if (analysisContainer) {
+                        setTimeout(() => {
+                            // Scroll but add an offset if there's a sticky header, or scroll straight to it
+                            analysisContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 150); // slight delay for DOM to render the chart
+                    }
                 });
             } else {
                 elements.globalSearchResults.style.display = 'none';
@@ -1328,12 +1352,13 @@ function initEventListeners() {
         refreshAnalysisChart();
     });
     elements.analysisSubjectSelect?.addEventListener('change', () => {
-        const selectedExamId = elements.analysisExamSelect?.value;
-        if (selectedExamId && selectedExamId !== 'all') {
-            const exam = state.savedExams.find(e => e.docId === selectedExamId);
+        const selectedExamName = elements.analysisExamSelect?.value;
+        if (selectedExamName && selectedExamName !== 'all') {
             const selectedSub = elements.analysisSubjectSelect.value;
-            // If user picks a subject different from the specific exam's subject, reset exam to all
-            if (exam && exam.subject !== selectedSub && selectedSub !== 'all') {
+            const examHasSubject = state.savedExams.some(e => e.name === selectedExamName && e.subject === selectedSub);
+            
+            // If user picks a subject that doesn't exist in the selected exam, reset exam to all
+            if (selectedSub !== 'all' && !examHasSubject) {
                 elements.analysisExamSelect.value = 'all';
             }
         }
@@ -1353,7 +1378,23 @@ function initEventListeners() {
             captureElementAsImage(target, `ফলাফল - বিশ্লেষণ - ${state.currentAnalyzedStudent?.name || 'শিক্ষার্থী'}.png`);
         }
     });
-
+    document.getElementById('resetAnalysisBtn')?.addEventListener('click', () => {
+        // Switch view back to 'chart'
+        state.currentView = 'chart';
+        document.querySelectorAll('.view-toggle .view-btn').forEach(btn => btn.classList.remove('active'));
+        const chartBtn = document.querySelector('.view-toggle .view-btn[data-view="chart"]');
+        if (chartBtn) chartBtn.classList.add('active');
+        
+        // Clear analysis context
+        if (elements.analysisStudentId) elements.analysisStudentId.value = '';
+        if (elements.analysisSearchResults) elements.analysisSearchResults.style.display = 'none';
+        state.currentAnalyzedStudent = null;
+        
+        // Scroll to top dashboard area smoothly
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        updateViews();
+    });
 
 
     // Save Exam
@@ -1568,22 +1609,31 @@ function populateComparisonDropdowns(history, student, options = {}) {
         return match;
     });
 
+    const uniqueExamNames = [...new Set(relevantExams.map(e => e.name))].filter(Boolean);
+
     elements.analysisExamSelect.innerHTML = '<option value="all">সকল পরীক্ষা (ক্রমানুসারে)</option>' +
-        relevantExams.map(e => `<option value="${e.docId}">${e.name} (${e.subject})</option>`).join('');
+        uniqueExamNames.map(name => `<option value="${name}">${name}</option>`).join('');
 
     // Pre-select current exam if it matches OR preserve the explicitly requested exam
     if (options.preserveExamSelect) {
         if (options.preserveExamSelect !== 'all' && !Array.from(elements.analysisExamSelect.options).some(o => o.value === options.preserveExamSelect)) {
-            const missingExam = state.savedExams.find(e => e.docId === options.preserveExamSelect);
-            if (missingExam) {
-                elements.analysisExamSelect.add(new Option(`${missingExam.name} (${missingExam.subject})`, missingExam.docId));
+            // Find exam name in case we passed a docId from before
+            const missingExam = state.savedExams.find(e => e.docId === options.preserveExamSelect || e.name === options.preserveExamSelect);
+            if (missingExam && !Array.from(elements.analysisExamSelect.options).some(o => o.value === missingExam.name)) {
+                elements.analysisExamSelect.add(new Option(missingExam.name, missingExam.name));
+                elements.analysisExamSelect.value = missingExam.name;
+            } else if (missingExam) {
+                elements.analysisExamSelect.value = missingExam.name;
+            } else {
+                elements.analysisExamSelect.value = 'all';
             }
+        } else {
+            elements.analysisExamSelect.value = options.preserveExamSelect;
         }
-        elements.analysisExamSelect.value = options.preserveExamSelect;
     } else {
-        const currentExam = state.savedExams.find(e => e.name === state.currentExamName && e.subject === state.currentSubject);
-        if (currentExam && Array.from(elements.analysisExamSelect.options).some(o => o.value === currentExam.docId)) {
-            elements.analysisExamSelect.value = currentExam.docId;
+        const currentExam = state.savedExams.find(e => e.name === state.currentExamName);
+        if (currentExam && Array.from(elements.analysisExamSelect.options).some(o => o.value === currentExam.name)) {
+            elements.analysisExamSelect.value = currentExam.name;
         } else {
             elements.analysisExamSelect.value = 'all';
         }
@@ -1660,20 +1710,15 @@ function updateAnalysisHeaderContext(triggerSource = 'exam', options = {}) {
             `;
         }
     } else {
-        // Option 2: Specific Exam
-        const exam = state.savedExams.find(e => e.docId === selectedExamId);
-        if (exam) {
-            // Auto-select subject for this exam (unless already matching or preserving All)
-            if (triggerSource === 'exam' && !options.preserveAllSubjects) {
-                elements.analysisSubjectSelect.value = exam.subject || 'all';
-            }
-
+        // Option 2: Specific Exam Name Selected
+        const examName = selectedExamId;
+        if (examName) {
             elements.analysisContextInfo.innerHTML = `
                 <span class="context-label">পরীক্ষা:</span>
-                <span class="context-value">${exam.name}</span>
+                <span class="context-value">${examName}</span>
                 <span class="context-divider">|</span>
                 <span class="context-label">বিষয়:</span>
-                <span class="context-value">${exam.subject}</span>
+                <span class="context-value">${selectedSubject === 'all' ? 'সকল' : selectedSubject}</span>
             `;
         }
     }
@@ -1734,10 +1779,11 @@ function transitionToAnalysis(student) {
     });
 
     // 3. Perform analysis
+    // When transitioning into Analysis from Dashboard or Search, pre-select the currently loaded Dashboard Exam context perfectly
     const currentOptions = {
-        preserveExamSelect: elements.analysisExamSelect?.value,
-        preserveSubjectSelect: elements.analysisSubjectSelect?.value,
-        preserveSessionSelect: elements.analysisSessionSelect?.value
+        preserveExamSelect: state.currentExamName || 'all',
+        preserveSubjectSelect: state.currentSubject || 'all',
+        preserveSessionSelect: state.currentExamSession || 'all'
     };
     handleAnalysis(student, currentOptions);
 
@@ -1769,20 +1815,20 @@ function refreshAnalysisChart() {
     const chartType = elements.analysisType?.value || 'total';
     const reportContent = document.getElementById('analysisReportContent');
 
-    // Case 1: Specific Exam Selected -> Show All Subjects for that Exam
+    // Case 1: Specific Exam Name Selected -> Show All Subjects for that Exam Name
     if (examFilter && examFilter !== 'all') {
-        const selectedExam = state.savedExams.find(e => e.docId === examFilter);
-        if (selectedExam && selectedExam.studentData) {
+        const hasExams = state.savedExams.some(e => e.name === examFilter);
+        if (hasExams) {
             const studentId = state.currentAnalyzedStudent?.id;
             const studentGroup = state.currentAnalyzedStudent?.group;
 
             // Find this student in exams with the same Name, respecting the subject filter
             const examEntries = state.savedExams.filter(e =>
-                e.name === selectedExam.name &&
+                e.name === examFilter &&
                 (subjectFilter === 'all' || e.subject === subjectFilter)
             )
                 .map(e => {
-                    const studentRecord = e.studentData.find(s => String(s.id) === String(studentId) && s.group === studentGroup);
+                    const studentRecord = (e.studentData || []).find(s => String(s.id) === String(studentId) && s.group === studentGroup);
                     return studentRecord ? { ...studentRecord, examName: e.name, subject: e.subject } : null;
                 }).filter(Boolean);
 
