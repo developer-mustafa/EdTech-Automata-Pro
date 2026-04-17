@@ -28,6 +28,7 @@ import { initializeMainChart, handleChartDownload, initializeHistoryChart } from
 
 // Utilities & Services
 import { showNotification, filterStudentData, sortStudentData, calculateStatistics, convertToEnglishDigits, formatDateBengali, normalizeText, determineStatus, calculateGrade, isStudentEligibleForSubject } from './js/utils.js';
+import { APP_VERSION } from './js/version.js';
 import { FAILING_THRESHOLD } from './js/constants.js';
 import {
     applyTheme,
@@ -253,6 +254,24 @@ async function init() {
             }
         }
 
+        // Initialize Version Display
+        if (elements.headerVersionNumber) elements.headerVersionNumber.textContent = APP_VERSION;
+        if (elements.footerVersionNumber) elements.footerVersionNumber.textContent = APP_VERSION;
+
+        // Sync Footer Details from Settings
+        const updateAppFooter = (settings) => {
+            const dev = settings?.developerCredit;
+            if (dev) {
+                if (elements.footerDevCredit) elements.footerDevCredit.textContent = `${dev.text || 'Developed By:'} ${dev.name || 'Mustafa Rahman'}`;
+                if (elements.footerDevContact) elements.footerDevContact.textContent = `যোগাযোগ: ${dev.contact || '০১৮৪০-৬৪৩৯৪৬'}`;
+                
+                // Hide footer if disabled in settings
+                const footer = document.getElementById('appFooter');
+                if (footer) footer.style.display = dev.enabled === false ? 'none' : 'block';
+            }
+        };
+        updateAppFooter(settings);
+
         if (!defaultLoaded) {
             await initializeData();
         } else {
@@ -346,6 +365,7 @@ async function init() {
              state.onMarksheetSettingsUnsubscribe = await subscribeToMarksheetSettings((msData) => {
                 console.log('Marksheet settings updated, refreshing dashboard header and exam cards...');
                 updateProfileUI(state.auth?.currentUser, state.isAdmin, state.isSuperAdmin, state.userRole);
+                updateAppFooter(msData); // Also sync footer info from marksheet settings
                 updateViews();
                 renderSavedExams();
             });
@@ -372,6 +392,13 @@ async function init() {
                     initializedModules.add('teacher-assignment');
                 }
                 await loadTeacherAssignmentData();
+            }
+            if (pageId === 'users') {
+                const { handleUserManagement } = await import('./js/modules/userMgmtManager.js');
+                if (!initializedModules.has('users')) {
+                    initializedModules.add('users');
+                }
+                await handleUserManagement();
             }
             if (pageId === 'students') {
                 const { initStudentManager, loadStudents } = await import('./js/modules/studentManager.js');
@@ -894,7 +921,6 @@ function initEventListeners() {
 
     // File Upload
     elements.jsonFileInput?.addEventListener('change', (e) => onFileUpload(e, () => updateViews()));
-    elements.downloadTemplateBtn?.addEventListener('click', downloadDemoTemplate);
 
     // View Switching
     elements.viewButtons?.forEach(btn => {
@@ -906,14 +932,8 @@ function initEventListeners() {
         });
     });
 
-    // Dropdowns
-    elements.reportDropdownBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        elements.reportDropdownMenu?.classList.toggle('show');
-    });
-
+    // Global UI Clicks
     document.addEventListener('click', (e) => {
-        elements.reportDropdownMenu?.classList.remove('show');
         if (e.target?.classList.contains('modal')) {
             e.target.classList.remove('active');
         }

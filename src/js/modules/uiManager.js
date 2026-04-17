@@ -8,10 +8,12 @@ import { toggleTheme, applyTheme } from '../uiComponents.js';
 export const elements = {
     chartTypeSelect: null,
     sortOrderSelect: null,
-    reportDropdownBtn: null,
-    reportDropdownMenu: null,
-    downloadChartBtn: null,
     downloadExcelBtn: null,
+    appVersionBadge: null,
+    headerVersionNumber: null,
+    footerVersionNumber: null,
+    footerDevCredit: null,
+    footerDevContact: null,
     groupFilters: null,
     gradeFilters: null,
     searchInput: null,
@@ -25,7 +27,6 @@ export const elements = {
     failedHeaderMeta: null,
     groupStatsHeaderMeta: null,
     jsonFileInput: null,
-    downloadTemplateBtn: null,
     installAppBtn: null,
     saveAnalysisBtn: null,
     savedExamsList: null,
@@ -66,6 +67,10 @@ export const elements = {
     statSuperAdminCount: null,
     statAdminCount: null,
     statUserCount: null,
+    userListBody: null,
+    userMgmtSearch: null,
+    usersPage: null,
+    mobileAdminToggle: null,
     
     // Dashboard Controls
     printBtn: null,
@@ -86,7 +91,12 @@ export function updateProfileUI(user, isAdmin, isSuperAdmin, role) {
         if (user) {
             btn.classList.add('logged-in');
             const roleLabel = isSuperAdmin ? ' (Super Admin)' : (isAdmin ? ' (Admin)' : '');
-            btn.innerHTML = `<i class="fas fa-lock-open"></i> <span class="dm-btn-text">${user.displayName || 'User'}${roleLabel}</span>`;
+            const btnHtml = `<i class="fas fa-lock-open"></i> <span class="dm-btn-text">${user.displayName || 'User'}${roleLabel}</span>`;
+            btn.innerHTML = btnHtml;
+            if (elements.mobileAdminToggle) {
+                elements.mobileAdminToggle.classList.add('logged-in');
+                elements.mobileAdminToggle.innerHTML = `<i class="fas fa-user-circle"></i> <span>${user.displayName || 'User'}</span>`;
+            }
             if (elements.userName) elements.userName.innerText = user.displayName || 'User';
             if (elements.userEmail) elements.userEmail.innerText = `${user.email} [${role.toUpperCase()}]`;
             if (elements.userPhoto) {
@@ -95,12 +105,14 @@ export function updateProfileUI(user, isAdmin, isSuperAdmin, role) {
         } else {
             btn.classList.remove('logged-in');
             btn.innerHTML = '<i class="fab fa-google"></i> <span class="dm-btn-text">লগইন</span>';
+            if (elements.mobileAdminToggle) {
+                elements.mobileAdminToggle.classList.remove('logged-in');
+                elements.mobileAdminToggle.innerHTML = '<i class="fab fa-google"></i> <span>লগইন</span>';
+            }
         }
     }
 
-    if (elements.toolbarUserMgmtBtn) {
-        elements.toolbarUserMgmtBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
-    }
+
 
     if (isAdmin) {
         document.body.classList.add('is-admin');
@@ -126,8 +138,6 @@ export function updateProfileUI(user, isAdmin, isSuperAdmin, role) {
 export function initDOMReferences() {
     elements.chartTypeSelect = document.getElementById('chartType');
     elements.sortOrderSelect = document.getElementById('sortOrder');
-    elements.reportDropdownBtn = document.getElementById('reportDropdownBtn');
-    elements.reportDropdownMenu = document.getElementById('reportDropdownMenu');
     elements.downloadChartBtn = document.getElementById('downloadChartBtn');
     elements.downloadExcelBtn = document.getElementById('downloadExcelBtn');
     elements.groupFilters = document.querySelectorAll('.group-btn');
@@ -145,7 +155,11 @@ export function initDOMReferences() {
     elements.failedSearchInput = document.getElementById('failedSearchInput');
     elements.groupStatsHeaderMeta = document.getElementById('groupStatsHeaderMeta');
     elements.jsonFileInput = document.getElementById('jsonFileInput');
-    elements.downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+    elements.appVersionBadge = document.getElementById('appVersionBadge');
+    elements.headerVersionNumber = document.getElementById('headerVersionNumber');
+    elements.footerVersionNumber = document.getElementById('footerVersionNumber');
+    elements.footerDevCredit = document.getElementById('footerDevCredit');
+    elements.footerDevContact = document.getElementById('footerDevContact');
     elements.installAppBtn = document.getElementById('installAppBtn');
     elements.saveAnalysisBtn = document.getElementById('saveAnalysisBtn');
     elements.savedExamsList = document.getElementById('savedExamsList');
@@ -174,7 +188,8 @@ export function initDOMReferences() {
     elements.userEmail = document.getElementById('userEmail');
     elements.userPhoto = document.getElementById('userPhoto');
     elements.adminToggle = document.getElementById('adminToggle');
-    elements.toolbarUserMgmtBtn = document.getElementById('toolbarUserMgmtBtn');
+    elements.mobileAdminToggle = document.getElementById('mobileAdminToggle');
+    elements.usersPage = document.getElementById('usersPage');
     elements.modalLogoutBtn = document.getElementById('modalLogoutBtn');
     elements.closeProfileBtn = document.getElementById('closeProfileBtn');
     elements.closeProfileIcon = document.getElementById('closeProfileIcon');
@@ -285,9 +300,13 @@ export function initDOMReferences() {
     elements.chartSectionIcon = document.getElementById('chartSectionIcon');
 
     // User Management
-    elements.userManagementModal = document.getElementById('userManagementModal');
-    elements.closeUserManagementBtn = document.getElementById('closeUserManagementBtn');
+    elements.usersPage = document.getElementById('usersPage');
     elements.userListBody = document.getElementById('userListBody');
+    elements.userMgmtSearch = document.getElementById('userMgmtSearch');
+    elements.statSuperAdminCount = document.getElementById('statSuperAdminCount');
+    elements.statAdminCount = document.getElementById('statAdminCount');
+    elements.statUserCount = document.getElementById('statUserCount');
+    
     elements.subjectSettingsBtn = document.getElementById('subjectSettingsBtn');
     elements.subjectSettingsModal = document.getElementById('subjectSettingsModal');
     elements.closeSubjectSettingsBtn = document.getElementById('closeSubjectSettingsBtn');
