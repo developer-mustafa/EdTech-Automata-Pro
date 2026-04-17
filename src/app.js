@@ -393,6 +393,13 @@ async function init() {
                 }
                 await loadTeacherAssignmentData();
             }
+            if (pageId === 'users') {
+                const { handleUserManagement } = await import('./js/modules/userMgmtManager.js');
+                if (!initializedModules.has('users')) {
+                    initializedModules.add('users');
+                }
+                await handleUserManagement();
+            }
             if (pageId === 'students') {
                 const { initStudentManager, loadStudents } = await import('./js/modules/studentManager.js');
                 if (!initializedModules.has('students')) {

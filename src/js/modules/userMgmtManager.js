@@ -18,7 +18,17 @@ export async function handleUserManagement() {
         return;
     }
 
-    setLoading(true, '#userManagementModal .modal-content');
+    // Safety fallback for Vite HMR or late DOM loading
+    if (!elements.userListBody) {
+        elements.usersPage = document.getElementById('usersPage');
+        elements.userListBody = document.getElementById('userListBody');
+        elements.userMgmtSearch = document.getElementById('userMgmtSearch');
+        elements.statSuperAdminCount = document.getElementById('statSuperAdminCount');
+        elements.statAdminCount = document.getElementById('statAdminCount');
+        elements.statUserCount = document.getElementById('statUserCount');
+    }
+
+    setLoading(true, '#usersPage');
     try {
         allUsers = await getAllUsers();
         setupSearchListener();
@@ -28,7 +38,7 @@ export async function handleUserManagement() {
         console.error('Error in user management:', error);
         showNotification('ব্যবহারকারী তালিকা লোড করতে সমস্যা হয়েছে', 'error');
     } finally {
-        setLoading(false, '#userManagementModal .modal-content');
+        setLoading(false, '#usersPage');
     }
 }
 

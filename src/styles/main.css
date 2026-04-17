@@ -14402,7 +14402,8 @@ body.is-super-admin td.admin-only {
   background: rgba(var(--primary-rgb), 0.02);
   border-bottom: 1px solid var(--border-color);
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: 15px;
 }
 
@@ -14416,9 +14417,9 @@ body.is-super-admin td.admin-only {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 6px 14px;
   border-radius: 12px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   border: 1px solid var(--border-color);
   background: var(--card-bg);
@@ -14449,7 +14450,8 @@ body.is-super-admin td.admin-only {
 
 .user-search-wrapper {
   position: relative;
-  width: 100%;
+  width: 320px;
+  max-width: 100%;
 }
 
 .user-search-wrapper i {
@@ -14481,7 +14483,13 @@ body.is-super-admin td.admin-only {
 @media (max-width: 600px) {
   .user-mgmt-toolbar {
     padding: 12px;
-    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .user-search-wrapper {
+    width: 100%;
   }
 
   .user-stats-bar {
@@ -23217,3 +23225,199 @@ body.dark-mode .ms-compact-info {
   }
 }
 
+/* =========================================
+   App Branding & Premium Toolbar
+   ========================================= */
+.dm-brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 8px;
+}
+
+.dm-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dm-action-tools-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.dm-action-tools-row {
+  display: contents;
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primary);
+  font-size: 1.15rem;
+}
+
+.app-logo i {
+  font-size: 1.35rem;
+  background: linear-gradient(135deg, var(--primary), #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(79, 70, 229, 0.2));
+}
+
+.app-name {
+  font-weight: 850;
+  font-size: 1.1rem;
+  letter-spacing: -0.4px;
+  background: linear-gradient(135deg, var(--text-color), #475569);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  white-space: nowrap;
+}
+
+.dm-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-color);
+  margin: 0 12px;
+  opacity: 0.6;
+}
+
+.dm-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  order: 1;
+}
+
+#searchDividerDesktop {
+  order: 2;
+}
+
+.dm-meta-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  order: 4;
+}
+
+.dm-search {
+  flex: 1;
+  position: relative;
+  min-width: 250px;
+  order: 3;
+}
+
+/* Updated Button Aesthetics for v2.5.2 */
+.dm-btn {
+  padding: 8px 16px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.dm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.1);
+}
+
+.dm-btn.dm-upload {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.dm-btn.dm-report {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+
+.dm-btn.dm-save {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.dm-version-badge {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  color: #818cf8;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+  letter-spacing: -0.2px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+  .dm-btn {
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dm-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .dm-divider {
+    display: none;
+  }
+  
+  .dm-brand-section {
+    width: 100%;
+    justify-content: space-between;
+    padding-right: 0;
+  }
+
+  .dm-action-tools-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .dm-action-tools-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap; /* allow wrapping on super tiny screens */
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+  }
+  
+  .dm-action-tools-row::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .dm-tool-group, .dm-meta-tools {
+    order: unset;
+    justify-content: center;
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  .dm-search {
+    order: unset;
+    width: 100%;
+    min-width: unset;
+    margin-top: 0;
+  }
+
+  .dm-btn {
+    padding: 8px 14px;
+    min-width: unset;
+    justify-content: center;
+  }
+
+  .dm-action-tools-row .dm-btn-text {
+    display: none !important;
+  }
+}
