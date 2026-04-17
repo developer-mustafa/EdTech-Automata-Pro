@@ -327,12 +327,12 @@ input:focus {
    ========================================= */
 .chart-container {
   position: relative;
-  height: 280px;
-  margin-bottom: 10px;
-  padding: 8px;
-  background-color: var(--container-bg);
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
+  height: 360px; /* Medium size to fit with stats grid in viewport */
+  margin-bottom: 5px;
+  padding: 5px 0;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .chart-subtitle {
