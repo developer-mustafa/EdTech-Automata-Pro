@@ -372,7 +372,7 @@
       </div>
 
       <!-- Filters and Controls -->
-      <div class="card">
+      <div class="card" id="dashboardControlsCard">
         <div class="controls">
           <!-- Group Filter Buttons -->
           <div class="group-filters">
@@ -434,31 +434,36 @@
       <!-- Main Chart Section -->
       <div class="card" style="overflow: visible;">
         <div class="dashboard-chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
-          <h2 class="card-title" id="chartTitle" style="margin-bottom: 0;">মোট স্কোর র‌্যাঙ্কিং</h2>
-          <div class="view-toggle" style="margin-bottom: 0px; align-items: center;">
-            <label class="chart-details-toggle" style="display: flex; align-items: center; gap: 6px; margin-right: 15px; font-size: 0.9rem; cursor: pointer; color: var(--text-color); font-weight: 600; user-select: none;">
-              <input type="checkbox" id="showChartDetails" checked style="cursor: pointer; width: 16px; height: 16px;">
-              বিস্তারিত দেখাও
+          <!-- Left side group: Title + Utilities -->
+          <div class="header-left-group" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <h2 class="card-title" id="chartTitle" style="margin-bottom: 0; display: flex; align-items: center;">মোট স্কোর র‌্যাঙ্কিং</h2>
+            <div style="width: 2px; height: 20px; background: rgba(255,255,255,0.15); border-radius: 2px;"></div>
+            <label class="chart-details-toggle" style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--text-color); font-weight: 600; user-select: none;">
+              <input type="checkbox" id="showChartDetails" checked style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary);">
+              বিস্তারিত
             </label>
             <button class="view-btn" id="downloadBtn"
-              style="background: var(--success); color: white; border: none; margin-right: 10px;">
+              style="background: #111827; color: white; border: 1px solid #374151; font-weight: 600; padding: 7px 14px; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3); border-radius: 6px; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
               <i class="fas fa-download"></i> ডাউনলোড
             </button>
             <button class="view-btn" id="printBtn"
-              style="background: #7b8285; color: white; border: none; margin-right: 10px;">
-              <i class="fas fa-print"></i> প্রিন্ট
+              style="background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 700; padding: 7px 14px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); border-radius: 6px; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+              <i class="fas fa-print" style="color: #0f172a;"></i> প্রিন্ট
             </button>
-            <div class="view-btn active" data-view="chart">
-              <i class="fas fa-chart-bar"></i>
-              চার্ট
-            </div>
-            <div class="view-btn" data-view="table">
-              <i class="fas fa-table"></i>
-              টেবিল
-            </div>
-            <div class="view-btn" data-view="analysis">
-              <i class="fas fa-chart-line"></i>
-              এনালাইসিস
+          </div>
+          
+          <!-- Right side group: View Toggle Tabs -->
+          <div class="view-toggle" style="margin-bottom: 0px; align-items: center;">
+            <div class="elegant-tab-group">
+              <div class="view-btn tab-item active" data-view="chart">
+                <i class="fas fa-chart-bar"></i> চার্ট
+              </div>
+              <div class="view-btn tab-item" data-view="table">
+                <i class="fas fa-table"></i> টেবিল
+              </div>
+              <div class="view-btn tab-item" data-view="analysis">
+                <i class="fas fa-chart-line"></i> এনালাইসিস
+              </div>
             </div>
           </div>
         </div>
@@ -552,6 +557,10 @@
                       <span id="nextRollNum"></span> <i class="fas fa-chevron-right"></i>
                     </button>
                   </div>
+                  
+                  <button id="resetAnalysisBtn" class="btn btn-warning btn-sm" title="ড্যাশবোর্ডে ফেরত যান" style="white-space: nowrap; flex-shrink: 0; background: #e74c3c; border: none; color: white; display: flex; align-items: center; gap: 5px;">
+                    <i class="fas fa-undo"></i> রিসেট
+                  </button>
                 </div>
               </div>
               <div class="analysis-chart-container analysis-card" style="margin-top: 20px;">
