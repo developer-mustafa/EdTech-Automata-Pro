@@ -262,8 +262,8 @@ async function init() {
         const updateAppFooter = (settings) => {
             const dev = settings?.developerCredit;
             if (dev) {
-                if (elements.footerDevCredit) elements.footerDevCredit.textContent = `${dev.text || 'Developed By:'} ${dev.name || 'Mustafa Rahman'}`;
-                if (elements.footerDevContact) elements.footerDevContact.textContent = `যোগাযোগ: ${dev.contact || '০১৮৪০-৬৪৩৯৪৬'}`;
+                if (elements.footerDevCredit) elements.footerDevCredit.innerHTML = `${dev.text || 'Developed By:'} <a href="https://mustafaofficial.netlify.app/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 700;">${dev.name || 'Mustafa Rahman'}</a>`;
+                if (elements.footerDevContact) elements.footerDevContact.innerHTML = `যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a>`;
                 
                 // Hide footer if disabled in settings
                 const footer = document.getElementById('appFooter');
