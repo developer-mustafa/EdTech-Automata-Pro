@@ -34,7 +34,7 @@ import { generateStudentDocId } from './firestoreService.js';
 export function renderSkeletons(container, type = 'stats', count = 5) {
   if (!container) return;
   let html = '';
-  
+
   if (type === 'stats') {
     for (let i = 0; i < count; i++) {
       html += `
@@ -51,7 +51,7 @@ export function renderSkeletons(container, type = 'stats', count = 5) {
       <div class="group-stat-card skeleton" style="height: 180px;"></div>
     `;
   }
-  
+
   container.innerHTML = html;
 }
 
@@ -72,22 +72,22 @@ export function renderStats(container, data, options = {}) {
 
   if (!data || data.length === 0) {
     container.innerHTML =
-      makeCard('sc-total',  'fa-users',      '0', 'মোট শিক্ষার্থী') +
+      makeCard('sc-total', 'fa-users', '0', 'মোট শিক্ষার্থী') +
       makeCard('sc-absent', 'fa-user-slash', '0', 'অনুপস্থিত') +
-      makeCard('sc-exam',   'fa-user-edit',  '0', 'পরীক্ষার্থী সংখ্যা') +
-      makeCard('sc-pass',   'fa-check-circle','0','পাস করেছে') +
-      makeCard('sc-fail',   'fa-times-circle','0','ফেল করেছে');
+      makeCard('sc-exam', 'fa-user-edit', '0', 'পরীক্ষার্থী সংখ্যা') +
+      makeCard('sc-pass', 'fa-check-circle', '0', 'পাস করেছে') +
+      makeCard('sc-fail', 'fa-times-circle', '0', 'ফেল করেছে');
     return;
   }
 
   const stats = calculateStatistics(data, options);
 
   container.innerHTML =
-    makeCard('sc-total',  'fa-users',       stats.totalStudents,   'মোট শিক্ষার্থী') +
-    makeCard('sc-absent', 'fa-user-slash',  stats.absentStudents,  'অনুপস্থিত') +
-    makeCard('sc-exam',   'fa-user-edit',   stats.participants,    'পরীক্ষার্থী সংখ্যা') +
-    makeCard('sc-pass',   'fa-check-circle',stats.passedStudents,  'পাস করেছে') +
-    makeCard('sc-fail',   'fa-times-circle',stats.failedStudents,  'ফেল করেছে');
+    makeCard('sc-total', 'fa-users', stats.totalStudents, 'মোট শিক্ষার্থী') +
+    makeCard('sc-absent', 'fa-user-slash', stats.absentStudents, 'অনুপস্থিত') +
+    makeCard('sc-exam', 'fa-user-edit', stats.participants, 'পরীক্ষার্থী সংখ্যা') +
+    makeCard('sc-pass', 'fa-check-circle', stats.passedStudents, 'পাস করেছে') +
+    makeCard('sc-fail', 'fa-times-circle', stats.failedStudents, 'ফেল করেছে');
 }
 
 
@@ -762,8 +762,8 @@ export function printFailedStudents(data, options = {}) {
 
   <!-- Persistent Footer -->
   <div class="ftr">
-    <div class="ftr-dev">${options.developerCredit?.text || 'সফটওয়্যার নির্মাতা:'} ${options.developerCredit?.name || 'মোস্তফা রাহমান'}</div>
-    <div class="ftr-contact">যোগাযোগ: ${options.developerCredit?.contact || '০১৮৪০-৬৪৩৯৪৬'} | অটোমেটেড এক্সাম অ্যানালাইসিস সফটওয়্যার</div>
+    <div class="ftr-dev">${options.developerCredit?.text || 'সফটওয়্যার নির্মাতা:'} <a href="https://mustafaofficial.netlify.app/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 700;">${options.developerCredit?.name || 'Mustafa Rahman'}</a></div>
+    <div class="ftr-contact">যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a> | এনালিস্ট প্রো সফটওয়্যার</div>
     <div class="ftr-live-wrapper">
       <div class="ftr-live-badge">
         <i class="fas fa-globe"></i> ${options.developerCredit?.link || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'students-performance.web.app' : window.location.hostname)}
@@ -1041,8 +1041,8 @@ export function printAllStudents(data, options = {}) {
   </table>
 
   <div class="ftr">
-    <div class="ftr-dev">${options.developerCredit?.text || 'সফটওয়্যার নির্মাতা:'} ${options.developerCredit?.name || 'মোস্তফা রাহমান'}</div>
-    <div class="ftr-contact">যোগাযোগ: ${options.developerCredit?.contact || '০১৮৪০-৬৪৩৯৪৬'} | অটোমেটেড এক্সাম অ্যানালাইসিস সফটওয়্যার</div>
+    <div class="ftr-dev">${options.developerCredit?.text || 'সফটওয়্যার নির্মাতা:'} <a href="https://mustafaofficial.netlify.app/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 700;">${options.developerCredit?.name || 'Mustafa Rahman'}</a></div>
+    <div class="ftr-contact">যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a> | এনালিস্ট প্রো সফটওয়্যার</div>
     <div class="ftr-live-wrapper">
       <div class="ftr-live-badge">
         <i class="fas fa-globe"></i> ${options.developerCredit?.link || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'students-performance.web.app' : window.location.hostname)}
@@ -1267,11 +1267,11 @@ export async function renderSavedExamsList(container, exams, options = {}) {
     // Filter out disabled/inactive students and apply Subject Mapping from the count
     const config = (subjectConfigs && subjectConfigs[exam.subject]) || {};
     let activeStudentData = exam.studentData || [];
-    
+
     // Get mappings to apply
     const msSettings = getMarksheetSettings() || {};
     const subjectMappings = msSettings.subjectMapping || [];
-    
+
     if (activeStudentData.length > 0) {
       activeStudentData = activeStudentData.filter(s => {
         // 1. Check if disabled globally (Inactive Student)
@@ -1285,12 +1285,12 @@ export async function renderSavedExamsList(container, exams, options = {}) {
           const lookupEntry = studentLookupMap.get(studentKey);
           if (lookupEntry && (lookupEntry.status === false || lookupEntry.status === 'false')) return false;
         }
-        
+
         // 2. Smart Subject Mapping & Group Filtering Rules
-        return isStudentEligibleForSubject(s, exam.subject, { 
-            subjectMappings, 
-            marksheetRules: currentMarksheetRules,
-            className: exam.class || 'HSC'
+        return isStudentEligibleForSubject(s, exam.subject, {
+          subjectMappings,
+          marksheetRules: currentMarksheetRules,
+          className: exam.class || 'HSC'
         });
       });
     }
@@ -1315,7 +1315,7 @@ export async function renderSavedExamsList(container, exams, options = {}) {
     const participants = stats.participants || 0;
     const passed = stats.passedStudents || 0;
     const passRate = participants > 0 ? Math.round((passed / participants) * 100) : 0;
-    
+
     // Calculate absent percentage
     const absent = stats.absentStudents || 0;
     const total = stats.totalStudents || 0;
@@ -1616,22 +1616,22 @@ export function renderCandidateResults(container, candidates, onSelect) {
 
   container.style.display = 'grid';
   container.className = 'search-results-grid'; // Ensure class is correct
-  
+
   // Dynamically position the fixed container based on its previous sibling input
   const inputEl = container.previousElementSibling;
   if (inputEl && (inputEl.tagName === 'INPUT' || inputEl.type === 'text')) {
     const rect = inputEl.getBoundingClientRect();
     container.style.top = `${rect.bottom + 5}px`;
     container.style.left = `${rect.left}px`;
-    
+
     // Ensure it doesn't overflow screen right edge
     const maxAvailableWidth = window.innerWidth - rect.left - 20;
     const currentWidthStr = getComputedStyle(container).width;
     const assumedWidth = parseInt(currentWidthStr) || 850;
     if (assumedWidth > maxAvailableWidth) {
-        container.style.width = `${Math.min(850, maxAvailableWidth)}px`;
+      container.style.width = `${Math.min(850, maxAvailableWidth)}px`;
     } else {
-        container.style.width = ''; // reset to css default
+      container.style.width = ''; // reset to css default
     }
   }
 
@@ -1726,9 +1726,9 @@ export function printStudentManagementList(students, settings, filters = {}) {
       else if (gn.includes('মানবিক')) classGroups[key].humanities++;
     });
 
-    const dRows = Object.values(classGroups).sort((a,b) => {
-        if (a.class !== b.class) return a.class.localeCompare(b.class);
-        return a.session.localeCompare(b.session);
+    const dRows = Object.values(classGroups).sort((a, b) => {
+      if (a.class !== b.class) return a.class.localeCompare(b.class);
+      return a.session.localeCompare(b.session);
     }).map(g => `
       <tr>
         <td style="background:#f8fafc; font-weight:700;">${g.class}</td>
@@ -1784,13 +1784,13 @@ export function printStudentManagementList(students, settings, filters = {}) {
     const rawGroup = s.group || '';
     let grpClass = 'grp-other';
     const normGroup = normalizeText(rawGroup);
-    
+
     if (normGroup.includes('বিজ্ঞান')) grpClass = 'grp-science';
     else if (normGroup.includes('ব্যবসায়') || normGroup.includes('ব্যবসায়')) grpClass = 'grp-business';
     else if (normGroup.includes('মানবিক')) grpClass = 'grp-humanities';
 
     const sessColor = sessionColors[String(s.session || '')] || { bg: 'transparent', accent: 'inherit' };
-    
+
     return `
       <tr class="${grpClass}">
           <td>${convertToBengaliDigits(i + 1)}</td>
@@ -2028,8 +2028,8 @@ export function printStudentManagementList(students, settings, filters = {}) {
     <!-- Repeating Footer -->
     <div class="footer">
       <div class="footer-left">
-        <div class="ftr-dev">সফটওয়্যার নির্মাতা: মোস্তফা রাহমান, সিনিয়র সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
-        <div class="ftr-contact">যোগাযোগ: ০১৮৪০-৬৪৩৯৪৬ <span class="ftr-soft">অটোমেটেড এক্সাম এনালিষ্ট সফটওয়্যার</span></div>
+        <div class="ftr-dev">সফটওয়্যার নির্মাতা: <a href="https://mustafaofficial.netlify.app/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 700;">Mustafa Rahman</a>, সিনিয়ঁর সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
+        <div class="ftr-contact">যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a> <span class="ftr-soft">অটোমেটেড এক্সাম এনালিষ্ট সফটওয়্যার</span></div>
       </div>
       <div class="footer-right">
         <div class="ftr-contact">প্রিন্টের তারিখ: ${new Date().toLocaleDateString('bn-BD')}</div>

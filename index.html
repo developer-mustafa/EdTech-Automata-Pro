@@ -30,16 +30,42 @@
 
   <style>
     @keyframes premiumPulse {
-      0% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(79, 70, 229, 0.4)); }
-      50% { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.9)); }
-      100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(79, 70, 229, 0.4)); }
+      0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 4px rgba(79, 70, 229, 0.4));
+      }
+
+      50% {
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.9));
+      }
+
+      100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 4px rgba(79, 70, 229, 0.4));
+      }
     }
+
     @keyframes textShine {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
     }
-    .premium-brand-logo { display: flex; align-items: center; gap: 10px; }
+
+    .premium-brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .premium-logo-icon {
       font-size: 1.4rem;
       background: linear-gradient(135deg, #4f46e5, #0ea5e9);
@@ -47,6 +73,7 @@
       -webkit-text-fill-color: transparent;
       animation: premiumPulse 2.5s infinite ease-in-out;
     }
+
     .premium-app-name {
       font-weight: 900;
       font-size: 1.25rem;
@@ -65,6 +92,7 @@
       align-items: center;
       gap: 20px;
     }
+
     .loading-logo-name {
       font-size: 1.6rem;
       font-weight: 900;
@@ -76,6 +104,7 @@
       letter-spacing: -0.5px;
       margin: 0;
     }
+
     .loading-logo-sub {
       font-size: 0.82rem;
       font-weight: 500;
@@ -85,11 +114,13 @@
       text-transform: uppercase;
       opacity: 0.8;
     }
+
     .loading-dots {
       display: flex;
       gap: 6px;
       margin-top: 8px;
     }
+
     .loading-dots span {
       width: 8px;
       height: 8px;
@@ -97,11 +128,28 @@
       background: linear-gradient(135deg, #4f46e5, #0ea5e9);
       animation: dotBounce 1.4s ease-in-out infinite both;
     }
-    .loading-dots span:nth-child(2) { animation-delay: 0.16s; }
-    .loading-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+    .loading-dots span:nth-child(2) {
+      animation-delay: 0.16s;
+    }
+
+    .loading-dots span:nth-child(3) {
+      animation-delay: 0.32s;
+    }
+
     @keyframes dotBounce {
-      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-      40% { transform: scale(1.2); opacity: 1; }
+
+      0%,
+      80%,
+      100% {
+        transform: scale(0.6);
+        opacity: 0.4;
+      }
+
+      40% {
+        transform: scale(1.2);
+        opacity: 1;
+      }
     }
 
     /* Mini Spinner for header logo */
@@ -113,23 +161,28 @@
       perspective: 800px;
       flex-shrink: 0;
     }
+
     .mini-spinner::before,
     .mini-spinner::after {
       content: '';
       position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       border-radius: 50%;
       animation-duration: 1.2s;
       animation-iteration-count: infinite;
       animation-timing-function: linear;
     }
+
     .mini-spinner::before {
       border-top: 3px solid #4361ee;
       border-left: 3px solid rgba(67, 97, 238, 0.1);
       animation-name: spin-orbital-1;
       filter: drop-shadow(0 0 4px rgba(67, 97, 238, 0.5));
     }
+
     .mini-spinner::after {
       border-right: 3px solid #4cc9f0;
       border-bottom: 3px solid rgba(76, 201, 240, 0.1);
@@ -145,11 +198,13 @@
       font-weight: 700 !important;
       transition: all 0.3s ease !important;
     }
+
     .soft-btn-upload:hover {
       background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
       transform: translateY(-1px) !important;
       box-shadow: 0 4px 6px rgba(37, 99, 235, 0.1) !important;
     }
+
     .soft-btn-download {
       background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
       color: #059669 !important;
@@ -158,6 +213,7 @@
       font-weight: 700 !important;
       transition: all 0.3s ease !important;
     }
+
     .soft-btn-download:hover {
       background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
       transform: translateY(-1px) !important;
@@ -592,27 +648,29 @@
           <!-- Left side group: Title + Utilities -->
           <div class="header-left-group">
             <div class="chart-header-title-row">
-              <h2 class="card-title" id="chartTitle" style="margin-bottom: 0;"><i class="fas fa-chart-line" style="margin-right: 8px; opacity: 0.7;"></i>মোট স্কোর র‍্যাঙ্কিং</h2>
+              <h2 class="card-title" id="chartTitle" style="margin-bottom: 0;"><i class="fas fa-chart-line"
+                  style="margin-right: 8px; opacity: 0.7;"></i>মোট স্কোর র‍্যাঙ্কিং</h2>
               <button class="mobile-header-toggle-btn" id="toggleChartHeaderBtn" title="ফিল্টার ও টুলস">
                 <i class="fas fa-ellipsis-v"></i>
               </button>
             </div>
-            
+
             <div class="chart-header-utils" id="chartHeaderUtils">
-              <div class="view-item-divider" style="width: 2px; height: 20px; background: var(--border-color); border-radius: 2px;"></div>
-              
+              <div class="view-item-divider"
+                style="width: 2px; height: 20px; background: var(--border-color); border-radius: 2px;"></div>
+
               <label class="chart-details-toggle"
                 style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--text-color); font-weight: 600; user-select: none;">
                 <input type="checkbox" id="showChartDetails" checked
                   style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary);">
                 বিস্তারিত
               </label>
-              
+
               <button class="view-btn" id="downloadBtn"
                 style="background: #111827; color: white; border: 1px solid #374151; font-weight: 600; padding: 7px 14px; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3); border-radius: 6px; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <i class="fas fa-download"></i> ডাউনলোড
               </button>
-              
+
               <button class="view-btn" id="printBtn"
                 style="background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 700; padding: 7px 14px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); border-radius: 6px; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <i class="fas fa-print" style="color: #0f172a;"></i> প্রিন্ট
@@ -4371,12 +4429,12 @@
   <footer id="appFooter" class="app-footer">
     <div class="app-footer-inner">
       <div class="footer-dev-info">
-        <span id="footerDevCredit">সফটওয়্যার নির্মাতা: মোস্তফা রাহমান</span>
+        <span id="footerDevCredit">সফটওয়্যার নির্মাতা: <a href="https://mustafaofficial.netlify.app/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 700;">Mustafa Rahman</a></span>
         <span class="footer-separator">|</span>
-        <span id="footerDevContact">যোগাযোগ: ০১৮৪০-৬৪৩৯৪৬</span>
+        <span id="footerDevContact">যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a></span>
       </div>
       <div class="footer-version">
-        <i class="fas fa-code-branch"></i> v<span id="footerVersionNumber">2.5.1</span>
+        <i class="fas fa-code-branch"></i> v<span id="footerVersionNumber">2.5.5</span>
       </div>
     </div>
   </footer>
