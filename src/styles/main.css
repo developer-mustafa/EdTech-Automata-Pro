@@ -22701,35 +22701,47 @@ a.sidebar-contact-item:hover {
 
 /* Footer */
 .rpt-footer {
-  margin-top: auto;
-  padding-top: 10px;
+  margin-top: 30px;
+  padding-top: 12px;
   border-top: 1.5px solid #cbd5e1;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
+  gap: 20px;
 }
 
-.rpt-footer-date {
-  font-size: 0.62rem;
+.rpt-footer-left {
+  text-align: left;
+}
+
+.rpt-footer-right {
+  text-align: right;
+}
+
+.ftr-dev {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.ftr-contact {
+  font-size: 0.58rem;
   color: #64748b;
   font-weight: 600;
 }
 
-.rpt-dev-credit {
-  text-align: right;
-  font-size: 0.55rem;
-  color: #94a3b8;
-  line-height: 1.4;
+.ftr-soft {
+  color: #2563eb;
+  font-weight: 800;
+  margin-left: 8px;
 }
 
-.rpt-dev-credit strong {
-  color: #475569;
-}
-
-.rpt-dev-credit a {
-  color: #3b82f6;
-  text-decoration: none;
-  font-size: 0.52rem;
+@media print {
+  body.printing-report .rpt-footer {
+    border-top: 1.5px solid #000 !important;
+    margin-top: auto !important;
+  }
 }
 
 /* ── Report Page: Mobile Responsive ── */

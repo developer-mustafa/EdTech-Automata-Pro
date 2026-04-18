@@ -1140,7 +1140,16 @@ export async function generateReport() {
             ${partiallyAbsentHtml}
             ${fullyAbsentHtml}
 
-            <div class="rpt-footer">তারিখ: ${todayDate}${devH}</div>
+            <div class="rpt-footer">
+                <div class="rpt-footer-left">
+                    <div class="ftr-dev">সফটওয়্যার নির্মাতা: <a href="https://mustafaofficial.netlify.app/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 700;">Mustafa Rahman</a>, সিনিয়ঁর সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
+                    <div class="ftr-contact">যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a> <span class="ftr-soft">অটোমেটেড এক্সাম এনালিষ্ট সফটওয়্যার</span></div>
+                </div>
+                <div class="rpt-footer-right">
+                    <div class="ftr-contact">প্রিন্টের তারিখ: ${todayDate}</div>
+                    <div class="ftr-contact" style="color: #2563eb; font-weight: 700;">${window.location.host}</div>
+                </div>
+            </div>
         </div>
     </div>`;
     document.getElementById('reportPreview').innerHTML = reportHtml;
