@@ -1517,15 +1517,46 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     const overallGrade = allPassed ? getGradeFromGP(parseFloat(avgGPA)) : 'F';
 
+    // Participation and Attendance logic for Remarks
+    let attendedSubjectsCount = 0;
+    visibleSubjects.forEach(subjObj => {
+        const isObj = typeof subjObj === 'object';
+        const subjName = isObj ? subjObj.name : subjObj;
+        
+        const checkSubjectHasMarks = (name) => {
+            const sSubjKey = normalizeText(name).replace(/\s+/g, '');
+            const data = student.subjects[sSubjKey];
+            if (!data) return false;
+            return (data.written || 0) > 0 || (data.mcq || 0) > 0 || (data.practical || 0) > 0 || (data.total || 0) > 0;
+        };
+
+        if (isCombinedMode && isObj && subjObj.isCombined) {
+            const papers = subjObj.papers || [];
+            const hasParticipated = papers.some(p => checkSubjectHasMarks(p));
+            if (hasParticipated) attendedSubjectsCount++;
+        } else {
+            if (checkSubjectHasMarks(subjName)) attendedSubjectsCount++;
+        }
+    });
+
     let studentRemark = '';
-    if (overallGrade === 'A+' || overallGrade === 'A') {
-        studentRemark = 'আলহামদুলিল্লাহ! অসাধারণ ফলাফল, তোমার উত্তরোত্তর সফলতা কামনা করছি';
-    } else if (overallGrade === 'A-' || overallGrade === 'B') {
-        studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে এগিয়ে যাও,তোমার জন্য শুভকামনা';
-    } else if (overallGrade === 'C' || overallGrade === 'D') {
-        studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকদের হেল্প নাও,সমাধান কর এবং চেষ্টার কমতি রেখো না';
-    } else if (overallGrade === 'F') {
-        studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে আরো বেশি করে ফোকাস দিতে হবে।';
+    const totalVisibleCount = visibleSubjects.length;
+
+    if (attendedSubjectsCount === 0) {
+        studentRemark = 'ফলাফল:অনুপস্থিত! এই শিক্ষার্থী পরীক্ষায় অংশগ্রহণ করেনি।';
+    } else if (attendedSubjectsCount < totalVisibleCount) {
+        studentRemark = 'ফলাফল:আংশিক অংশগ্রহণ! শিক্ষার্থী সকল বিষয়ে পরীক্ষায় অংশগ্রহণ করেনি।';
+    } else {
+        // High participation - Standard grade-based remarks
+        if (overallGrade === 'A+' || overallGrade === 'A') {
+            studentRemark = 'আলহামদুলিল্লাহ! অসাধারণ ফলাফল, তোমার উত্তরোত্তর সফলতা কামনা করছি';
+        } else if (overallGrade === 'A-' || overallGrade === 'B') {
+            studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে এগিয়ে যাও,তোমার জন্য শুভকামনা';
+        } else if (overallGrade === 'C' || overallGrade === 'D') {
+            studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকদের হেল্প নাও,সমাধান কর এবং চেষ্টার কমতি রেখো না';
+        } else if (overallGrade === 'F') {
+            studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে আরো বেশি করে ফোকাস দিতে হবে।';
+        }
     }
 
     // Synchronize history table GPA to exactly match the current marksheet's calculated GPA
