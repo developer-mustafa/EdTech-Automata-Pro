@@ -991,20 +991,20 @@ export async function generateReport() {
                     <table class="rpt-subject-table">
                         <thead>
                             <tr>
-                                <th rowspan="2" style="text-align: left !important; padding-left: 20px !important; background: #1e3a5f !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">বিষয়ের নাম</th>
-                                <th rowspan="2" style="background: #1e3a5f !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">মোট</th>
-                                <th rowspan="2" style="background: #1e3a5f !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">অনুপস্থিত</th>
-                                <th rowspan="2" style="background: #1e3a5f !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">পরীক্ষার্থী</th>
-                                <th rowspan="2" style="background: #065f46 !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">পাশ</th>
-                                <th rowspan="2" style="background: #991b1b !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">ফেল(F)</th>
-                                <th colspan="3" style="background: #1e3a5f !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">Achievement</th>
-                                <th rowspan="2" style="background: #1e3a5f !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">হার</th>
-                                <th rowspan="2" style="background: #1e3a5f !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 950 !important;">সর্বোচ্চ</th>
+                                <th rowspan="2" style="text-align: left !important; padding-left: 20px !important; background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">বিষয়ের নাম</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">মোট</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">অনুপস্থিত</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">পরীক্ষার্থী</th>
+                                <th rowspan="2" style="background: #dcfce7 !important; color: #166534 !important; border-bottom: 2px solid #bbf7d0 !important; font-weight: 800 !important;">পাশ</th>
+                                <th rowspan="2" style="background: #fee2e2 !important; color: #991b1b !important; border-bottom: 2px solid #fecaca !important; font-weight: 800 !important;">ফেল(F)</th>
+                                <th colspan="3" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">Achievement</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">হার</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">সর্বোচ্চ</th>
                             </tr>
                             <tr>
-                                <th style="background: #065f46 !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 800 !important;">উত্তম(A+,A)</th>
-                                <th style="background: #1e40af !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 800 !important;">মাঝারি(A-,B)</th>
-                                <th style="background: #9a3412 !important; color: #ffffff !important; border: 1px solid #ffffff33 !important; font-weight: 800 !important;">দুর্বল(C,D)</th>
+                                <th style="background: #f8fafc !important; color: #166534 !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">উত্তম(A+,A)</th>
+                                <th style="background: #f8fafc !important; color: #1e40af !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">মাঝারি(A-,B)</th>
+                                <th style="background: #f8fafc !important; color: #ea580c !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">দুর্বল(C,D)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1066,18 +1066,12 @@ export async function generateReport() {
                 let rateColor = '#475569';
                 let rateBg = 'transparent';
                 
-                if (passRate >= 90) {
+                if (passRate >= 80) {
                     rateColor = '#166534'; // Green
                     rateBg = '#f0fdf4';
-                } else if (passRate >= 80) {
-                    rateColor = '#1d4ed8'; // Blue
-                    rateBg = '#eff6ff';
-                } else if (passRate >= 60) {
+                } else if (passRate >= 40) {
                     rateColor = '#ea580c'; // Orange
                     rateBg = '#fff7ed';
-                } else if (passRate >= 40) {
-                    rateColor = '#4b5563'; // Dark Gray
-                    rateBg = '#f3f4f6';
                 } else {
                     rateColor = '#dc2626'; // Red
                     rateBg = '#fef2f2';
@@ -1086,7 +1080,7 @@ export async function generateReport() {
                 const html = `<tr>
                         <td style="text-align: left !important; padding-left: 20px !important; font-weight: 500; color: #334155;">${subj}</td>
                         <td style="color: #475569; font-weight: 700; background: #f8fafc;">${convertToBengaliDigits(stats.totalStudents)}</td>
-                        <td style="color: #ef4444; font-weight: 700;">${convertToBengaliDigits(stats.absentStudents)}</td>
+                        <td style="color: #475569; font-weight: 700;">${convertToBengaliDigits(stats.absentStudents)}</td>
                         <td style="color: #0f172a; font-weight: 800;">${convertToBengaliDigits(stats.participants)}</td>
                         <td style="color: #166534; font-weight: 700; background: #f0fdf4;">${convertToBengaliDigits(stats.passedStudents)}</td>
                         <td style="color: #dc2626; font-weight: 700; background: #fef2f2;">${convertToBengaliDigits(failCount)}</td>
