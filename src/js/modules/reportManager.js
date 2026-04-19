@@ -714,8 +714,8 @@ export async function generateReport() {
                             <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">বিভাগ</th>
                             <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">জিপিএ</th>
                             <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">গ্রেড</th>
-                            <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">ক্লাস র‍্যাঙ্কিং</th>
-                            <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">গ্রুপ র‍্যাঙ্কিং</th>
+                            <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">ক্লাস মেধাক্রমিং</th>
+                            <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">গ্রুপ মেধাক্রমিং</th>
                             <th style="background: #065f46 !important; color: #fff !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important;">স্ট্যাটাস</th>
                         </tr>
                     </thead>

@@ -4,10 +4,10 @@
  * @module studentResultsManager
  */
 
-import { 
-    getSavedExams, 
-    getExamsByCriteria, 
-    getExamConfigs, 
+import {
+    getSavedExams,
+    getExamsByCriteria,
+    getExamConfigs,
     getSettings,
     getStudentLookupMap,
     generateStudentDocId,
@@ -169,7 +169,7 @@ export function generateStudentUniqueId(name, cls, session, roll, group) {
     // 3. Group Code
     const gOrignial = String(group || '').toLowerCase();
     const g = transliterateBangla(gOrignial).toLowerCase();
-    
+
     let groupCode = 'G'; // General/Default
     if (g.includes('sci') || gOrignial.includes('বিজ্ঞা')) {
         groupCode = 'S';
@@ -207,11 +207,11 @@ function generateLegacyStudentUniqueId(name, cls, session, roll, group) {
 async function searchByUniqueId(searchId, filters = {}) {
     const normalizedSearch = searchId.toUpperCase().replace(/\s+/g, '');
     const { class: selClass, session: selSession, examName } = filters;
-    
+
     // Cost-Optimization: If Class & Session are provided, only fetch relevant exams
     // Otherwise, use allExams (which has localStorage/memory caching)
-    const allExams = (selClass && selSession) 
-        ? await getExamsByCriteria(selClass, selSession) 
+    const allExams = (selClass && selSession)
+        ? await getExamsByCriteria(selClass, selSession)
         : await getSavedExams();
 
     // Filter exams first if filter options are provided
@@ -246,7 +246,7 @@ async function searchByUniqueId(searchId, filters = {}) {
             // 1. Exact Unique ID match (Check Modern then Legacy)
             // 2. Roll match (s.id) + Class + Session (If filters provided)
             let isMatch = (uid === normalizedSearch || legacyUid === normalizedSearch);
-            
+
             if (!isMatch && selClass && selSession) {
                 const roll = convertToEnglishDigits(String(s.id || '').trim());
                 const searchRoll = convertToEnglishDigits(normalizedSearch);
@@ -329,7 +329,7 @@ async function displayStudentMarksheet(studentResult) {
     // 1. Determine which exams are being looked at (Single or Combined)
     const searchExamName = document.getElementById('srSearchExam')?.value;
     const uniqueExamNames = [...new Set(exams.map(e => e.name).filter(Boolean))];
-    
+
     let targetExamName = searchExamName === 'all' ? '__all__' : searchExamName;
     if (!targetExamName && uniqueExamNames.length === 1) targetExamName = uniqueExamNames[0];
     if (!targetExamName) targetExamName = '__all__';
@@ -374,13 +374,13 @@ async function displayStudentMarksheet(studentResult) {
                     subjects: {}
                 });
             }
-            
+
             const subjKey = normalizeText(exam.subject).replace(/\s+/g, '') || exam.subject;
             const data = s;
             const existing = studentAggMap.get(key).subjects[subjKey];
             const hasMarks = (data.written !== null && data.written !== '' && data.written > 0) ||
-                             (data.mcq !== null && data.mcq !== '' && data.mcq > 0) ||
-                             (data.practical !== null && data.practical !== '' && data.practical > 0);
+                (data.mcq !== null && data.mcq !== '' && data.mcq > 0) ||
+                (data.practical !== null && data.practical !== '' && data.practical > 0);
 
             if (!existing || hasMarks) {
                 studentAggMap.get(key).subjects[subjKey] = {
@@ -410,7 +410,7 @@ async function displayStudentMarksheet(studentResult) {
         const optionalSubjectsObj = rules.optionalSubjects || {};
         const optKey = group !== 'all' ? group : Object.keys(optionalSubjectsObj)[0];
         allOptSubs = group !== 'all' ? (optionalSubjectsObj[optKey] || []) : Object.values(optionalSubjectsObj).flat();
-        
+
         subjects.sort((a, b) => {
             const getScore = (sub) => {
                 if (generalSubjects.includes(sub)) return 1000;
@@ -471,7 +471,7 @@ async function displayStudentMarksheet(studentResult) {
         if (!groupTally.has(res.group)) groupTally.set(res.group, 0);
         if (!res.isAbsent) groupTally.set(res.group, groupTally.get(res.group) + 1);
         const gIdx = res.isAbsent ? -1 : groupTally.get(res.group) - 1;
-        const formatRank = (i) => i === -1 ? 'র‍্যাঙ্ক নেই' : (i === 0 ? '১ম' : i === 1 ? '২য়' : i === 2 ? '৩য়' : i === 3 ? '৪র্থ' : i === 4 ? '৫ম' : i === 5 ? '৬ষ্ঠ' : i === 6 ? '৭ম' : i === 7 ? '৮ম' : i === 8 ? '৯ম' : i === 9 ? '১০ম' : `${convertToBengaliDigits(i + 1)}তম`);
+        const formatRank = (i) => i === -1 ? 'মেধাক্রম নেই' : (i === 0 ? '১ম' : i === 1 ? '২য়' : i === 2 ? '৩য়' : i === 3 ? '৪র্থ' : i === 4 ? '৫ম' : i === 5 ? '৬ষ্ঠ' : i === 6 ? '৭ম' : i === 7 ? '৮ম' : i === 8 ? '৯ম' : i === 9 ? '১০ম' : `${convertToBengaliDigits(i + 1)}তম`);
         exactRanksMap.set(res.key, { classRank: formatRank(res.isAbsent ? -1 : idx), groupRank: formatRank(gIdx) });
     });
 
@@ -486,7 +486,7 @@ async function displayStudentMarksheet(studentResult) {
         gs.total++;
 
         if (res.isAbsent) return;
-        
+
         gs.examinees++;
         if (res.isPass) {
             gs.pass++;
@@ -528,7 +528,7 @@ async function displayStudentMarksheet(studentResult) {
     // 7. Final Render for the matched student
     const targetKey = `${id}_${group}`;
     const targetAgg = studentAggMap.get(`${convertToEnglishDigits(String(id).trim().replace(/^0+/, '')) || '0'}_${normalizeText(group)}`);
-    
+
     if (!targetAgg) {
         previewArea.innerHTML = '<div class="sr-error">দুঃখিত, শিক্ষার্থীর তথ্য পাওয়া যায়নি।</div>';
         return;
@@ -548,12 +548,12 @@ async function displayStudentMarksheet(studentResult) {
     // Inject Grading Scale Counts with Bengali Digits
     const toBnNumLocal = (n) => (n || 0).toLocaleString('bn-BD');
     finalHtml = finalHtml.replace('<!--GS_AP-->', toBnNumLocal(gradeCounts['A+']))
-                         .replace('<!--GS_A-->', toBnNumLocal(gradeCounts['A']))
-                         .replace('<!--GS_AM-->', toBnNumLocal(gradeCounts['A-']))
-                         .replace('<!--GS_B-->', toBnNumLocal(gradeCounts['B']))
-                         .replace('<!--GS_C-->', toBnNumLocal(gradeCounts['C']))
-                         .replace('<!--GS_D-->', toBnNumLocal(gradeCounts['D']))
-                         .replace('<!--GS_F-->', toBnNumLocal(gradeCounts['F']));
+        .replace('<!--GS_A-->', toBnNumLocal(gradeCounts['A']))
+        .replace('<!--GS_AM-->', toBnNumLocal(gradeCounts['A-']))
+        .replace('<!--GS_B-->', toBnNumLocal(gradeCounts['B']))
+        .replace('<!--GS_C-->', toBnNumLocal(gradeCounts['C']))
+        .replace('<!--GS_D-->', toBnNumLocal(gradeCounts['D']))
+        .replace('<!--GS_F-->', toBnNumLocal(gradeCounts['F']));
 
     previewArea.innerHTML = finalHtml;
 
@@ -824,13 +824,13 @@ export async function initStudentResultsManager() {
                 searchInput.focus();
             }
             clearBtn.style.display = 'none';
-            
+
             // Clear result areas
             const resultArea = document.getElementById('srResultArea');
             const notFoundMsg = document.getElementById('srNotFound');
             if (resultArea) resultArea.style.display = 'none';
             if (notFoundMsg) notFoundMsg.style.display = 'none';
-            
+
             // Pulse effect
             clearBtn.classList.add('sr-reset-anim');
             setTimeout(() => clearBtn.classList.remove('sr-reset-anim'), 400);
@@ -845,11 +845,11 @@ export async function initStudentResultsManager() {
             const params = new URLSearchParams(paramsString);
             const uid = params.get('uid');
             const exam = params.get('exam'); // Named exam in URL
-            
+
             if (uid && searchInput) {
                 searchInput.value = uid;
                 if (clearBtn) clearBtn.style.display = 'flex';
-                
+
                 // Auto-select exam if present
                 if (exam) {
                     const examDropdown = document.getElementById('srSearchExam');
@@ -862,7 +862,7 @@ export async function initStudentResultsManager() {
                         }
                     }
                 }
-                
+
                 // Trigger search immediately.
                 setTimeout(handleSearch, 300);
             }
@@ -1060,14 +1060,14 @@ async function populateSrDropdowns() {
                                 session: selSession
                             });
                             const latest = lookupMap.get(studentKey);
-                            
+
                             const mergedStudent = {
                                 ...s,
                                 name: latest ? (latest.name || s.name) : s.name,
                                 fatherName: latest ? (latest.fatherName || '') : '',
                                 mobile: latest ? (latest.mobile || '') : ''
                             };
-                            
+
                             studentsMap.set(key, mergedStudent);
                         }
                     });
@@ -1104,7 +1104,7 @@ async function populateSrDropdowns() {
 }
 
 function showRestrictionMessage(previewArea, msg, searchBtn) {
-    if(!previewArea) return;
+    if (!previewArea) return;
     previewArea.innerHTML = `
         <div class="sr-restriction-msg" style="padding:30px 20px; text-align:center; background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.05); margin: 20px auto; max-width: 500px;">
             <div style="font-size:2.8rem; color:#f59e0b; margin-bottom:12px;"><i class="fas fa-lock"></i></div>
@@ -1119,7 +1119,7 @@ function showRestrictionMessage(previewArea, msg, searchBtn) {
 }
 
 function renderTimerCountDown(previewArea, deadlineDate, searchBtn) {
-    if(!previewArea) return;
+    if (!previewArea) return;
     previewArea.innerHTML = `
         <div class="sr-restriction-msg" style="padding:30px 20px; text-align:center; background:linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); border:1px solid #bae6fd; border-radius:12px; box-shadow:0 10px 30px rgba(14,165,233,0.1); margin: 20px auto; max-width: 500px;">
             <div style="font-size:2.8rem; color:#0ea5e9; margin-bottom:12px; animation: pulse 1.5s infinite;"><i class="fas fa-hourglass-half"></i></div>
@@ -1135,23 +1135,23 @@ function renderTimerCountDown(previewArea, deadlineDate, searchBtn) {
             }
         </style>
     `;
-    
+
     if (searchBtn) {
         searchBtn.innerHTML = '<i class="fas fa-search"></i> <span>সার্চ</span>';
         searchBtn.disabled = false;
     }
 
     if (window.srTimerInterval) clearInterval(window.srTimerInterval);
-    
+
     window.srTimerInterval = setInterval(() => {
         const now = new Date();
         const diffMs = deadlineDate - now;
-        
+
         if (diffMs <= 0) {
             clearInterval(window.srTimerInterval);
             const timerEl = document.getElementById('srDynamicTimer');
             if (timerEl) timerEl.innerHTML = "উন্মুক্ত হচ্ছে...";
-            
+
             // Automatically trigger search again
             const input = document.getElementById('srSearchInput');
             if (input && input.value) {
@@ -1159,13 +1159,13 @@ function renderTimerCountDown(previewArea, deadlineDate, searchBtn) {
             }
             return;
         }
-        
+
         const m = Math.floor(diffMs / 60000);
         const s = Math.floor((diffMs % 60000) / 1000);
-        
+
         const mStr = new Intl.NumberFormat('bn-BD', { minimumIntegerDigits: 2 }).format(m);
         const sStr = new Intl.NumberFormat('bn-BD', { minimumIntegerDigits: 2 }).format(s);
-        
+
         const timerEl = document.getElementById('srDynamicTimer');
         if (timerEl) timerEl.innerText = `${mStr}:${sStr}`;
         else clearInterval(window.srTimerInterval);
@@ -1177,7 +1177,7 @@ function checkResultPublicationAccess(previewArea, searchBtn) {
     if (isSuperAdmin) return true; // Super admins bypass completely
 
     const ac = state.accessControl || {};
-    
+
     // 1. Check Master Switch (Global Result Status)
     if (ac.globalResultDisabled === true) {
         showRestrictionMessage(previewArea, "দুঃখিত, ফলাফল তৈরী করা প্রক্রিয়াধীন বা এখনো ফলাফল ঘোষনা করা হয়নি। ধৈর্য ধরুন।", searchBtn);
@@ -1200,7 +1200,7 @@ function checkResultPublicationAccess(previewArea, searchBtn) {
                 // Beyond 5 minutes, show the formatted text message
                 const days = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
                 const day = days[deadlineDate.getDay()];
-                
+
                 let hours = deadlineDate.getHours();
                 const minutes = deadlineDate.getMinutes();
                 let ampmText = 'রাত';
@@ -1210,17 +1210,17 @@ function checkResultPublicationAccess(previewArea, searchBtn) {
                 else if (hours >= 18 && hours < 20) ampmText = 'সন্ধ্যা';
 
                 hours = hours % 12;
-                hours = hours ? hours : 12; 
-                
+                hours = hours ? hours : 12;
+
                 const hBn = new Intl.NumberFormat('bn-BD').format(hours);
                 const mBn = new Intl.NumberFormat('bn-BD', { minimumIntegerDigits: 2 }).format(minutes);
-                
+
                 // Date logic
                 const dayObj = deadlineDate.getDate();
                 const monthNames = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
                 const monthObj = monthNames[deadlineDate.getMonth()];
                 const yearObj = deadlineDate.getFullYear();
-                
+
                 const dayBn = new Intl.NumberFormat('bn-BD').format(dayObj);
                 const yearBn = new Intl.NumberFormat('bn-BD', { useGrouping: false }).format(yearObj);
                 const dateStr = `${dayBn} ${monthObj} ${yearBn}`;
@@ -1311,7 +1311,7 @@ async function handleSearch() {
     if (resultArea) resultArea.style.display = 'block';
 
     const previewArea = document.getElementById('srMarksheetPreview');
-    
+
     // First: Check access control deadline guard before processing any result
     if (!checkResultPublicationAccess(previewArea, searchBtn)) {
         if (resultArea) resultArea.style.display = 'block';
@@ -1342,7 +1342,7 @@ async function handleSearch() {
             if (resultArea) resultArea.style.display = 'none';
             const zoomHeader = document.getElementById('srPreviewHeader');
             if (zoomHeader) zoomHeader.style.display = 'none';
-            
+
             // Fix: Reset button when not found
             if (searchBtn) {
                 searchBtn.innerHTML = '<i class="fas fa-search"></i> <span>সার্চ</span>';
@@ -1541,7 +1541,7 @@ async function handleDownloadIdCard() {
                 if (clonedCard) {
                     clonedCard.style.boxShadow = 'none';
                     clonedCard.style.border = '1.5px solid #e2e8f0';
-                    
+
                     // Stabilize UID bar and prevent vertical clipping
                     const uidBox = clonedCard.querySelector('.sr-id-uid-box');
                     const uidContainer = clonedCard.querySelector('.sr-id-uid-container');
@@ -1551,10 +1551,10 @@ async function handleDownloadIdCard() {
                         uidContainer.style.paddingTop = '15px'; // Extra top padding as requested
                         uidContainer.style.paddingBottom = '20px'; // Extra bottom buffer
                         uidContainer.style.overflow = 'visible';
-                        
+
                         uidBox.style.flex = '1';
                         uidBox.style.width = '100%';
-                        uidBox.style.background = 'white'; 
+                        uidBox.style.background = 'white';
                         uidBox.style.display = 'flex';
                         uidBox.style.alignItems = 'center';
                         uidBox.style.justifyContent = 'center';
@@ -1576,7 +1576,7 @@ async function handleDownloadIdCard() {
         const rawName = selectedStudent?.dataset.name || 'Student';
         const roll = selectedStudent?.dataset.roll || 'Roll';
         const clsValue = classSelect?.value || 'Class';
-        
+
         // Strictly ASCII-only filename for maximum machine compatibility
         const engName = transliterateBangla(rawName).replace(/[^a-z0-9]/gi, '_').substring(0, 15);
         const engCls = transliterateBangla(clsValue).replace(/[^a-z0-9]/gi, '_');
@@ -1592,21 +1592,21 @@ async function handleDownloadIdCard() {
             // Creating a File object inside the Blob URL often forces Chrome to respect the name
             const file = new File([blob], finalFileName, { type: 'image/png' });
             const url = window.URL.createObjectURL(file);
-            
+
             const link = document.createElement('a');
             link.style.display = 'none';
             link.href = url;
             link.download = finalFileName;
-            
+
             document.body.appendChild(link);
             link.click();
-            
+
             // Allow more time for the OS to finalize
             setTimeout(() => {
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
             }, 1000);
-            
+
             showNotification('আইডি কার্ড সফলভাবে ডাউনলোড হয়েছে! ✅');
         }, 'image/png', 1.0);
     } catch (err) {

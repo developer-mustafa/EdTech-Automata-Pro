@@ -504,7 +504,7 @@ async function generateMarksheets() {
             if (gpaMatch) gpa = parseFloat(gpaMatch[1]);
         }
         let totalMarks = 0;
-        const marksMatch = item.html.match(/<span class="ms-result-label">মোট নম্বর<\/span>\s*<span class="ms-result-value">\s*(\d+)/);
+        const marksMatch = item.html.match(/<span class="ms-result-label">মোট প্রাপ্ত নম্বর<\/span>\s*<span class="ms-result-value">\s*(\d+)/);
         if (marksMatch) totalMarks = parseInt(marksMatch[1]);
 
         let failedCount = 0;
@@ -549,8 +549,8 @@ async function generateMarksheets() {
         const formatRank = (i) => i === 0 ? '১ম' : i === 1 ? '২য়' : i === 2 ? '৩য়' : i === 3 ? '৪র্থ' : i === 4 ? '৫ম' : i === 5 ? '৬ষ্ঠ' : i === 6 ? '৭ম' : i === 7 ? '৮ম' : i === 8 ? '৯ম' : i === 9 ? '১০ম' : `${toBnNum(i + 1)}তম`;
 
         exactRanksMap.set(res.key, {
-            classRank: res.isAbsent ? 'র‍্যাঙ্ক নেই' : formatRank(rankIndex),
-            groupRank: res.isAbsent ? 'র‍্যাঙ্ক নেই' : formatRank(groupIndex),
+            classRank: res.isAbsent ? 'মেধাক্রম নেই' : formatRank(rankIndex),
+            groupRank: res.isAbsent ? 'মেধাক্রম নেই' : formatRank(groupIndex),
             classRankNum: res.isAbsent ? 999999 : rankIndex,
             groupRankNum: res.isAbsent ? 999999 : groupIndex,
             isPass: res.isPass,
@@ -630,7 +630,7 @@ async function generateMarksheets() {
     const examSummaryHtml = `
         <div class="ms-exam-summary-section">
             <table class="ms-exam-summary-tbl">
-                <caption>পরীক্ষার ফলাফল সামারি</caption>
+                <caption>পরীক্ষার ফলাফল সারসংক্ষেপ</caption>
                 <thead>
                     <tr>
                         <th>বিভাগ</th>
@@ -1027,8 +1027,8 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
             studentHistory.push({
                 name: examName,
                 gpa: res.allPassed ? res.displayGPA : '0.00',
-                rank: res.allAbsent ? 'র‍্যাঙ্ক নেই' : studentRankIdx + 1,
-                groupRank: (gRes && gRes.allAbsent) ? 'র‍্যাঙ্ক নেই' : (groupRankIdx !== -1 ? groupRankIdx + 1 : '-')
+                rank: res.allAbsent ? 'মেধাক্রম নেই' : studentRankIdx + 1,
+                groupRank: (gRes && gRes.allAbsent) ? 'মেধাক্রম নেই' : (groupRankIdx !== -1 ? groupRankIdx + 1 : '-')
             });
         }
     }
@@ -1301,7 +1301,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     cells += `<td class="ms-td-subject" rowspan="${papers.length}">
                         <div class="ms-subject-name-cell">
                             <span>${subjName}</span>
-                            ${isOptional ? `<div class="ms-optional-tag">(Optional Subject) - ${ms.boardStandardOptional ? 'Board standard' : 'very strict'}</div>` : ''}
+                            ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যান্ডার্ড' : 'সাধারণ বিষয় নীতি'}</div>` : ''}
                         </div>
                     </td>`;
                 }
@@ -1462,7 +1462,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         <td class="ms-td-subject">
                             <div class="ms-subject-name-cell">
                                 <span>${subjName}</span>
-                                ${isOptional ? `<div class="ms-optional-tag">(Optional Subject) - ${ms.boardStandardOptional ? 'Board standard' : 'very strict'}</div>` : ''}
+                                ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারন বিষয় নীতি'}</div>` : ''}
                             </div>
                         </td>
                         <td class="ms-td-subject">${subj}</td>
@@ -1493,7 +1493,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         <td class="ms-td-subject">
                             <div class="ms-subject-name-cell">
                                 <span>${subj}</span>
-                                ${isOptional ? `<div class="ms-optional-tag">(Optional Subject) - ${ms.boardStandardOptional ? 'Board standard' : 'very strict'}</div>` : ''}
+                                ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারন বিষয় নীতি'}</div>` : ''}
                             </div>
                         </td>
                         <td class="ms-td-num" style="font-weight: 600;">${highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'}</td>
@@ -1536,7 +1536,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
     visibleSubjects.forEach(subjObj => {
         const isObj = typeof subjObj === 'object';
         const subjName = isObj ? subjObj.name : subjObj;
-        
+
         const checkSubjectHasMarks = (name) => {
             const sSubjKey = normalizeText(name).replace(/\s+/g, '');
             const data = student.subjects[sSubjKey];
@@ -1561,15 +1561,15 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
     } else if (attendedSubjectsCount < totalVisibleCount) {
         studentRemark = 'ফলাফল:আংশিক অংশগ্রহণ! তুমি একাধিক বিষয়ের পরীক্ষা দাওনি, দ্রুত পরীক্ষা দিয়ে ফলাফল আপডেট করে নাও।';
     } else {
-        // High participation - Standard grade-based remarks
+        // Full participation - Grade ভিত্তিক মন্তব্য
         if (overallGrade === 'A+' || overallGrade === 'A') {
-            studentRemark = 'আলহামদুলিল্লাহ! অসাধারণ ফলাফল, তোমার উত্তরোত্তর সফলতা কামনা করছি';
+            studentRemark = 'অসাধারণ ফলাফল। তোমার উত্তরোত্তর সাফল্য কামনা করছি।';
         } else if (overallGrade === 'A-' || overallGrade === 'B') {
-            studentRemark = 'ফলাফল:মোটামুটি ভালো!এভাবে চেষ্টা করে এগিয়ে যাও,তোমার জন্য শুভকামনা';
+            studentRemark = 'ফলাফল সন্তোষজনক। আরও উন্নতির জন্য নিয়মিত অধ্যয়ন কর।';
         } else if (overallGrade === 'C' || overallGrade === 'D') {
-            studentRemark = 'ফলাফল:হতাশাজনক! বিষয়ভিত্তিক শিক্ষকদের হেল্প নাও,সমাধান কর এবং চেষ্টার কমতি রেখো না';
+            studentRemark = 'ফলাফল সন্তোষজনক নয়। বিষয়ভিত্তিক দুর্বলতা কাটিয়ে উঠতে অধিক মনোযোগ প্রয়োজন।';
         } else if (overallGrade === 'F') {
-            studentRemark = 'ফলাফল:খুবই দুঃখজনক! চেষ্টার যথেষ্ট ঘাটতি রয়েছে এবং ফেল করা বিষয়গুলোতে আরো বেশি করে ফোকাস দিতে হবে।';
+            studentRemark = 'ফলাফল অকৃতকার্য। ফেল করা বিষয়গুলোতে বিশেষ মনোযোগ দিয়ে পুনরায় প্রস্তুতি গ্রহণ করা আবশ্যক।';
         }
     }
 
@@ -1618,7 +1618,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
         </tr>`;
 
     // Final result text should use pass/fail logic
-    const resultText = allPassed ? 'পাস' : 'অকৃতকার্য';
+    const resultText = allPassed ? 'উত্তীর্ণ' : 'অকৃতকার্য';
     const resultClass = allPassed ? 'ms-result-pass' : 'ms-result-fail';
 
     const signaturesToRender = ms.signatures || (ms.signatureLabels || ['শ্রেণি শিক্ষক', 'পরীক্ষা কমিটি', 'অধ্যক্ষ']).map(l => ({ label: l, url: '' }));
@@ -1677,8 +1677,8 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             <!-- Decorative Border -->
             <div class="ms-border-frame" style="position: relative;">
                 
-                <!-- App Version Badge -->
-                <div class="ms-app-version-badge" style="position: absolute; top: 12px; right: 15px; font-size: 0.65rem; color: #64748b; font-weight: 600; letter-spacing: 0.5px; opacity: 0.8; pointer-events: none; -webkit-print-color-adjust: exact; print-color-adjust: exact;">এনালিষ্ট প্রো- v${APP_VERSION}</div>
+                <!-- App Version Badge (Watermark Style) -->
+                <div class="ms-app-version-badge" style="position: absolute; top: 16px; right: 16px; font-size: 0.5rem; color: #475569; font-weight: 700; letter-spacing: 0px; opacity: 0.25; user-select: none; pointer-events: none; border: 1px dashed rgba(71, 85, 105, 0.4); padding: 3px 6px; border-radius: 4px; z-index: 10; font-family: inherit;">এনালিস্ট প্রো • V${APP_VERSION}</div>
 
                 <!-- Header Section -->
                 <div class="ms-header-section">
@@ -1759,7 +1759,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 <div class="ms-result-section">
                     ${optionalBonusGP > 0 ? `
                     <div class="ms-result-box" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border: 1px solid #a5d6a7; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
-                        <span class="ms-result-label" style="color: #2e7d32; font-size: 0.55rem;">ঐচ্ছিক বোনাস</span>
+                        <span class="ms-result-label" style="color: #2e7d32; font-size: 0.55rem;">ঐচ্ছিক পয়েন্ট</span>
                         <span class="ms-result-value" style="color: #1b5e20; font-size: 1.1rem;">+${optionalBonusGP.toFixed(2)}</span>
                     </div>
                     ` : ''}
@@ -1782,7 +1782,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         <span class="ms-result-value">${resultText}</span>
                     </div>
                     <div class="ms-result-box" style="${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
-                        <span class="ms-result-label">মোট নম্বর</span>
+                        <span class="ms-result-label">মোট প্রাপ্ত নম্বর</span>
                         <span class="ms-result-value">${grandTotal} / ${maxGrand}</span>
                     </div>
                     ${(() => {
@@ -1798,7 +1798,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             const labelStyle = (!allPassed || finalCount > 0) ? 'color: #991b1b; font-size: 0.55rem;' : 'color: #166534; font-size: 0.55rem;';
             const valStyle = (!allPassed || finalCount > 0) ? 'color: #dc2626; font-size: 0.85rem; font-weight: 700;' : 'color: #15803d; font-size: 0.85rem; font-weight: 700;';
 
-            let text = 'সকল বিষয় পাশ';
+            let text = 'সকল বিষয়ে উত্তীর্ণ';
             if (!allPassed || finalCount > 0) {
                 const banglaNum = Number(finalCount).toLocaleString('bn-BD');
                 text = `${banglaNum} বিষয় ফেল`;
@@ -1806,7 +1806,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
             return `
                         <div class="ms-result-box" style="${bgStyle}">
-                            <span class="ms-result-label" style="${labelStyle}">বিষয় স্ট্যাটাস</span>
+                            <span class="ms-result-label" style="${labelStyle}">বিষয়ভিত্তিক অবস্থা:</span>
                             <span class="ms-result-value" style="${valStyle}">${text}</span>
                         </div>`;
         })()}
@@ -1816,7 +1816,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 <!-- Grade Scale Reference -->
                 <div class="ms-grade-scale" style="${(ms.showGradeScale === false || (isIdSearch && ms.idSearchShowGradeScale === false)) ? 'display: none !important;' : ''}">
                     <div class="ms-grade-scale-wrapper">
-                        <span class="ms-gs-title" style="letter-spacing: 0.5px;">GRADING SCALE :</span>
+                        <span class="ms-gs-title" style="letter-spacing: 0.5px;">গ্রেডিং স্কেল</span>
                         <div class="ms-grade-badges">
                             <div class="ms-gs-item gs-ap" style="flex: 1 1 50px; min-width: 58px;">
                                 <div class="ms-gs-top" style="font-size: 0.57rem; white-space: nowrap;"><strong>A+</strong> <span style="font-weight: 500;">(80-100)</span> <strong>5.00</strong></div>
@@ -1853,18 +1853,18 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 <!-- Extra Sections: History, Comments, QR -->
                 <div class="ms-extra-grid">
                     <div class="ms-extra-box ms-history-column" style="display: ${isIdSearch && ms.idSearchShowRanking === false ? 'none !important' : 'flex'}; flex-direction: column; min-width: 0; overflow: hidden;">
-                        <span class="ms-extra-title">পরীক্ষার ফলাফল ইতিহাস ও মেরিট পজিশন</span>
+                        <span class="ms-extra-title">ফলাফলের ইতিহাস ও মেধাক্রম</span>
                         <div class="ms-history-grid-container" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%;">
                             <!-- Header Row -->
                             <div style="display: grid; grid-template-columns: 38% 18% 22% 22%; width: 100%; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
                                 <div style="display: flex; align-items: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: left; padding: 2px;">পরীক্ষার নাম</div>
                                 <div style="display: flex; align-items: flex-end; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;">GPA</div>
                                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="সমন্বিত">
-                                    <span>র‍্যাঙ্ক</span>
+                                    <span>মেধাক্রম</span>
                                     <span style="font-size:0.55rem; font-weight:800; color:#64748b; margin-top:2px; letter-spacing:0.3px;">CLASS</span>
                                 </div>
                                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="বিভাগীয়">
-                                    <span>র‍্যাঙ্ক</span>
+                                    <span>মেধাক্রম</span>
                                     <span style="font-size:0.55rem; font-weight:800; color:#64748b; margin-top:2px; letter-spacing:0.3px;">GROUP</span>
                                 </div>
                             </div>
@@ -1874,7 +1874,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                                 ${history.length > 0 ? history.map(h => {
             // Helper functions for precise rank styling
             const getRankClass = (rankVal, type) => {
-                if (rankVal === 'র‍্যাঙ্ক নেই' || rankVal === '-' || !rankVal) return 'ms-rank-none';
+                if (rankVal === 'মেধাক্রম নেই' || rankVal === '-' || !rankVal) return 'ms-rank-none';
                 const r = parseInt(convertToEnglishDigits(String(rankVal)));
                 const isClass = type === 'class';
                 if (r === 1) return isClass ? 'ms-rank-1-class' : 'ms-rank-1-group';
@@ -1884,7 +1884,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             };
 
             const getRankText = (rankVal) => {
-                if (rankVal === 'র‍্যাঙ্ক নেই' || rankVal === '-' || !rankVal) return '-';
+                if (rankVal === 'মেধাক্রম নেই' || rankVal === '-' || !rankVal) return '-';
                 const r = parseInt(convertToEnglishDigits(String(rankVal)));
                 if (typeof rankVal === 'string' && /[মর্থষ্ঠ]/.test(rankVal)) return rankVal;
                 return r === 1 ? '১ম' : r === 2 ? '২য়' : r === 3 ? '৩য়' : r === 4 ? '৪র্থ' : r === 5 ? '৫ম' : r === 6 ? '৬ষ্ঠ' : r === 7 ? '৭ম' : r === 8 ? '৮ম' : r === 9 ? '৯ম' : r === 10 ? '১০ম' : `${r.toLocaleString('bn-BD')}তম`;
@@ -1931,7 +1931,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                             <canvas class="ms-mr-qr-canvas" data-uid="${uid}" data-exam="${examDisplayName}" data-name="${student.name}"></canvas>
                         </div>
                         <div class="ms-qr-text-info" style="display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: -2px;">
-                            <div style="color: #0f172a; font-size: 0.58rem; font-weight: 800; margin-bottom: 1px; line-height: 1;">স্ক্যান এন্ড ভেরিফাই</div>
+                            <div style="color: #0f172a; font-size: 0.58rem; font-weight: 800; margin-bottom: 1px; line-height: 1;">স্ক্যান করে যাচাই করুন</div>
                             <div style="font-size: 0.62rem; color: #2563eb; font-weight: 700; margin-bottom: 0px; letter-spacing: 0.2px; text-transform: lowercase;">${window.location.hostname}</div>
                             <div class="ms-qr-uid" style="margin-top: 0; background: #f8fafc; width: 100%; padding: 3px 0; border-top: 1px dashed #cbd5e1; font-size: 0.65rem; color: #1e293b; font-weight: 700;">ID No. ${uid}</div>
                         </div>
@@ -1945,13 +1945,23 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     ${signatureHtml}
                 </div>
 
-                <!-- Footer with safe flexible inline layout -->
-                <div class="ms-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding: 8px 0 10px 0;">
-                    <span style="white-space: nowrap;">জেনারেটেড তারিখ: ${todayDate}</span>
-                    <div style="text-align: center; white-space: nowrap; padding: 0 4px;">
-                        ${getDeveloperCreditHtml('ms-dev-credit')}
+                <!-- Footer: Custom Settings -->
+                <div class="ms-footer" style="${ms.footerEnabled === false ? 'display: none !important;' : ''}">
+                    <span class="ms-ftr-date">${ms.footerPubDate ? ms.footerPubDate : 'নথি প্রস্তুতের তারিখ: ' + todayDate}</span>
+                    <div class="ms-ftr-brand">
+                        ${ms.footerDevName ? (ms.footerDevLink ? `<a href="${ms.footerDevLink}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">${ms.footerDevName}</a>` : ms.footerDevName) : getDeveloperCreditHtml('ms-dev-credit')}
                     </div>
-                    <span style="white-space: nowrap;">এনালিস্ট প্রো সফটওয়্যার | সম্পূর্ণ একাডেমিক সিস্টেম অটোমেশন </span>
+                    <div class="ms-ftr-right" style="display: flex; flex-direction: column; align-items: flex-end; text-align: right;">
+                        <span class="ms-ftr-system" style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: flex-end; font-size: 0.6rem; color: #1e293b; font-weight: 700; margin-bottom: 2px;" title="${ms.footerTagline || ''}">
+                            ${ms.footerTagline ? `
+                            <svg width="11" height="11" viewBox="0 0 100 100" style="margin-right: 5px; flex-shrink: 0;" aria-hidden="true">
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="#4361ee" stroke-width="12" stroke-linecap="round" stroke-dasharray="160 100" transform="rotate(-45 50 50)"></circle>
+                                <circle cx="50" cy="50" r="25" fill="none" stroke="#4cc9f0" stroke-width="10" stroke-linecap="round" stroke-dasharray="80 80" transform="rotate(45 50 50)"></circle>
+                            </svg>
+                            ${ms.footerTagline}` : ''}
+                        </span>
+                        <span style="font-size: 0.45rem; color: #94a3b8; font-weight: 400;">জেনারেটেড: ${new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2195,6 +2205,13 @@ function initMarksheetSettingsModal() {
             if (el('msShowGradeScale')) el('msShowGradeScale').checked = marksheetSettings.showGradeScale !== false;
             if (el('msBoardStandardOptional')) el('msBoardStandardOptional').checked = marksheetSettings.boardStandardOptional === true;
 
+            // Footer Settings
+            if (el('msFooterEnabled')) el('msFooterEnabled').checked = marksheetSettings.footerEnabled !== false;
+            if (el('msFooterPubDate')) el('msFooterPubDate').value = marksheetSettings.footerPubDate || '';
+            if (el('msFooterDevName')) el('msFooterDevName').value = marksheetSettings.footerDevName || '';
+            if (el('msFooterDevLink')) el('msFooterDevLink').value = marksheetSettings.footerDevLink || '';
+            if (el('msFooterTagline')) el('msFooterTagline').value = marksheetSettings.footerTagline || '';
+
             // ID Search Settings
             if (el('msIdSearchShowTable')) el('msIdSearchShowTable').checked = marksheetSettings.idSearchShowTable !== false;
             if (el('msIdSearchShowGradeScale')) el('msIdSearchShowGradeScale').checked = marksheetSettings.idSearchShowGradeScale !== false;
@@ -2354,6 +2371,11 @@ function initMarksheetSettingsModal() {
                 idSearchShowQRCode: document.getElementById('msIdSearchShowQRCode').checked,
                 idSearchShowComments: document.getElementById('msIdSearchShowComments').checked,
                 idSearchStatusMode: document.querySelector('input[name="msIdSearchStatusMode"]:checked')?.value || 'full',
+                footerEnabled: document.getElementById('msFooterEnabled')?.checked !== false,
+                footerPubDate: document.getElementById('msFooterPubDate')?.value.trim() || '',
+                footerDevName: document.getElementById('msFooterDevName')?.value.trim() || '',
+                footerDevLink: document.getElementById('msFooterDevLink')?.value.trim() || '',
+                footerTagline: document.getElementById('msFooterTagline')?.value.trim() || '',
                 signatures: signatures.length > 0 ? signatures : [
                     { label: 'শ্রেণি শিক্ষক', url: '' },
                     { label: 'পরীক্ষা কমিটি', url: '' },

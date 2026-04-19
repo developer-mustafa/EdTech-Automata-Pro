@@ -649,7 +649,7 @@
           <div class="header-left-group">
             <div class="chart-header-title-row">
               <h2 class="card-title" id="chartTitle" style="margin-bottom: 0;"><i class="fas fa-chart-line"
-                  style="margin-right: 8px; opacity: 0.7;"></i>মোট স্কোর র‍্যাঙ্কিং</h2>
+                  style="margin-right: 8px; opacity: 0.7;"></i>মোট স্কোর মেধাক্রমিং</h2>
               <button class="mobile-header-toggle-btn" id="toggleChartHeaderBtn" title="ফিল্টার ও টুলস">
                 <i class="fas fa-ellipsis-v"></i>
               </button>
@@ -1594,18 +1594,17 @@
                   class="dark:bg-slate-700"></div>
 
                 <span style="font-size: 0.8rem; font-weight: 700; color: rgba(var(--primary-rgb), 0.8);">সর্টিং:</span>
-                <label
+                <labe
                   style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; color: var(--text-color); font-weight: 600;">
                   <input type="radio" name="msSortOrder" id="msSortRoll" value="roll" checked> রোল
-                </label>
-                <label
-                  style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; color: var(--text-color); font-weight: 600;">
-                  <input type="radio" name="msSortOrder" id="msSortClassRank" value="classRank"> ক্লাস র‍্যাঙ্ক
-                </label>
-                <label
-                  style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; color: var(--text-color); font-weight: 600;">
-                  <input type="radio" name="msSortOrder" id="msSortGroupRank" value="groupRank"> গ্রুপ র‍্যাঙ্ক
-                </label>
+                  </label>
+                  <label
+                    style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; color: var(--text-color); font-weight: 600;">
+                    <input type="radio" name="msSortOrder" id="msSortClassRank" value="classRank"> ক্লাস </label>
+                  <label
+                    style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; color: var(--text-color); font-weight: 600;">
+                    <input type="radio" name="msSortOrder" id="msSortGroupRank" value="groupRank"> গ্রুপ মেধাক্রম
+                  </label>
               </div>
 
               <button id="msPrintBtn" class="dm-btn dm-report"
@@ -3141,6 +3140,9 @@
               <div class="config-menu-item" data-tab="ms-search-settings">
                 <i class="fas fa-search-plus"></i> সার্চ ফলাফল নিয়ন্ত্রণ
               </div>
+              <div class="config-menu-item" data-tab="ms-footer">
+                <i class="fas fa-shoe-prints"></i> ফুটার সেটিংস
+              </div>
             </div>
           </div>
 
@@ -3479,6 +3481,44 @@
                         <option value="relaxed">রিল্যাক্সড (Relaxed)</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+
+                <!-- Footer Settings -->
+                <div class="config-tab-content" id="ms-footer">
+                  <div class="form-header">
+                    <h3><i class="fas fa-shoe-prints"></i> মার্কশীট ফুটার সেটিংস</h3>
+                    <p>মার্কশীটের নিচের অংশের তথ্য পরিবর্তন করুন।</p>
+                  </div>
+                  
+                  <div class="form-group" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
+                    <div
+                      style="background: var(--bg-color); padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border-color); border-left: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <h4 style="margin: 0; font-size: 0.95rem; color: var(--primary);">ফুটার সেকশন প্রদর্শন (Show/Hide)</h4>
+                        <p style="margin: 3px 0 0; font-size: 0.75rem; opacity: 0.7;">সম্পূর্ণ ফুটার অংশ মার্কশীটে দেখাবে কিনা তা নিয়ন্ত্রণ করুন</p>
+                      </div>
+                      <label class="ac-sw">
+                        <input type="checkbox" id="msFooterEnabled" checked>
+                        <span class="ac-sw-sl"></span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="msFooterPubDate">১. ফলাফল প্রকাশের তারিখ (Left Side)</label>
+                    <input type="text" id="msFooterPubDate" class="form-control" placeholder="উদা: ৫ এপ্রিল ২০২৬">
+                  </div>
+                  <div class="form-group">
+                    <label for="msFooterDevName">২. ডেভেলপার/কোম্পানির নাম (Center)</label>
+                    <input type="text" id="msFooterDevName" class="form-control" placeholder="উদা: Developed by Mustafa Rahman">
+                  </div>
+                  <div class="form-group">
+                    <label for="msFooterDevLink">ওয়েব লিংক (Center - ঐচ্ছিক)</label>
+                    <input type="text" id="msFooterDevLink" class="form-control" placeholder="উদা: https://mustafaofficial.netlify.app/">
+                  </div>
+                  <div class="form-group">
+                    <label for="msFooterTagline">৩. মার্কেটিং ট্যাগ লাইন (Right Side)</label>
+                    <input type="text" id="msFooterTagline" class="form-control" placeholder="উদা: এনালিস্ট প্রো — একাডেমিক ম্যানেজমেন্ট সিস্টেম">
                   </div>
                 </div>
 
