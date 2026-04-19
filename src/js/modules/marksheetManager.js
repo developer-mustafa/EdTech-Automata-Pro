@@ -1634,7 +1634,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
     ).join('');
 
     const watermarkHtml = ms.watermarkUrl ?
-        `<img src="${ms.watermarkUrl}" class="ms-watermark-img" style="opacity: ${ms.watermarkOpacity || 0.1};" alt="Watermark">` : '';
+        `<img src="${ms.watermarkUrl}" class="ms-watermark-img" style="opacity: ${ms.watermarkOpacity || 0.08};" alt="Watermark">` : '';
 
     const todayDate = new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' });
 
