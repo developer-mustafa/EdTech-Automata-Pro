@@ -1462,7 +1462,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         <td class="ms-td-subject">
                             <div class="ms-subject-name-cell">
                                 <span>${subjName}</span>
-                                ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারন বিষয় নীতি'}</div>` : ''}
+                                ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারণ বিষয় নীতি'}</div>` : ''}
                             </div>
                         </td>
                         <td class="ms-td-subject">${subj}</td>
@@ -1493,7 +1493,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         <td class="ms-td-subject">
                             <div class="ms-subject-name-cell">
                                 <span>${subj}</span>
-                                ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারন বিষয় নীতি'}</div>` : ''}
+                                ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারণ বিষয় নীতি'}</div>` : ''}
                             </div>
                         </td>
                         <td class="ms-td-num" style="font-weight: 600;">${highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'}</td>
