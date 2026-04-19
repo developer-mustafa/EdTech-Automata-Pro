@@ -1157,7 +1157,7 @@ export async function generateReport() {
 
             <div class="rpt-footer">
                 ${devFullHtml}
-                <div class="ftr-contact-sub">সফটওয়্যার: এনালিষ্ট প্রো (v${APP_VERSION}) | প্রিন্টের তারিখ: ${todayDate}</div>
+                <div class="ftr-contact-sub">প্রিন্টের তারিখ: ${todayDate}</div>
             </div>
         </div>
     </div>`;
