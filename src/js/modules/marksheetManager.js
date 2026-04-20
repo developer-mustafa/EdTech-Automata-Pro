@@ -1048,68 +1048,71 @@ const getMarkClass = (mark, passMark) => {
 
 
 /**
- * Calculate Student Progress System (APS) Percentage
+ * Calculate Orthogonal Student Progress System (O-APS) Percentage
+ * Orthogonal metrics to avoid redundancy: GPA, Relative Excellence, and Stability.
  */
 function calculateAPS(data) {
-    const { gpa, grandTotal, maxGrand, subjectsCount, passedSubjects, weakSubjects, absentCount, failedSubjects } = data;
+    const { 
+        gpa, 
+        reScore, // Relative Excellence: Avg(Student Marks / Highest Marks)
+        subjectsCount, 
+        passedSubjects, 
+        weakSubjects, 
+        absentCount, 
+        failedSubjects 
+    } = data;
     
-    // GS = (GPA / 5.00) * 100
-    const GS = (parseFloat(gpa) / 5.00) * 100;
+    // 1. BP (Baseline Proficiency - 40%) - Measure based on GPA
+    const BP = (parseFloat(gpa) / 5.00) * 100;
     
-    // SR = (totalObtainedMarks / totalFullMarks) * 100
-    const SR = maxGrand > 0 ? (grandTotal / maxGrand) * 100 : 0;
+    // 2. RE (Relative Excellence - 42%) - Measures how close student is to Subject Toppers
+    const RE = reScore; // Already calculated as average % relative to highs
     
-    // PR = (passedSubjects / totalSubjects) * 100
-    const PR = subjectsCount > 0 ? (passedSubjects / subjectsCount) * 100 : 0;
+    // 3. SS (Stability & Seriousness - 18%) - Measures passing breadth
+    const SS = subjectsCount > 0 ? (passedSubjects / subjectsCount) * 100 : 0;
     
-    // CS = 100 - (weakSubjects * 10). Minimum CS = 50
-    let CS = 100 - (weakSubjects * 10);
-    if (CS < 50) CS = 50;
+    // O-APS Base Score
+    let APS = (0.40 * BP) + (0.42 * RE) + (0.18 * SS);
     
-    // PN = (absent * 6) + (failedSubjects * 10)
-    const PN = (absentCount * 6) + (failedSubjects * 10);
+    // --- Modifiers ---
     
-    // APS = (0.30 * GS) + (0.25 * SR) + (0.20 * PR) + (0.15 * CS) - (0.10 * PN)
-    let APS = (0.30 * GS) + (0.25 * SR) + (0.20 * PR) + (0.15 * CS) - (0.10 * PN);
+    // Serious Student Bonus: No Weak Subjects (>50% everywhere)
+    const isSeriousStudent = weakSubjects === 0 && failedSubjects === 0;
+    if (isSeriousStudent) {
+        APS = APS * 1.05; // 5% boost for consistency
+    }
     
-    // Rules
-    if (absentCount === 0) APS += 3; // Bonus for 100% attendance logic
-    if (failedSubjects >= 3) APS = APS * 0.85;
+    // Penalty for Absenteeism
+    APS = APS - (absentCount * 2);
+    
+    // Harsh reduction for high failure rate
+    if (failedSubjects >= 3) {
+        APS = APS * 0.75; // 25% reduction
+    }
+    
+    // Zero pass rule
     if (passedSubjects === 0) APS = 0;
     
     // Final Step: Clamp and Precision
     const finalAPS = Math.max(0, Math.min(100, APS));
     const progressText = finalAPS.toFixed(2) + "%";
     
-    // Grade Mapping
-    let grade = 'Needs Improvement';
-    let remark = 'আরও মনোযোগী হতে হবে।';
+    // Grade Mapping (Professional)
+    let grade = 'NEEDS IMPROVEMENT';
     let gradeColor = '#ef4444';
-    
-    if (finalAPS >= 90) { 
-        grade = 'Outstanding'; 
-        remark = 'অসাধারণ অগ্রগতি! তুমি চমৎকার মেধা ও দক্ষতা প্রদর্শন করেছ।'; 
-        gradeColor = '#059669';
-    } else if (finalAPS >= 75) { 
-        grade = 'Very Good'; 
-        remark = 'খুব ভালো অগ্রগতি। তোমার নিরলস প্রচেষ্টা অব্যাহত রেখো।'; 
-        gradeColor = '#10b981';
-    } else if (finalAPS >= 60) { 
-        grade = 'Good'; 
-        remark = 'সন্তোষজনক অগ্রগতি। কিছু বিষয়ে আরও সচেতন হলে ভালো হবে।'; 
-        gradeColor = '#3b82f6';
-    } else if (finalAPS >= 50) { 
-        grade = 'Average'; 
-        remark = 'গড়পরতা ফলাফল। দুর্বল বিষয়গুলোতে বিশেষ মনোযোগ প্রয়োজন।'; 
-        gradeColor = '#f59e0b';
-    }
+    let remark = 'আরও মনোযোগী হতে হবে।';
+
+    if (finalAPS >= 95) { grade = 'ELITE'; gradeColor = '#10b981'; }
+    else if (finalAPS >= 85) { grade = 'EXCELLENT'; gradeColor = '#059669'; }
+    else if (finalAPS >= 70) { grade = 'GOOD'; gradeColor = '#3b82f6'; }
+    else if (finalAPS >= 50) { grade = 'AVERAGE'; gradeColor = '#f59e0b'; }
     
     return {
         progressPercentage: progressText,
         apsScore: finalAPS,
         grade,
-        remark,
-        gradeColor
+        gradeColor,
+        isSerious: isSeriousStudent
     };
 }
 
@@ -1335,6 +1338,9 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     const isCombinedMode = rules && rules.mode === 'combined';
 
+    // Track Relative Excellence Sum
+    let relativeExcellenceSum = 0;
+
     const subjectRows = visibleSubjects.flatMap((subjObj, idx) => {
         const isObj = typeof subjObj === 'object';
         const subjName = isObj ? subjObj.name : subjObj;
@@ -1428,6 +1434,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
                     totalGradePointSum += gp;
 
+                    // Relative Excellence Logic (Combined)
+                    const high = highestMarks[sSubjKey] || 0;
+                    if (high > 0) relativeExcellenceSum += (avgMarks / high) * 100;
+                    else if (avgMarks > 0) relativeExcellenceSum += 100;
+
                     // GPA Logic
                     if (isCombinedMode) {
                         if (isOptional) {
@@ -1481,6 +1492,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             }
 
             totalGradePointSum += gp;
+
+            // Relative Excellence Logic (Single)
+            const high = highestMarks[sSubjKey] || 0;
+            if (high > 0) relativeExcellenceSum += (total / high) * 100;
+            else if (total > 0) relativeExcellenceSum += 100;
 
             // Determine if optional (Unified logic)
             const studentGroup = student.group || '';
@@ -2041,8 +2057,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 ${marksheetSettings.progressEnabled !== false ? (() => {
                     const apsData = calculateAPS({
                         gpa: avgGPA,
-                        grandTotal: grandTotal,
-                        maxGrand: totalFullMarks,
+                        reScore: totalVisibleCountForAPS > 0 ? (relativeExcellenceSum / totalVisibleCountForAPS) : 0,
                         subjectsCount: totalVisibleCountForAPS,
                         passedSubjects: passedSubjectsCount,
                         weakSubjects: weakSubjectsCount,
@@ -2052,8 +2067,8 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     
                     return `
                     <div class="ms-progress-section" style="margin-top: 10px; width: 100%; page-break-inside: avoid;">
-                        <span class="ms-extra-title" style="margin-bottom: 5px;">শিক্ষার্থীর অগ্রগতি স্কেল (APS)</span>
-                        <div class="ms-progress-card" style="padding: 12px 18px;">
+                        <span class="ms-extra-title" style="margin-bottom: 5px;">শিক্ষার্থীর অগ্রগতি স্কেল (APS) ${apsData.isSerious ? '<span style="color: #059669; font-weight: 800; font-size: 0.6rem; margin-left: 8px; vertical-align: middle; background: #ecfdf5; padding: 1px 6px; border-radius: 4px; border: 1px solid #10b98140;">★ SERIOUS STUDENT</span>' : ''}</span>
+                        <div class="ms-progress-card" style="padding: 10px 18px;">
                             <div class="ms-progress-header" style="margin-bottom: 8px;">
                                 <div class="ms-progress-info">
                                     <span class="ms-progress-label" style="font-size: 0.65rem;">অর্জিত অগ্রগতি (PROGRESS)</span>
@@ -2071,8 +2086,8 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                             </div>
                             
                             <div style="font-size: 0.62rem; color: #64748b; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
-                                <span>মানদণ্ড: GPA, প্রাপ্ত নম্বর, পাশের হার ও বিষয়ভিত্তিক পারফরম্যান্সের গাণিতিক গড়।</span>
-                                <span style="opacity: 0.7;">0% — 100% Scale</span>
+                                <span>মানদণ্ড: GPA, বিষয়ের সর্বোচ্চ মার্কসের সাপেক্ষে অবস্থান ও ধারাবাহিক দক্ষতা।</span>
+                                <span style="opacity: 0.7;">Orthogonal Analysis Scale</span>
                             </div>
                         </div>
                     </div>
