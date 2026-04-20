@@ -2077,11 +2077,6 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                                 </div>
                             </div>
                             
-                            <div class="ms-progress-remark">
-                                <i class="fas fa-info-circle"></i>
-                                <span>${apsData.remark}</span>
-                                <div style="margin-left: auto; opacity: 0.6; font-size: 0.65rem;">মানদণ্ড: (GPA, প্রাপ্ত নম্বর, পাশের হার ও দুর্বল বিষয়ের গাণিতিক গড়)</div>
-                            </div>
                         </div>
                     </div>
                     `;
