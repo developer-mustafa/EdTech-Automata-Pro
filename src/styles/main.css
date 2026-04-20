@@ -24461,3 +24461,124 @@ body.dark-mode .ms-compact-info {
     background-color: var(--card-bg);
   }
 }
+
+/* =========================================
+   Student Progress System (APS) Styles
+   ========================================= */
+.ms-progress-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.ms-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.ms-progress-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ms-progress-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ms-progress-value {
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.ms-progress-badge {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ms-progress-bar-container {
+  height: 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  position: relative;
+  margin-bottom: 25px;
+  overflow: visible;
+}
+
+.ms-progress-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 6px;
+  transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ms-progress-bar-glow {
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  filter: blur(6px);
+  opacity: 0.6;
+}
+
+.ms-progress-markers {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ms-progress-markers span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+.ms-progress-remark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 3px solid var(--primary);
+  font-size: 0.78rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+.ms-progress-remark i {
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+
+@media print {
+  .ms-progress-card {
+    border: 1.5px solid #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  .ms-progress-bar-fill {
+    -webkit-print-color-adjust: exact !important;
+  }
+}

@@ -3140,6 +3140,9 @@
               <div class="config-menu-item" data-tab="ms-search-settings">
                 <i class="fas fa-search-plus"></i> সার্চ ফলাফল নিয়ন্ত্রণ
               </div>
+              <div class="config-menu-item" data-tab="ms-progress">
+                <i class="fas fa-chart-line"></i> অগ্রগতি স্কেল (APS)
+              </div>
               <div class="config-menu-item" data-tab="ms-footer">
                 <i class="fas fa-shoe-prints"></i> ফুটার সেটিংস
               </div>
@@ -3519,6 +3522,33 @@
                   <div class="form-group">
                     <label for="msFooterTagline">৩. মার্কেটিং ট্যাগ লাইন (Right Side)</label>
                     <input type="text" id="msFooterTagline" class="form-control" placeholder="উদা: এনালিস্ট প্রো — একাডেমিক ম্যানেজমেন্ট সিস্টেম">
+                  </div>
+                </div>
+
+                <!-- Marks Progress (APS) Settings -->
+                <div class="config-tab-content" id="ms-progress">
+                  <div class="form-header">
+                    <h3><i class="fas fa-chart-line"></i> স্টুডেন্ট প্রগ্রেস সিস্টেম (APS)</h3>
+                    <p>মার্কশীটে শিক্ষার্থীর সামগ্রিক অগ্রগতির শতাংশ (APS) প্রদর্শন নিয়ন্ত্রণ করুন।</p>
+                  </div>
+                  
+                  <div class="form-group" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                    <div
+                      style="background: var(--bg-color); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); border-left: 4px solid var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <h4 style="margin: 0; font-size: 1rem; color: var(--primary);">অগ্রগতি স্কেল প্রদর্শন</h4>
+                        <p style="margin: 3px 0 0; font-size: 0.8rem; opacity: 0.7;">GPA, প্রাপ্ত নম্বর এবং পাশের হার অনুযায়ী একটি সামগ্রিক শতাংশ দেখাবে</p>
+                      </div>
+                      <label class="ac-sw">
+                        <input type="checkbox" id="msProgressEnabled" checked>
+                        <span class="ac-sw-sl"></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="info-alert" style="background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; padding: 12px; border-radius: 8px; font-size: 0.8rem;">
+                    <i class="fas fa-info-circle"></i> <strong>কিভাবে কাজ করে?</strong><br>
+                    এটি একটি অ্যালগরিদম যা GPA (৩০%), মোট নম্বর (২৫%), পাশের হার (২০%), এবং দুর্বল বিষয়ের (১৫%) উপর ভিত্তি করে ফলাফল গণনা করে। ৩ বা তার বেশি বিষয়ে ফেল করলে ৮৫% পেনাল্টি পয়েন্ট কার্যকর হবে।
                   </div>
                 </div>
 

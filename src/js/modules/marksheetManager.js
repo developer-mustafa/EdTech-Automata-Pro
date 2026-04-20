@@ -1047,6 +1047,72 @@ const getMarkClass = (mark, passMark) => {
 };
 
 
+/**
+ * Calculate Student Progress System (APS) Percentage
+ */
+function calculateAPS(data) {
+    const { gpa, grandTotal, maxGrand, subjectsCount, passedSubjects, weakSubjects, absentCount, failedSubjects } = data;
+    
+    // GS = (GPA / 5.00) * 100
+    const GS = (parseFloat(gpa) / 5.00) * 100;
+    
+    // SR = (totalObtainedMarks / totalFullMarks) * 100
+    const SR = maxGrand > 0 ? (grandTotal / maxGrand) * 100 : 0;
+    
+    // PR = (passedSubjects / totalSubjects) * 100
+    const PR = subjectsCount > 0 ? (passedSubjects / subjectsCount) * 100 : 0;
+    
+    // CS = 100 - (weakSubjects * 10). Minimum CS = 50
+    let CS = 100 - (weakSubjects * 10);
+    if (CS < 50) CS = 50;
+    
+    // PN = (absent * 6) + (failedSubjects * 10)
+    const PN = (absentCount * 6) + (failedSubjects * 10);
+    
+    // APS = (0.30 * GS) + (0.25 * SR) + (0.20 * PR) + (0.15 * CS) - (0.10 * PN)
+    let APS = (0.30 * GS) + (0.25 * SR) + (0.20 * PR) + (0.15 * CS) - (0.10 * PN);
+    
+    // Rules
+    if (absentCount === 0) APS += 3; // Bonus for 100% attendance logic
+    if (failedSubjects >= 3) APS = APS * 0.85;
+    if (passedSubjects === 0) APS = 0;
+    
+    // Final Step: Clamp and Precision
+    const finalAPS = Math.max(0, Math.min(100, APS));
+    const progressText = finalAPS.toFixed(2) + "%";
+    
+    // Grade Mapping
+    let grade = 'Needs Improvement';
+    let remark = 'আরও মনোযোগী হতে হবে।';
+    let gradeColor = '#ef4444';
+    
+    if (finalAPS >= 90) { 
+        grade = 'Outstanding'; 
+        remark = 'অসাধারণ অগ্রগতি! তুমি চমৎকার মেধা ও দক্ষতা প্রদর্শন করেছ।'; 
+        gradeColor = '#059669';
+    } else if (finalAPS >= 75) { 
+        grade = 'Very Good'; 
+        remark = 'খুব ভালো অগ্রগতি। তোমার নিরলস প্রচেষ্টা অব্যাহত রেখো।'; 
+        gradeColor = '#10b981';
+    } else if (finalAPS >= 60) { 
+        grade = 'Good'; 
+        remark = 'সন্তোষজনক অগ্রগতি। কিছু বিষয়ে আরও সচেতন হলে ভালো হবে।'; 
+        gradeColor = '#3b82f6';
+    } else if (finalAPS >= 50) { 
+        grade = 'Average'; 
+        remark = 'গড়পরতা ফলাফল। দুর্বল বিষয়গুলোতে বিশেষ মনোযোগ প্রয়োজন।'; 
+        gradeColor = '#f59e0b';
+    }
+    
+    return {
+        progressPercentage: progressText,
+        apsScore: finalAPS,
+        grade,
+        remark,
+        gradeColor
+    };
+}
+
 export async function renderSingleMarksheet(student, subjects, examDisplayName, selectedSession, customSettings = null, rules = null, allOptSubs = [], allExams = [], subjectConfigs = {}, examSummary = null, skipHeavyOps = false, highestMarks = {}, exactRanks = null, isIdSearch = false) {
 
     const history = skipHeavyOps ? [] : await getStudentExamsHistory(student, allExams, student.class, selectedSession, rules, subjectConfigs);
@@ -1423,11 +1489,17 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     }
                     if (ms.boardStandardOptional !== true && grade === 'F') {
                         allPassed = false;
+                        failedSubjectsCount++;
                     }
                 } else {
                     compulsoryGP += gp;
                     compulsoryCount++;
-                    if (grade === 'F') allPassed = false;
+                    if (grade === 'F') {
+                        allPassed = false;
+                        failedSubjectsCount++;
+                    } else {
+                        passedSubjectsCount++;
+                    }
                 }
             } else {
                 // Single Paper Mode — Both ON/OFF: separate optional subject
@@ -1438,12 +1510,31 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     // OFF: optional F = overall fail | ON: optional F ignored
                     if (ms.boardStandardOptional !== true && grade === 'F') {
                         allPassed = false;
+                        failedSubjectsCount++;
                     }
                 } else {
                     compulsoryGP += gp;
                     compulsoryCount++;
-                    if (grade === 'F') allPassed = false;
+                    if (grade === 'F') {
+                        allPassed = false;
+                        failedSubjectsCount++;
+                    } else {
+                        passedSubjectsCount++;
+                    }
                 }
+            }
+
+            // APS Metrics: Weak subjects and Absenteeism
+            totalFullMarks += maxTotal;
+            const marksPercentage = (total / maxTotal) * 100;
+            const writtenPercentage = config.written ? (parseFloat(data.written || 0) / parseFloat(config.written)) * 100 : 100;
+            const mcqPercentage = config.mcq ? (parseFloat(data.mcq || 0) / parseFloat(config.mcq)) * 100 : 100;
+            
+            if (marksPercentage < 50 || writtenPercentage < 40 || mcqPercentage < 40) {
+                weakSubjectsCount++;
+            }
+            if (total === 0 && (data.status === 'অনুপস্থিত' || String(data.status).toLowerCase() === 'absent')) {
+                absentCount++;
             }
 
             if (data.status === 'ফেল' || data.status === 'fail') {
@@ -1938,6 +2029,56 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     </div>
                 </div>
 
+                <!-- APS Progress Scale Section -->
+                ${marksheetSettings.progressEnabled !== false ? (() => {
+                    const apsData = calculateAPS({
+                        gpa: avgGPA,
+                        grandTotal: grandTotal,
+                        maxGrand: totalFullMarks,
+                        subjectsCount: totalVisibleCountForAPS,
+                        passedSubjects: passedSubjectsCount,
+                        weakSubjects: weakSubjectsCount,
+                        absentCount: absentCount,
+                        failedSubjects: failedSubjectsCount
+                    });
+                    
+                    return `
+                    <div class="ms-progress-section" style="margin-top: 15px; width: 100%; page-break-inside: avoid;">
+                        <span class="ms-extra-title">শিক্ষার্থীর অগ্রগতি স্কেল (Student Progress Scale - APS)</span>
+                        <div class="ms-progress-card">
+                            <div class="ms-progress-header">
+                                <div class="ms-progress-info">
+                                    <span class="ms-progress-label">অর্জিত অগ্রগতি (Progress)</span>
+                                    <span class="ms-progress-value" style="color: ${apsData.gradeColor};">${apsData.progressPercentage}</span>
+                                </div>
+                                <div class="ms-progress-badge" style="background: ${apsData.gradeColor}15; color: ${apsData.gradeColor}; border: 1px solid ${apsData.gradeColor}30;">
+                                    ${apsData.grade}
+                                </div>
+                            </div>
+                            
+                            <div class="ms-progress-bar-container">
+                                <div class="ms-progress-bar-fill" style="width: ${apsData.progressPercentage}; background: linear-gradient(90deg, #6366f1, ${apsData.gradeColor});">
+                                    <div class="ms-progress-bar-glow" style="background: ${apsData.gradeColor};"></div>
+                                </div>
+                                <div class="ms-progress-markers">
+                                    <span style="left: 0%">0</span>
+                                    <span style="left: 25%">25</span>
+                                    <span style="left: 50%">50</span>
+                                    <span style="left: 75%">75</span>
+                                    <span style="left: 100%">100</span>
+                                </div>
+                            </div>
+                            
+                            <div class="ms-progress-remark">
+                                <i class="fas fa-info-circle"></i>
+                                <span>${apsData.remark}</span>
+                                <div style="margin-left: auto; opacity: 0.6; font-size: 0.65rem;">মানদণ্ড: (GPA, প্রাপ্ত নম্বর, পাশের হার ও দুর্বল বিষয়ের গাণিতিক গড়)</div>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                })() : ''}
+
 
                 <!-- Signatures -->
                 <div class="ms-flex-spacer" style="flex-grow: 1;"></div>
@@ -2204,6 +2345,7 @@ function initMarksheetSettingsModal() {
             if (el('msShowSummary')) el('msShowSummary').checked = marksheetSettings.showSummary !== false;
             if (el('msShowGradeScale')) el('msShowGradeScale').checked = marksheetSettings.showGradeScale !== false;
             if (el('msBoardStandardOptional')) el('msBoardStandardOptional').checked = marksheetSettings.boardStandardOptional === true;
+            if (el('msProgressEnabled')) el('msProgressEnabled').checked = marksheetSettings.progressEnabled !== false;
 
             // Footer Settings
             if (el('msFooterEnabled')) el('msFooterEnabled').checked = marksheetSettings.footerEnabled !== false;
@@ -2376,6 +2518,7 @@ function initMarksheetSettingsModal() {
                 footerDevName: document.getElementById('msFooterDevName')?.value.trim() || '',
                 footerDevLink: document.getElementById('msFooterDevLink')?.value.trim() || '',
                 footerTagline: document.getElementById('msFooterTagline')?.value.trim() || '',
+                progressEnabled: document.getElementById('msProgressEnabled')?.checked !== false,
                 signatures: signatures.length > 0 ? signatures : [
                     { label: 'শ্রেণি শিক্ষক', url: '' },
                     { label: 'পরীক্ষা কমিটি', url: '' },
