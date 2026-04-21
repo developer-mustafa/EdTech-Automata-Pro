@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Marksheet Manager Module
  * Generates professional Bangladeshi HSC-style marksheets 
  * @module marksheetManager
@@ -1799,9 +1799,6 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
             <!-- Decorative Border -->
             <div class="ms-border-frame" style="position: relative;">
-                
-                <!-- App Version Badge (Watermark Style) -->
-                <div class="ms-app-version-badge" style="position: absolute; top: 16px; right: 16px; font-size: 0.5rem; color: #475569; font-weight: 700; letter-spacing: 0px; opacity: 0.25; user-select: none; pointer-events: none; border: 1px dashed rgba(71, 85, 105, 0.4); padding: 3px 6px; border-radius: 4px; z-index: 10; font-family: inherit;">এডটেক অটোমাটা প্রো • V${APP_VERSION}</div>
 
                 <!-- Header Section -->
                 <div class="ms-header-section">
@@ -2116,15 +2113,16 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         ${ms.footerDevName ? (ms.footerDevLink ? `<a href="${ms.footerDevLink}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">${ms.footerDevName}</a>` : ms.footerDevName) : getDeveloperCreditHtml('ms-dev-credit')}
                     </div>
                     <div class="ms-ftr-right" style="display: flex; flex-direction: column; align-items: flex-end; text-align: right;">
-                        <span class="ms-ftr-system" style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: flex-end; font-size: 0.6rem; color: #475569; font-weight: 700; margin-bottom: 2px;" title="${ms.footerTagline || ''}">
-                            ${ms.footerTagline ? `
-                            <svg width="11" height="11" viewBox="0 0 100 100" style="margin-right: 5px; flex-shrink: 0; opacity: 0.8;" aria-hidden="true">
-                                <circle cx="50" cy="50" r="40" fill="none" stroke="#64748b" stroke-width="12" stroke-linecap="round" stroke-dasharray="160 100" transform="rotate(-45 50 50)"></circle>
-                                <circle cx="50" cy="50" r="25" fill="none" stroke="#94a3b8" stroke-width="10" stroke-linecap="round" stroke-dasharray="80 80" transform="rotate(45 50 50)"></circle>
-                            </svg>
-                            ${ms.footerTagline}` : ''}
-                        </span>
-                        <span style="font-size: 0.45rem; color: #94a3b8; font-weight: 400;">জেনারেটেড: ${new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                             <img src="/edtechmataprologomain.png" style="height: 32px; width: auto; object-fit: contain; margin-top: -12px; margin-bottom: -12px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); flex-shrink: 0; transform: translateY(4px);" aria-hidden="true">
+                             <span class="ms-ftr-system" style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.6rem; color: #94a3b8; font-weight: 700; display: block;" title="${ms.footerTagline || ''}">
+                                ${ms.footerTagline ? ms.footerTagline : ''}
+                             </span>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                            <span style="font-size: 0.42rem; color: #94a3b8; opacity: 0.6; font-weight: 500; letter-spacing: 0.2px; border: 1px solid rgba(148, 163, 184, 0.2); padding: 0px 3px; border-radius: 2px;">V${APP_VERSION}</span>
+                            <span style="font-size: 0.45rem; color: #94a3b8; font-weight: 400;">জেনারেটেড: ${new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                        </div>
                     </div>
                 </div>
             </div>

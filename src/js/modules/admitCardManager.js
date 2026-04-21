@@ -1,4 +1,4 @@
-﻿import { 
+import { 
     getSavedExams, 
     getExamConfigs, 
     getSettings, 
@@ -911,7 +911,10 @@ function getDeveloperCreditHtml(className) {
     
     if (!text && !name) return '';
     
-    let content = `<span>${text} <strong>${name}</strong></span> <span style="opacity: 0.6; font-size: 0.85em; margin-left: 4px;">| এডটেক অটোমাটা প্রো- v${APP_VERSION}</span>`;
+    let content = `<div style="display: flex; align-items: center; gap: 4px; justify-content: flex-end;">
+        <img src="/edtechmataprologomain.png" style="width: 10px; height: 10px; object-fit: contain;">
+        <span>${text} <strong>${name}</strong></span> <span style="opacity: 0.6; font-size: 0.85em; margin-left: 4px;">| এডটেক অটোমাটা প্রো- v${APP_VERSION}</span>
+    </div>`;
     if (link) {
         content += `<br><a href="${link}" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:2px;">${link}</a>`;
     }

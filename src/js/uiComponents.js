@@ -1,4 +1,4 @@
-﻿/**
+/**
  * UI Components Module - Handles all DOM rendering
  * @module uiComponents
  */
@@ -2035,7 +2035,7 @@ export function printStudentManagementList(students, settings, filters = {}) {
     <div class="footer">
       <div class="footer-left">
         <div class="ftr-dev">সফটওয়্যার নির্মাতা: <a href="https://mustafaofficial.netlify.app/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 700;">Mustafa Rahman</a>, সিনিয়ঁর সফটওয়্যার ইন্জিনিয়্যার, ইস্তাম্বুল, তুরস্ক</div>
-        <div class="ftr-contact">যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a> <span class="ftr-soft">এডটেক অটোমাটা প্রো সফটওয়্যার</span></div>
+        <div class="ftr-contact">যোগাযোগ: <a href="tel:01840643946" style="color: inherit; text-decoration: none; font-weight: 700;">01840-643946</a> <span class="ftr-soft" style="display: flex; align-items: center; gap: 4px; justify-content: flex-end;"><img src="/edtechmataprologomain.png" style="width: 14px; height: 14px; object-fit: contain;"> এডটেক অটোমাটা প্রো সফটওয়্যার</span></div>
       </div>
       <div class="footer-right">
         <div class="ftr-contact">প্রিন্টের তারিখ: ${new Date().toLocaleDateString('bn-BD')}</div>
