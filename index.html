@@ -66,15 +66,8 @@
     .premium-brand-logo img {
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-      animation: logoGlow 3s infinite ease-in-out;
       backface-visibility: hidden;
-      transform: translateZ(0); /* Force GPU rendering for sharpness */
-    }
-
-    @keyframes logoGlow {
-      0%, 100% { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 5px rgba(79, 70, 229, 0.2)); }
-      50% { filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 12px rgba(14, 165, 233, 0.6)); }
+      transform: translateZ(0);
     }
 
     .premium-app-name {
@@ -83,9 +76,9 @@
       background: linear-gradient(
         to right,
         #3730a3 10%,
-        #4338ca 30%,
-        #e0e7ff 50%,
-        #4338ca 70%,
+        #4338ca 35%,
+        #ffffff 50%,
+        #4338ca 65%,
         #3730a3 90%
       ) !important;
       background-size: 200% auto !important;
@@ -96,9 +89,10 @@
       animation: shineSweep 3s infinite linear !important;
       letter-spacing: -0.5px;
       margin-right: 12px;
-      filter: drop-shadow(0 2px 8px rgba(49, 46, 129, 0.25));
+      padding-right: 10px; /* Prevent clipping of 'Pro' text */
       white-space: nowrap;
       display: inline-block;
+      filter: drop-shadow(0 2px 4px rgba(49, 46, 129, 0.15));
     }
 
     @keyframes shineSweep {
