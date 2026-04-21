@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Page Router Module
  * Handles hash-based navigation between Dashboard, Students, Result Entry, and Marksheet pages
  * @module pageRouter

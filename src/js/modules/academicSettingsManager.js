@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Academic Settings Manager
  * Handles dynamic management of Classes, Sessions, Groups, and Sections
  */

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Student Manager Module
  * Handles the Student Management page: listing, searching, adding, editing, deleting students
  * @module studentManager

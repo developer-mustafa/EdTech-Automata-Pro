@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Result Entry Manager Module
  * Handles individual and bulk mark entry for exams.
  * Supports creating new exams on the fly and local storage caching.

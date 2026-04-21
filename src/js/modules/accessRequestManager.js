@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Access Request Manager Module
  * Handles viewing and managing access requests (Super Admin only)
  * with sliding card carousel UI

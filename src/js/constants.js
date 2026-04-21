@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Constants Module - Application-wide configuration
  * @module constants
  */

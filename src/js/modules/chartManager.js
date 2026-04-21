@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chart Management Module
  */
 import { state } from './state.js';

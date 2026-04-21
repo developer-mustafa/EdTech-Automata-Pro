@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Notice Manager Module
  * Handles notice board, news bulletin, and sidebar headline history.
  */

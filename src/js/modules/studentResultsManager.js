@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Student Results Manager Module
  * Public-facing page for students to search and view their marksheet using a unique ID.
  * @module studentResultsManager

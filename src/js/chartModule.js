@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chart Module - Handles all Chart.js related functionality
  * @module chartModule
  */

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Data Service Module - Handles data loading, saving, and storage
  * Now integrated with Firebase Firestore for real-time sync
  * @module dataService

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Firestore Service Module
  * Handles all Firestore database operations for the student performance dashboard
  * @module firestoreService

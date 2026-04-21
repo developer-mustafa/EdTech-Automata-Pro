@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Firebase Configuration Module
  * @module firebase
  */

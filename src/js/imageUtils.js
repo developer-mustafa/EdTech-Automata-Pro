@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Image Utilities
  * Handles compression and resizing of base64 images
  */

@@ -1,4 +1,4 @@
-import { state } from './state.js';
+﻿import { state } from './state.js';
 import { getMarksheetSettings, loadMarksheetSettings, applyCombinedPaperLogic } from './marksheetManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 import { showNotification, convertToBengaliDigits, convertToEnglishDigits, isAbsent, determineStatus, normalizeText, calculateStatistics, isStudentEligibleForSubject } from '../utils.js';
@@ -673,7 +673,7 @@ export async function generateReport() {
 
     // Improved dynamic dev credit HTML
     const devNameHtml = (dev.enabled !== false && (dev.name || dev.text)) ?
-        `<div class="ftr-dev-main">${dev.text || 'Developed By:'} <strong>${dev.name || ''}</strong> <span style="opacity: 0.6; font-size: 0.85em; margin-left: 4px;">| এডটেক অটোমেটা প্রো- v${APP_VERSION}</span></div>` : '';
+        `<div class="ftr-dev-main">${dev.text || 'Developed By:'} <strong>${dev.name || ''}</strong> <span style="opacity: 0.6; font-size: 0.85em; margin-left: 4px;">| এডটেক অটোমাটা প্রো- v${APP_VERSION}</span></div>` : '';
     const devFullHtml = devNameHtml;
 
     // Sort and calculate ranks

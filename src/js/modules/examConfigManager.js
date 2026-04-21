@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Exam Config Manager
  * Handles the Super Admin "Exam Configuration" page
  * @module examConfigManager

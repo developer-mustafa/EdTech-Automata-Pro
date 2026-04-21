@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Application State and Constants
  */
 

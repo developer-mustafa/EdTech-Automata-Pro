@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Teacher Assignment Manager Module
  * Handles CRUD for teacher ↔ class/session/subject assignments
  * @module teacherAssignmentManager
