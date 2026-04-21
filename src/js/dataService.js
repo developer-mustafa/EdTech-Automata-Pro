@@ -591,8 +591,8 @@ export async function saveThemePreference(theme) {
  * @param {Function} callback - Callback function receiving updated data
  * @returns {Function} - Unsubscribe function
  */
-export function subscribeToDataUpdates(callback) {
-    return subscribeToStudents((students) => {
+export async function subscribeToDataUpdates(callback) {
+    return await subscribeToStudents((students) => {
         // Update localStorage cache
         localStorage.setItem(STORAGE_KEYS.studentData, JSON.stringify(students));
 

@@ -1,8 +1,7 @@
-﻿/**
+/**
  * Authentication and Role Management Module
  */
 
-import { auth } from '../firebase.js';
 import {
     syncUserRole,
     loginWithEmail,
@@ -102,7 +101,7 @@ export async function handleLogout() {
     }
 }
 
-export function setupAuthListener(callbacks = {}) {
+export async function setupAuthListener(callbacks = {}) {
     const {
         onLogin,
         onLogout,
@@ -110,7 +109,7 @@ export function setupAuthListener(callbacks = {}) {
         renderUI
     } = callbacks;
 
-    return onAuthChange(async (user) => {
+    return await onAuthChange(async (user) => {
         console.log('Auth state changed:', user ? user.email : 'Logged Out');
         state.currentUser = user;
 
@@ -157,7 +156,7 @@ async function startSecurityWatcher(user, role) {
     const { subscribeToGlobalLogin, subscribeToUserLoginStatus } = await import('../firestoreService.js').catch(() => ({}));
     
     if (subscribeToGlobalLogin) {
-        state.onGlobalLoginUnsubscribe = subscribeToGlobalLogin((allowed) => {
+        state.onGlobalLoginUnsubscribe = await subscribeToGlobalLogin((allowed) => {
             if (!allowed && state.userRole !== 'super_admin') {
                 console.warn('Security Watcher: Global login disabled. Logging out...');
                 handleLogout();
@@ -168,7 +167,7 @@ async function startSecurityWatcher(user, role) {
 
     // 4. Watch Current User Specific Login Status
     if (subscribeToUserLoginStatus && user.uid) {
-        state.onUserStatusUnsubscribe = subscribeToUserLoginStatus(user.uid, (disabled) => {
+        state.onUserStatusUnsubscribe = await subscribeToUserLoginStatus(user.uid, (disabled) => {
             if (disabled && state.userRole !== 'super_admin') {
                 console.warn('Security Watcher: User login disabled. Logging out...');
                 handleLogout();

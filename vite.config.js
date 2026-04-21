@@ -50,7 +50,9 @@ export default defineConfig({
                 manualChunks: {
                     'firebase-core': ['firebase/app', 'firebase/auth'],
                     'firebase-db': ['firebase/firestore'],
-                    'vendor-libs': ['xlsx', 'chart.js', 'jspdf', 'html2canvas'],
+                    'chart-libs': ['chart.js'],
+                    'xlsx-lib': ['xlsx'],
+                    'pdf-lib': ['jspdf']
                 }
             }
         },

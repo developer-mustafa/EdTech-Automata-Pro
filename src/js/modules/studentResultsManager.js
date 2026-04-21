@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Student Results Manager Module
  * Public-facing page for students to search and view their marksheet using a unique ID.
  * @module studentResultsManager
@@ -11,17 +11,19 @@ import {
     getSettings,
     getStudentLookupMap,
     generateStudentDocId,
-    getSubjectConfigs
+    getSubjectConfigs,
+    getUnifiedStudents
 } from '../firestoreService.js';
 import { state } from './state.js';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
-import { showNotification, convertToEnglishDigits, convertToBengaliDigits, normalizeText } from '../utils.js';
+import { showNotification, convertToEnglishDigits, convertToBengaliDigits, normalizeText, sortStudentData } from '../utils.js';
 import {
     renderSingleMarksheet,
     applyCombinedPaperLogic,
     loadMarksheetSettings,
-    getMarksheetSettings
+    getMarksheetSettings,
+    renderMarksheetQRCodes
 } from './marksheetManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 
@@ -557,7 +559,6 @@ async function displayStudentMarksheet(studentResult) {
 
     previewArea.innerHTML = finalHtml;
 
-    const { renderMarksheetQRCodes } = await import('./marksheetManager.js');
     await renderMarksheetQRCodes(previewArea);
 
     // Zoom and notification
@@ -1077,7 +1078,7 @@ async function populateSrDropdowns() {
             const studentsList = Array.from(studentsMap.values());
 
             // Wait for dynamic import of utility functions for sorting
-            const { sortStudentData } = await import('../utils.js');
+            // Use already-imported sortStudentData
             const sortedStudents = sortStudentData(studentsList, 'id', 'roll-asc');
 
             studentSelect.innerHTML = '<option value="">শিক্ষার্থী নির্বাচন করুন (রোল - নাম)</option>';
@@ -1646,7 +1647,7 @@ async function handleBulkPrint() {
         const allExams = await getSavedExams();
         const relevantExams = allExams.filter(e => e.class === selClass && e.session === selSession);
 
-        const { getUnifiedStudents } = await import('../firestoreService.js');
+        // Use already-imported getUnifiedStudents
         const registryStudents = await getUnifiedStudents();
         const lookupMap = new Map();
         registryStudents.forEach(s => {
@@ -1682,7 +1683,7 @@ async function handleBulkPrint() {
             return;
         }
 
-        const { sortStudentData } = await import('../utils.js');
+        // Use already-imported sortStudentData
         const sortedStudents = sortStudentData(studentsList, 'id', 'roll-asc');
 
         // Fetch settings for developer credit

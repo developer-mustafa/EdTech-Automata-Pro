@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Access Request Manager Module
  * Handles viewing and managing access requests (Super Admin only)
  * with sliding card carousel UI
@@ -18,7 +18,7 @@ let _keyboardListenerAttached = false;
 /**
  * Initialize real-time notifications for pending access requests
  */
-export function initAccessRequestNotifications() {
+export async function initAccessRequestNotifications() {
     if (!state.isSuperAdmin) return;
 
     // Cleanup existing listener if any
@@ -27,7 +27,7 @@ export function initAccessRequestNotifications() {
     const badge = document.getElementById('navAccessReqBadge');
     if (!badge) return;
 
-    _pendingRequestsUnsubscribe = subscribeToPendingAccessRequests((count) => {
+    _pendingRequestsUnsubscribe = await subscribeToPendingAccessRequests((count) => {
         if (count > 0) {
             badge.textContent = count;
             badge.style.display = 'flex';

@@ -1,11 +1,9 @@
-﻿import { state } from './state.js';
+import { state } from './state.js';
 import { 
     updateAccessControlSettings, 
     subscribeToAccessControl
 } from '../firestoreService.js';
 import { COLLECTIONS } from '../firestoreService.js';
-import { doc, getDocs, collection, query, where } from 'firebase/firestore';
-import { db } from '../firebase.js';
 import { showNotification } from '../utils.js';
 
 const AccessControlManager = {
@@ -44,8 +42,8 @@ const AccessControlManager = {
         document.getElementById('acResultNo')?.addEventListener('click', () => this.handleGlobalResult(true));
     },
 
-    subscribeToUpdates() {
-        subscribeToAccessControl((settings) => {
+    async subscribeToUpdates() {
+        await subscribeToAccessControl((settings) => {
             if (settings) {
                 state.accessControl = {
                     ...state.accessControl,
@@ -257,6 +255,10 @@ const AccessControlManager = {
         if (!container) return;
 
         try {
+            // Dynamically import Firestore for teacher list
+            const { collection, getDocs, query } = await import('firebase/firestore');
+            const { db } = await import('../firebase.js');
+
             // 1. Get all assignments first
             const aq = query(collection(db, COLLECTIONS.teacher_assignments));
             const assignmentSnapshot = await getDocs(aq);

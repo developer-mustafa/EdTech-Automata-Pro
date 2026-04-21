@@ -480,6 +480,7 @@ async function generateMarksheets() {
     }
 
 
+    let loop1Idx = 0;
     for (const student of allStudentsForSummary) {
         // Light render to extract exact DOM results
         const html = await renderSingleMarksheet(student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, true, highestMarks);
@@ -490,6 +491,9 @@ async function generateMarksheets() {
             group: student.group,
             subjects: student.subjects
         });
+        
+        // Yield to main thread every 5 students to prevent UI freeze
+        if (++loop1Idx % 5 === 0) await new Promise(r => setTimeout(r, 0));
     }
 
     // --- PASS 1.5: EXACT HTML-BASED RANKING SYSTEM ---
@@ -561,9 +565,13 @@ async function generateMarksheets() {
     });
 
     // Re-render specifically with the forced exact ranks!
+    let loop2Idx = 0;
     for (const item of allRenderedData) {
         const exactRanks = exactRanksMap.get(item.key);
         item.html = await renderSingleMarksheet(item.student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, false, highestMarks, exactRanks);
+        
+        // Yield to main thread every 5 students to prevent UI freeze
+        if (++loop2Idx % 5 === 0) await new Promise(r => setTimeout(r, 0));
     }
 
     // Count totals from rendered marksheets — GROUP-WISE breakdown

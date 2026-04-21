@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Notice Manager Module
  * Handles notice board, news bulletin, and sidebar headline history.
  */
@@ -36,7 +36,7 @@ export async function initNoticeManager() {
     updateBulletinVisibility();
     
     // Subscribe to global settings (bulletin visibility)
-    subscribeToSettings((settings) => {
+    await subscribeToSettings((settings) => {
         if (settings && typeof settings.bulletinEnabled !== 'undefined') {
             state.bulletinEnabled = settings.bulletinEnabled;
             updateBulletinVisibility();
@@ -49,7 +49,7 @@ export async function initNoticeManager() {
     });
 
     // Subscribe to real-time updates (This already provides initial data immediately)
-    subscribeToNotices((notices) => {
+    await subscribeToNotices((notices) => {
         state.notices = notices;
         renderNotices();
         renderSidebarHistory();

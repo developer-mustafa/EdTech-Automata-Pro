@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Class-Subject Mapping Module
  */
 
@@ -16,7 +16,7 @@ let selectedSubjects = [];
 /**
  * Initialize Class Mapping Manager
  */
-export function initClassMappingManager() {
+export async function initClassMappingManager() {
     if (!elements.classSubjectMappingModal) return;
 
     // Class selection change
@@ -47,7 +47,7 @@ export function initClassMappingManager() {
     elements.saveMappingBtn?.addEventListener('click', handleSaveMapping);
 
     // Initial load from subscription
-    subscribeToClassSubjectMappings((mappings) => {
+    await subscribeToClassSubjectMappings((mappings) => {
         currentClassMappings = mappings || {};
         const selectedClass = elements.mappingClassSelect?.value;
         if (selectedClass) {

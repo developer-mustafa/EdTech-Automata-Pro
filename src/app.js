@@ -281,7 +281,7 @@ async function init() {
 
         const initializedModules = new Set();
 
-        state.onAuthUnsubscribe = setupAuthListener({
+        state.onAuthUnsubscribe = await setupAuthListener({
             renderUI: async (user) => {
                 updateProfileUI(user, state.isAdmin, state.isSuperAdmin, state.userRole);
                 updateNavVisibility();
@@ -321,14 +321,14 @@ async function init() {
         initEventListeners();
 
         // Real-time Data Sync
-        state.onDataUpdateUnsubscribe = subscribeToDataUpdates((data) => {
+        state.onDataUpdateUnsubscribe = await subscribeToDataUpdates((data) => {
             if (state.isViewingSavedExam || state.isImporting) return;
             state.studentData = data;
             updateViews();
         });
 
         // Settings Sync
-        state.onSettingsUnsubscribe = subscribeToSettings(async settings => {
+        state.onSettingsUnsubscribe = await subscribeToSettings(async settings => {
             if (settings && settings.defaultExamId !== state.defaultExamId) {
                 state.defaultExamId = settings.defaultExamId;
 
@@ -354,7 +354,7 @@ async function init() {
         });
 
         // Subject Configs Sync
-        state.onSubjectConfigsUnsubscribe = subscribeToSubjectConfigs(configs => {
+        state.onSubjectConfigsUnsubscribe = await subscribeToSubjectConfigs(configs => {
             state.subjectConfigs = configs;
             updateViews();
         });

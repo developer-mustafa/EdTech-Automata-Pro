@@ -1,31 +1,26 @@
-﻿/**
+/**
  * Firestore Service Module
  * Handles all Firestore database operations for the student performance dashboard
  * @module firestoreService
  */
 
-import { db, auth, firebaseConfig } from './firebase.js';
 import { convertToEnglishDigits, normalizeText } from './utils.js';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import {
-    collection,
-    doc,
-    getDocs,
-    getDoc,
-    setDoc,
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    writeBatch,
-    onSnapshot,
-    query,
-    where,
-    orderBy,
-    serverTimestamp,
-    limit,
-    deleteField
-} from 'firebase/firestore';
+
+/**
+ * Lazy-load Firestore and Auth modules to ensure code-splitting is effective.
+ * This resolves the "mixed static/dynamic import" warnings and reduces main bundle size.
+ */
+async function getFirestore() {
+    const { db } = await import('./firebase.js');
+    const fs = await import('firebase/firestore');
+    return { db, ...fs };
+}
+
+async function getAuthInstance() {
+    const { auth } = await import('./firebase.js');
+    const authMod = await import('firebase/auth');
+    return { auth, ...authMod };
+}
 
 // Collection names
 export const COLLECTIONS = {
@@ -62,6 +57,7 @@ const _cache = {
  */
 export async function getAllStudents() {
     try {
+        const { db, collection, query, orderBy, getDocs } = await getFirestore();
         const studentsRef = collection(db, COLLECTIONS.students);
         const q = query(studentsRef, orderBy('id', 'asc'));
         const snapshot = await getDocs(q);
@@ -156,6 +152,7 @@ export async function getStudentLookupMap() {
  */
 export async function getStudent(docId) {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.students, docId);
         const docSnap = await getDoc(docRef);
 
@@ -194,6 +191,7 @@ export function generateStudentDocId(student) {
  */
 export async function addStudent(studentData) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
         const docId = generateStudentDocId(studentData);
 
         const docRef = doc(db, COLLECTIONS.students, docId);
@@ -219,6 +217,7 @@ export async function addStudent(studentData) {
  */
 export async function updateStudent(docId, updates) {
     try {
+        const { db, doc, updateDoc, serverTimestamp } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.students, docId);
         await updateDoc(docRef, {
             ...updates,
@@ -238,6 +237,7 @@ export async function updateStudent(docId, updates) {
  */
 export async function deleteStudent(docId) {
     try {
+        const { db, doc, deleteDoc } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.students, docId);
         await deleteDoc(docRef);
         return true;
@@ -257,6 +257,7 @@ export async function bulkImportStudents(studentsArray) {
     const BATCH_SIZE = 400; // Firestore batch limit is 500
 
     try {
+        const { db, doc, writeBatch, serverTimestamp } = await getFirestore();
         console.log(`Starting bulk import of ${studentsArray.length} students...`);
 
         // Add/Update students in batches (Upsert Strategy)
@@ -302,6 +303,7 @@ export async function deleteAllStudents() {
         console.log(`Deleting ${students.length} students in batches...`);
 
         for (let i = 0; i < students.length; i += BATCH_SIZE) {
+            const { db, doc, writeBatch } = await getFirestore();
             const batch = writeBatch(db);
             const chunk = students.slice(i, i + BATCH_SIZE);
 
@@ -329,6 +331,7 @@ export async function deleteAllStudents() {
  */
 export async function deleteFilteredStudents(classVal, sessionVal) {
     try {
+        const { db, doc, writeBatch } = await getFirestore();
         const students = await getAllStudents();
         const batch = writeBatch(db);
         let count = 0;
@@ -365,7 +368,8 @@ export async function deleteFilteredStudents(classVal, sessionVal) {
  * @param {Function} callback - Callback function receiving updated data
  * @returns {Function} - Unsubscribe function
  */
-export function subscribeToStudents(callback) {
+export async function subscribeToStudents(callback) {
+    const { db, collection, query, orderBy, onSnapshot } = await getFirestore();
     const studentsRef = collection(db, COLLECTIONS.students);
     const q = query(studentsRef, orderBy('id', 'asc'));
 
@@ -390,6 +394,7 @@ export function subscribeToStudents(callback) {
  */
 export async function getAllExams() {
     try {
+        const { db, collection, getDocs } = await getFirestore();
         const examsRef = collection(db, COLLECTIONS.exams);
         const snapshot = await getDocs(examsRef);
 
@@ -410,6 +415,7 @@ export async function getAllExams() {
  */
 export async function saveExam(examData) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
         // Create a unique ID based on Class, Session, Exam Name and Subject
         // Standardizes the ID: CLASS_SESSION_EXAMNAME_SUBJECT
         const sCls = normalizeText(examData.class || 'class');
@@ -474,6 +480,7 @@ export async function getSavedExams() {
     // 3. Fetch from Firestore (Fallback)
     try {
         console.log('Fetching fresh exams from Firestore (Cache expired or empty)');
+        const { db, collection, query, orderBy, getDocs } = await getFirestore();
         const examsRef = collection(db, COLLECTIONS.exams);
         const q = query(examsRef, orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
@@ -516,6 +523,7 @@ export async function getExamsByCriteria(cls, session) {
 
     try {
         console.log(`Fetching filtered exams for Class: ${cls}, Session: ${session} (Cost Optimization)`);
+        const { db, collection, query, where, orderBy, getDocs } = await getFirestore();
         const examsRef = collection(db, COLLECTIONS.exams);
         
         let q = query(examsRef);
@@ -542,6 +550,7 @@ export async function getExamsByCriteria(cls, session) {
  */
 export async function deleteExam(docId) {
     try {
+        const { db, doc, deleteDoc } = await getFirestore();
         await deleteDoc(doc(db, COLLECTIONS.exams, docId));
         // Invalidate both memory and persistent caches
         _cache.exams = null;
@@ -561,6 +570,7 @@ export async function deleteExam(docId) {
  */
 export async function updateExam(docId, updates) {
     try {
+        const { db, doc, updateDoc, serverTimestamp } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.exams, docId);
         await updateDoc(docRef, {
             ...updates,
@@ -587,6 +597,7 @@ export async function updateExam(docId, updates) {
  */
 export async function saveAnalytics(analyticsData) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.analytics, 'latest');
         await setDoc(docRef, {
             ...analyticsData,
@@ -605,6 +616,7 @@ export async function saveAnalytics(analyticsData) {
  */
 export async function getAnalytics() {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.analytics, 'latest');
         const docSnap = await getDoc(docRef);
 
@@ -628,6 +640,7 @@ export async function getAnalytics() {
  */
 export async function getSettings() {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.settings, 'config');
         const docSnap = await getDoc(docRef);
 
@@ -648,6 +661,7 @@ export async function getSettings() {
  */
 export async function updateSettings(settings) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.settings, 'config');
         await setDoc(docRef, {
             ...settings,
@@ -679,7 +693,8 @@ export async function saveSettings(settings) {
  * @param {Function} callback - Callback for settings updates
  * @returns {Function} - Unsubscribe function
  */
-export function subscribeToSettings(callback) {
+export async function subscribeToSettings(callback) {
+    const { db, doc, onSnapshot } = await getFirestore();
     const docRef = doc(db, COLLECTIONS.settings, 'config');
 
     return onSnapshot(docRef, (docSnap) => {
@@ -863,6 +878,7 @@ export async function searchAnalyticsCandidates(query, sessionFilter, classFilte
  */
 export async function loginWithGoogle() {
     try {
+        const { auth, GoogleAuthProvider, signInWithPopup } = await getAuthInstance();
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);
         const role = await syncUserRole(result.user);
@@ -881,6 +897,7 @@ export async function loginWithGoogle() {
  */
 export async function loginWithEmail(email, password) {
     try {
+        const { auth, signInWithEmailAndPassword } = await getAuthInstance();
         const result = await signInWithEmailAndPassword(auth, email, password);
         const role = await syncUserRole(result.user);
         const userWithRole = { ...result.user, role };
@@ -891,100 +908,13 @@ export async function loginWithEmail(email, password) {
     }
 }
 
-/**
- * Create a new teacher account (Super Admin only)
- * @param {Object} userData - { email, password, name, phone, role }
- */
-export async function createTeacherAccount(userData) {
-    let secondaryApp;
-    try {
-        // Initialize a secondary app so we don't log out the admin
-        secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
-        const secondaryAuth = getAuth(secondaryApp);
-
-        // Create user in secondary Auth
-        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, userData.password);
-        const user = userCredential.user;
-
-        // Update profile
-        await updateProfile(user, { displayName: userData.name });
-
-        // Sign out to absolutely ensure no session lingers
-        await signOut(secondaryAuth);
-
-        // Delete the secondary app
-        await deleteApp(secondaryApp);
-
-        // Create user doc in Firestore
-        const userRef = doc(db, COLLECTIONS.users, user.uid);
-        await setDoc(userRef, {
-            uid: user.uid,
-            email: userData.email,
-            displayName: userData.name,
-            phone: userData.phone || '',
-            role: userData.role || 'teacher',
-            tempPassword: userData.password, // Store for admin reference
-            createdAt: serverTimestamp(),
-            lastLogin: null
-        });
-
-        // Add to teacher_assignments if provided (though handled in teacherAssignmentManager)
-        return { success: true, uid: user.uid };
-    } catch (error) {
-        console.error('শিক্ষক অ্যাকাউন্ট তৈরি করতে সমস্যা:', error);
-        // Ensure app gets deleted even if error occurs
-        if (secondaryApp) {
-            try { await deleteApp(secondaryApp); } catch (e) { }
-        }
-        return { success: false, error: error.code };
-    }
-}
-/**
- * Update a teacher's password (Super Admin only)
- * @param {string} uid - User ID
- * @param {string} email - User Email
- * @param {string} currentPassword - Current Password stored in Firestore
- * @param {string} newPassword - New Password
- */
-export async function updateTeacherPassword(uid, email, currentPassword, newPassword) {
-    let secondaryApp;
-    try {
-        secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
-        const secondaryAuth = getAuth(secondaryApp);
-
-        // Sign in as the user in the secondary app
-        const userCredential = await signInWithEmailAndPassword(secondaryAuth, email, currentPassword);
-
-        // Use the proper auth updatePassword method
-        const { updatePassword } = await import('firebase/auth');
-        await updatePassword(userCredential.user, newPassword);
-
-        // Sign out and cleanup
-        await signOut(secondaryAuth);
-        await deleteApp(secondaryApp);
-
-        // Update Firestore document
-        const userRef = doc(db, COLLECTIONS.users, uid);
-        await updateDoc(userRef, {
-            tempPassword: newPassword,
-            updatedAt: serverTimestamp()
-        });
-
-        return { success: true };
-    } catch (error) {
-        console.error('পাসওয়ার্ড আপডেট করতে সমস্যা:', error);
-        if (secondaryApp) {
-            try { await deleteApp(secondaryApp); } catch (e) { }
-        }
-        return { success: false, error: error.code };
-    }
-}
 
 /**
  * Submit an access request
  */
 export async function submitAccessRequest(data) {
     try {
+        const { db, collection, addDoc, serverTimestamp } = await getFirestore();
         const ref = collection(db, COLLECTIONS.access_requests);
         await addDoc(ref, {
             ...data,
@@ -1012,6 +942,7 @@ export async function getAccessRequests() {
 
     console.log('[Firestore] Fetching fresh access requests from Firestore');
     try {
+        const { db, collection, getDocs } = await getFirestore();
         const ref = collection(db, COLLECTIONS.access_requests);
         const snapshot = await getDocs(ref);
         let data = snapshot.docs.map(d => ({ docId: d.id, ...d.data() }));
@@ -1039,6 +970,8 @@ export async function getAccessRequests() {
  */
 export async function updateAccessRequestStatus(docId, status, role) {
     try {
+        const { db, doc, updateDoc, serverTimestamp } = await getFirestore();
+        const { auth } = await getAuthInstance();
         const reqRef = doc(db, COLLECTIONS.access_requests, docId);
         await updateDoc(reqRef, {
             status,
@@ -1060,6 +993,7 @@ export async function updateAccessRequestStatus(docId, status, role) {
  */
 export async function deleteAccessRequest(docId) {
     try {
+        const { db, doc, deleteDoc } = await getFirestore();
         await deleteDoc(doc(db, COLLECTIONS.access_requests, docId));
         // Clear cache
         _cache.accessRequests = null;
@@ -1075,8 +1009,9 @@ export async function deleteAccessRequest(docId) {
  * @param {Function} callback - Called with the count of pending requests
  * @returns {Function} - Unsubscribe function
  */
-export function subscribeToPendingAccessRequests(callback) {
+export async function subscribeToPendingAccessRequests(callback) {
     try {
+        const { db, collection, query, where, onSnapshot } = await getFirestore();
         const ref = collection(db, COLLECTIONS.access_requests);
         const q = query(ref, where('status', '==', 'pending'));
         return onSnapshot(q, (snapshot) => {
@@ -1106,6 +1041,7 @@ export function subscribeToPendingAccessRequests(callback) {
 export async function syncUserRole(user) {
     if (!user) return null;
     try {
+        const { db, doc, getDoc, updateDoc, collection, query, limit, getDocs, setDoc, serverTimestamp } = await getFirestore();
         const userRef = doc(db, COLLECTIONS.users, user.uid);
         const userSnap = await getDoc(userRef);
 
@@ -1114,7 +1050,7 @@ export async function syncUserRole(user) {
             await updateDoc(userRef, { lastLogin: serverTimestamp() });
             let role = userSnap.data().role;
 
-            // Auto-detect teacher role: if user role is 'user' but has teacher_assignments, upgrade to 'teacher'
+            // Auto-detect teacher role
             if (role === 'user') {
                 try {
                     const taRef = collection(db, COLLECTIONS.teacher_assignments);
@@ -1123,21 +1059,16 @@ export async function syncUserRole(user) {
                     if (hasAssignment) {
                         role = 'teacher';
                         await updateDoc(userRef, { role: 'teacher' });
-                        console.log(`Auto-upgraded ${user.email} role to 'teacher' (has assignments)`);
                     }
-                } catch (taErr) {
-                    console.warn('Could not check teacher assignments:', taErr);
-                }
+                } catch (taErr) { }
             }
-
             return role;
         }
 
-        // Check if this is the first user (by checking if collection is empty)
+        // Check first user
         const usersRef = collection(db, COLLECTIONS.users);
         const q = query(usersRef, limit(1));
         const snapshot = await getDocs(q);
-
         const role = snapshot.empty ? 'super_admin' : 'user';
 
         await setDoc(userRef, {
@@ -1153,15 +1084,17 @@ export async function syncUserRole(user) {
         return role;
     } catch (error) {
         console.error('Error syncing user role:', error);
-        return 'user'; // Default fallback
+        return 'user';
     }
 }
+
 
 /**
  * Get all users (Super Admin only)
  */
 export async function getAllUsers() {
     try {
+        const { db, collection, query, orderBy, getDocs } = await getFirestore();
         const usersRef = collection(db, COLLECTIONS.users);
         const q = query(usersRef, orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
@@ -1177,6 +1110,7 @@ export async function getAllUsers() {
  */
 export async function updateUserRole(uid, newRole) {
     try {
+        const { db, doc, updateDoc } = await getFirestore();
         const userRef = doc(db, COLLECTIONS.users, uid);
         await updateDoc(userRef, { role: newRole });
         return true;
@@ -1188,10 +1122,10 @@ export async function updateUserRole(uid, newRole) {
 
 /**
  * Logout admin
- * @returns {Promise<boolean>}
  */
 export async function logoutAdmin() {
     try {
+        const { auth, signOut } = await getAuthInstance();
         await signOut(auth);
         return true;
     } catch (error) {
@@ -1201,12 +1135,11 @@ export async function logoutAdmin() {
 }
 
 /**
- * Delete teacher document from Firestore (Soft delete / Deactivation)
- * @param {string} uid - User ID
- * @returns {Promise<boolean>}
+ * Delete teacher document from Firestore
  */
 export async function deleteTeacherFromFirestore(uid) {
     try {
+        const { db, doc, deleteDoc } = await getFirestore();
         const userRef = doc(db, COLLECTIONS.users, uid);
         await deleteDoc(userRef);
         return true;
@@ -1217,11 +1150,97 @@ export async function deleteTeacherFromFirestore(uid) {
 }
 
 /**
+ * Create a new teacher account (Super Admin only)
+ */
+export async function createTeacherAccount(userData) {
+    let secondaryApp;
+    try {
+        const { initializeApp, deleteApp } = await import('firebase/app');
+        const { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } = await import('firebase/auth');
+        const { firebaseConfig } = await import('./firebase.js');
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
+
+        secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
+        const secondaryAuth = getAuth(secondaryApp);
+
+        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, userData.email, userData.password);
+        const user = userCredential.user;
+
+        await updateProfile(user, { displayName: userData.name });
+        await signOut(secondaryAuth);
+        await deleteApp(secondaryApp);
+
+        const userRef = doc(db, COLLECTIONS.users, user.uid);
+        await setDoc(userRef, {
+            uid: user.uid,
+            email: userData.email,
+            displayName: userData.name,
+            phone: userData.phone || '',
+            role: userData.role || 'teacher',
+            tempPassword: userData.password,
+            createdAt: serverTimestamp(),
+            lastLogin: null
+        });
+
+        return { success: true, uid: user.uid };
+    } catch (error) {
+        console.error('Account creation error:', error);
+        if (secondaryApp) {
+            try { 
+                const { deleteApp } = await import('firebase/app');
+                await deleteApp(secondaryApp); 
+            } catch (e) { }
+        }
+        return { success: false, error: error.code };
+    }
+}
+
+/**
+ * Update a teacher's password (Super Admin only)
+ */
+export async function updateTeacherPassword(uid, email, currentPassword, newPassword) {
+    let secondaryApp;
+    try {
+        const { initializeApp, deleteApp } = await import('firebase/app');
+        const { getAuth, signInWithEmailAndPassword, updatePassword, signOut } = await import('firebase/auth');
+        const { firebaseConfig } = await import('./firebase.js');
+        const { db, doc, updateDoc, serverTimestamp } = await getFirestore();
+
+        secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
+        const secondaryAuth = getAuth(secondaryApp);
+
+        const userCredential = await signInWithEmailAndPassword(secondaryAuth, email, currentPassword);
+        await updatePassword(userCredential.user, newPassword);
+
+        await signOut(secondaryAuth);
+        await deleteApp(secondaryApp);
+
+        const userRef = doc(db, COLLECTIONS.users, uid);
+        await updateDoc(userRef, {
+            tempPassword: newPassword,
+            updatedAt: serverTimestamp()
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Password update error:', error);
+        if (secondaryApp) {
+            try { 
+                const { deleteApp } = await import('firebase/app');
+                await deleteApp(secondaryApp); 
+            } catch (e) { }
+        }
+        return { success: false, error: error.code };
+    }
+}
+
+/**
  * Get global login permission status
  * @returns {Promise<boolean>} - true if login is enabled, false if disabled
  */
 export async function getLoginPermission() {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const settingsRef = doc(db, 'settings', 'global');
         const snap = await getDoc(settingsRef);
         if (snap.exists() && snap.data().loginEnabled === false) {
@@ -1241,6 +1260,8 @@ export async function getLoginPermission() {
  */
 export async function setLoginPermission(enabled) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
+        const { auth } = await getAuthInstance();
         const settingsRef = doc(db, 'settings', 'global');
         await setDoc(settingsRef, {
             loginEnabled: enabled,
@@ -1262,6 +1283,8 @@ export async function setLoginPermission(enabled) {
  */
 export async function setUserLoginDisabled(uid, disabled) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
+        const { auth } = await getAuthInstance();
         const userRef = doc(db, 'users', uid);
         await setDoc(userRef, {
             loginDisabled: disabled,
@@ -1282,6 +1305,7 @@ export async function setUserLoginDisabled(uid, disabled) {
  */
 export async function getUserLoginStatus(uid) {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const userRef = doc(db, 'users', uid);
         const snap = await getDoc(userRef);
         if (snap.exists() && snap.data().loginDisabled === true) {
@@ -1299,7 +1323,8 @@ export async function getUserLoginStatus(uid) {
  * @param {Function} callback 
  * @returns {Function} unsubscribe
  */
-export function subscribeToGlobalLogin(callback) {
+export async function subscribeToGlobalLogin(callback) {
+    const { db, doc, onSnapshot } = await getFirestore();
     const settingsRef = doc(db, 'settings', 'global');
     return onSnapshot(settingsRef, (snap) => {
         if (snap.exists() && snap.data().loginEnabled === false) {
@@ -1318,8 +1343,9 @@ export function subscribeToGlobalLogin(callback) {
  * @param {Function} callback 
  * @returns {Function} unsubscribe
  */
-export function subscribeToUserLoginStatus(uid, callback) {
+export async function subscribeToUserLoginStatus(uid, callback) {
     if (!uid) return () => {};
+    const { db, doc, onSnapshot } = await getFirestore();
     const userRef = doc(db, 'users', uid);
     return onSnapshot(userRef, (snap) => {
         if (snap.exists() && snap.data().loginDisabled === true) {
@@ -1337,7 +1363,8 @@ export function subscribeToUserLoginStatus(uid, callback) {
  * @param {Function} callback - Receives user object or null
  * @returns {Function} - Unsubscribe function
  */
-export function onAuthChange(callback) {
+export async function onAuthChange(callback) {
+    const { auth, onAuthStateChanged } = await getAuthInstance();
     return onAuthStateChanged(auth, callback);
 }
 
@@ -1348,8 +1375,10 @@ export function onAuthChange(callback) {
  * @returns {Promise<boolean>}
  */
 export async function saveSubjectConfig(subject, config) {
+    const { auth } = await getAuthInstance();
     if (!auth.currentUser) return false;
     try {
+        const { db, doc, setDoc } = await getFirestore();
         const settingsRef = doc(db, 'settings', 'subject_configs');
         await setDoc(settingsRef, {
             [subject]: config,
@@ -1368,8 +1397,10 @@ export async function saveSubjectConfig(subject, config) {
  * @returns {Promise<boolean>}
  */
 export async function deleteSubjectConfig(subject) {
+    const { auth } = await getAuthInstance();
     if (!auth.currentUser) return false;
     try {
+        const { db, doc, updateDoc, deleteField } = await getFirestore();
         const settingsRef = doc(db, 'settings', 'subject_configs');
         await updateDoc(settingsRef, {
             [subject]: deleteField()
@@ -1387,6 +1418,7 @@ export async function deleteSubjectConfig(subject) {
  */
 export async function getSubjectConfigs() {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const settingsRef = doc(db, 'settings', 'subject_configs');
         const docSnap = await getDoc(settingsRef);
         if (docSnap.exists()) {
@@ -1404,7 +1436,8 @@ export async function getSubjectConfigs() {
  * @param {Function} callback
  * @returns {Function} unsubscribe
  */
-export function subscribeToSubjectConfigs(callback) {
+export async function subscribeToSubjectConfigs(callback) {
+    const { db, doc, onSnapshot } = await getFirestore();
     const settingsRef = doc(db, 'settings', 'subject_configs');
     return onSnapshot(settingsRef, (doc) => {
         if (doc.exists()) {
@@ -1422,8 +1455,10 @@ export function subscribeToSubjectConfigs(callback) {
  * @returns {Promise<boolean>}
  */
 export async function saveClassSubjectMapping(className, subjects) {
+    const { auth } = await getAuthInstance();
     if (!auth.currentUser) return false;
     try {
+        const { db, doc, setDoc } = await getFirestore();
         const settingsRef = doc(db, 'settings', 'class_subject_mappings');
         await setDoc(settingsRef, {
             [className]: subjects,
@@ -1442,6 +1477,7 @@ export async function saveClassSubjectMapping(className, subjects) {
  */
 export async function getClassSubjectMappings() {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const settingsRef = doc(db, 'settings', 'class_subject_mappings');
         const docSnap = await getDoc(settingsRef);
         if (docSnap.exists()) {
@@ -1459,7 +1495,8 @@ export async function getClassSubjectMappings() {
  * @param {Function} callback
  * @returns {Function} unsubscribe
  */
-export function subscribeToClassSubjectMappings(callback) {
+export async function subscribeToClassSubjectMappings(callback) {
+    const { db, doc, onSnapshot } = await getFirestore();
     const settingsRef = doc(db, 'settings', 'class_subject_mappings');
     return onSnapshot(settingsRef, (doc) => {
         if (doc.exists()) {
@@ -1481,6 +1518,7 @@ export function subscribeToClassSubjectMappings(callback) {
  */
 export async function addExamConfig(configData) {
     try {
+        const { db, collection, doc, setDoc, serverTimestamp } = await getFirestore();
         const docRef = doc(collection(db, COLLECTIONS.examConfigs));
         await setDoc(docRef, {
             ...configData,
@@ -1502,6 +1540,7 @@ export async function addExamConfig(configData) {
  */
 export async function getExamConfigs(className = null, session = null) {
     try {
+        const { db, collection, query, where, getDocs } = await getFirestore();
         const configsRef = collection(db, COLLECTIONS.examConfigs);
         let q = query(configsRef);
 
@@ -1542,6 +1581,7 @@ export async function getExamConfigs(className = null, session = null) {
  */
 export async function deleteExamConfig(docId) {
     try {
+        const { db, doc, deleteDoc } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.examConfigs, docId);
         await deleteDoc(docRef);
         return true;
@@ -1559,6 +1599,7 @@ export async function deleteExamConfig(docId) {
  */
 export async function updateExamConfig(docId, data) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.examConfigs, docId);
         await setDoc(docRef, {
             ...data,
@@ -1577,6 +1618,7 @@ export async function updateExamConfig(docId, data) {
  */
 export async function getAcademicStructure() {
     try {
+        const { db, collection, query, orderBy, getDocs } = await getFirestore();
         const q = query(collection(db, COLLECTIONS.academicStructure), orderBy('createdAt', 'asc'));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
@@ -1593,6 +1635,7 @@ export async function getAcademicStructure() {
  */
 export async function saveAcademicItem(item) {
     try {
+        const { db, collection, doc, setDoc, serverTimestamp } = await getFirestore();
         const collectionRef = collection(db, COLLECTIONS.academicStructure);
         const docRef = doc(collectionRef);
         await setDoc(docRef, {
@@ -1614,6 +1657,7 @@ export async function saveAcademicItem(item) {
  */
 export async function deleteAcademicItem(docId) {
     try {
+        const { db, doc, deleteDoc } = await getFirestore();
         await deleteDoc(doc(db, COLLECTIONS.academicStructure, docId));
         return true;
     } catch (error) {
@@ -1632,6 +1676,7 @@ export async function deleteAcademicItem(docId) {
  */
 export async function getAccessControlSettings() {
     try {
+        const { db, doc, getDoc } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.settings, 'access_control');
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
@@ -1651,6 +1696,7 @@ export async function getAccessControlSettings() {
  */
 export async function updateAccessControlSettings(settings) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
         const docRef = doc(db, COLLECTIONS.settings, 'access_control');
         await setDoc(docRef, {
             ...settings,
@@ -1668,7 +1714,8 @@ export async function updateAccessControlSettings(settings) {
  * @param {Function} callback 
  * @returns {Function} unsubscribe
  */
-export function subscribeToAccessControl(callback) {
+export async function subscribeToAccessControl(callback) {
+    const { db, doc, onSnapshot } = await getFirestore();
     const docRef = doc(db, COLLECTIONS.settings, 'access_control');
     return onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -1690,6 +1737,7 @@ export function subscribeToAccessControl(callback) {
  */
 export async function saveNotice(noticeData) {
     try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
         const docId = noticeData.docId || `NOTICE_${Date.now()}`;
         const docRef = doc(db, COLLECTIONS.notices, docId);
         
@@ -1717,6 +1765,7 @@ export async function saveNotice(noticeData) {
  */
 export async function getNotices() {
     try {
+        const { db, collection, query, orderBy, getDocs } = await getFirestore();
         const noticesRef = collection(db, COLLECTIONS.notices);
         const q = query(noticesRef, orderBy('createdAt', 'desc'));
         const snapshot = await getDocs(q);
@@ -1738,6 +1787,7 @@ export async function getNotices() {
  */
 export async function deleteNotice(docId) {
     try {
+        const { db, doc, deleteDoc } = await getFirestore();
         await deleteDoc(doc(db, COLLECTIONS.notices, docId));
         return true;
     } catch (error) {
@@ -1751,7 +1801,8 @@ export async function deleteNotice(docId) {
  * @param {Function} callback - Callback for updates
  * @returns {Function} - Unsubscribe function
  */
-export function subscribeToNotices(callback) {
+export async function subscribeToNotices(callback) {
+    const { db, collection, query, orderBy, onSnapshot } = await getFirestore();
     const noticesRef = collection(db, COLLECTIONS.notices);
     const q = query(noticesRef, orderBy('createdAt', 'desc'));
 
