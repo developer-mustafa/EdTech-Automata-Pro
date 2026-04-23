@@ -485,6 +485,15 @@ async function init() {
                     initializedModules.add('student-results');
                 }
             }
+            if (pageId === 'tabulation') {
+                const { initTabulationManager, populateTabulationDropdowns } = await import('./js/modules/tabulationManager.js');
+                if (!initializedModules.has('tabulation')) {
+                    initTabulationManager();
+                    initializedModules.add('tabulation');
+                } else {
+                    populateTabulationDropdowns();
+                }
+            }
         });
 
         AccessControlManager.init();

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Application State and Constants
  */
 
@@ -78,7 +78,8 @@ export const state = {
             'exam-config': ['super_admin'],
             'academic-settings': ['super_admin'],
             'admit-card': ['super_admin', 'admin'],
-            'student-results': ['super_admin', 'admin', 'teacher']
+            'student-results': ['super_admin', 'admin', 'teacher'],
+            'tabulation': ['super_admin', 'admin', 'teacher', null]
         },
         globalEntryDisabled: false,
         entryDeadline: null,

@@ -301,6 +301,468 @@
       transform: translateY(-1px) !important;
       box-shadow: 0 4px 6px rgba(5, 150, 105, 0.1) !important;
     }
+    /* Tabulation Sheet Improvements */
+    #tabulationPage {
+      font-family: 'Hind Siliguri', sans-serif !important;
+    }
+    
+    .tab-filters {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 15px;
+      background: var(--card-bg, #ffffff);
+      border-radius: 12px;
+      border: 1px solid var(--border-color, #e2e8f0);
+      margin-bottom: 20px;
+    }
+
+    .tab-filter-group {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+      flex: 1;
+    }
+
+    .tab-filter-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-filter-item label {
+      margin: 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #475569;
+      white-space: nowrap;
+    }
+
+    .tab-view-btn {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    
+    .tab-view-btn:hover {
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+      transform: translateY(-1px);
+    }
+    
+
+    
+    .tab-action-bar {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--card-bg, #ffffff);
+      border-radius: 12px;
+      border: 1px solid var(--border-color, #e2e8f0);
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .tab-top-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 280px;
+    }
+    
+    .tab-search-wrapper {
+      position: relative;
+      flex: 1;
+      max-width: 300px;
+    }
+    
+    .tab-search-wrapper i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+    
+    .tab-search-input {
+      width: 100%;
+      padding: 8px 12px 8px 35px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+      background: #f8fafc;
+    }
+    
+    .tab-search-input:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      background: #fff;
+      outline: none;
+    }
+    
+    .tab-advanced-filters {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      padding: 0;
+      border: none;
+      flex-wrap: wrap;
+    }
+    
+    .tab-filter-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .tab-filter-row {
+      display: flex;
+      flex-direction: row !important;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: nowrap; /* Keep items in one line */
+      width: auto;
+    }
+    
+    .tab-filter-actions {
+      display: flex;
+      flex-direction: row !important;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+    
+    .tab-select, .tab-select-sm {
+      padding: 8px 10px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      background: #fff;
+      cursor: pointer;
+      color: #1e293b;
+      font-weight: 500;
+      white-space: nowrap;
+      width: auto !important;
+      max-width: 100%;
+    }
+    
+    .tab-select:focus {
+      border-color: #4f46e5;
+      outline: none;
+    }
+    
+    .tab-filter-group-inline {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+    
+    .tab-input-sm {
+      width: 70px !important;
+      padding: 8px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .tab-input-sm:focus {
+      border-color: #4f46e5;
+      outline: none;
+    }
+    
+    .tab-btn-mini {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .tab-btn-primary {
+      background: #4f46e5;
+      color: #fff;
+    }
+    
+    .tab-btn-danger {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    
+    .tab-btn-primary:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+    
+    .tab-btn-danger:hover {
+      background: #fecaca;
+    }
+    
+    .tab-action-btns {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .tab-action-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 1.5px solid #e2e8f0;
+      background: #fff;
+      color: #475569;
+    }
+    
+    .tab-action-btn:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+    
+    .tab-action-btn.tab-btn-primary {
+      background: #1e293b;
+      color: #fff;
+      border-color: #1e293b;
+    }
+    
+    .tab-action-btn.tab-btn-primary:hover {
+      background: #0f172a;
+    }
+
+    @media (max-width: 768px) {
+      .tab-filters, .tab-filter-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .tab-filter-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+      .tab-filter-item select, .tab-view-btn {
+        width: 100%;
+      }
+      .tab-action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .tab-top-row, .tab-advanced-filters, .tab-filter-row {
+        flex-direction: column !important;
+        align-items: stretch;
+        width: 100%;
+      }
+      .tab-search-wrapper, .tab-input-sm, .tab-select, .tab-select-sm {
+        max-width: 100%;
+        width: 100% !important;
+      }
+      .tab-filter-group-inline {
+        flex-direction: row !important;
+        width: 100%;
+      }
+      .tab-filter-actions {
+         flex-direction: row !important;
+         width: 100%;
+         justify-content: space-between;
+      }
+      .tab-btn-mini {
+         flex: 1;
+         justify-content: center;
+      }
+    }
+
+    /* Stats Boxes */
+    .tab-stats-boxes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    
+    .tab-stat-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 15px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      transition: transform 0.2s ease;
+    }
+    
+    .tab-stat-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    
+    .tab-stat-box i {
+      font-size: 1.3rem;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+    }
+    
+    .tab-stat-box.total i { background: #eff6ff; color: #2563eb; }
+    .tab-stat-box.present i { background: #ecfdf5; color: #10b981; }
+    .tab-stat-box.absent i { background: #fff1f2; color: #f43f5e; }
+    .tab-stat-box.pass i { background: #f0fdf4; color: #16a34a; }
+    .tab-stat-box.fail i { background: #fef2f2; color: #ef4444; }
+    .tab-stat-box.rate i { background: #f5f3ff; color: #7c3aed; }
+    
+    .tab-stat-info {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .tab-stat-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    
+    .tab-stat-val {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .tabulation-table-wrapper {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    #tabulationTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    #tabulationTable th {
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      padding: 14px 10px;
+      border-bottom: 2px solid #e2e8f0;
+      border-right: 1px solid #e2e8f0;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    #tabulationTable td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      border-right: 1px solid #f1f5f9;
+      color: #1e293b;
+      text-align: center;
+    }
+
+    .tab-td-name {
+      text-align: left !important;
+      font-weight: 600;
+      color: #0f172a;
+      min-width: 180px;
+    }
+    
+    .tab-name-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: inherit;
+      font-weight: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    
+    .tab-name-btn:hover {
+      color: #4f46e5;
+      text-decoration: underline;
+    }
+
+    .tab-mark-fail {
+      color: #dc2626 !important;
+      font-weight: 700;
+      background: #fff1f2;
+    }
+
+    .tab-status-badge {
+      padding: 4px 10px;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    
+    .status-pass { background: #dcfce7; color: #166534; }
+    .status-fail { background: #fee2e2; color: #991b1b; }
+    .status-absent { background: #f1f5f9; color: #475569; }
+
+    /* Print styles */
+    @media print {
+      .tab-action-bar, .tab-filters, .tab-page-header, .sticky-nav-area, .page-nav-tabs {
+        display: none !important;
+      }
+      #tabulationPage {
+        padding: 0 !important;
+        background: white !important;
+      }
+      .tab-main-card {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      .tabulation-table-wrapper {
+        box-shadow: none !important;
+        border: none !important;
+      }
+      #tabulationTable th, #tabulationTable td {
+        border: 1px solid #000 !important;
+        color: black !important;
+      }
+    }
   </style>
 </head>
 
@@ -501,6 +963,9 @@
       </button>
       <button class="page-nav-btn super-admin-only" data-page="access-control" style="display: none;">
         <i class="fas fa-user-lock"></i> <span>এক্সেস কন্ট্রোল</span>
+      </button>
+      <button class="page-nav-btn" data-page="tabulation">
+        <i class="fas fa-table"></i> <span>টেবুলেশন শীট</span>
       </button>
       <button class="page-nav-btn" data-page="student-results">
         <i class="fas fa-search"></i> <span>ফলাফল ও আইডি কার্ড</span>
@@ -1801,6 +2266,119 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ========== PAGE: TABULATION SHEET (টেবুলেশন শীট) ========== -->
+    <div id="tabulationPage" class="app-page" style="display: none;">
+      <div class="card tab-main-card">
+        <!-- Page Header -->
+        <div class="tab-page-header">
+          <div class="tab-page-title">
+            <i class="fas fa-table"></i>
+            <div>
+              <h2>টেবুলেশন শীট</h2>
+              <p>পরীক্ষার বিস্তারিত ফলাফল টেবুলেশন</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="tab-filters">
+          <div class="tab-filter-group">
+            <div class="tab-filter-item">
+              <label><i class="fas fa-school"></i> শ্রেণি</label>
+              <select id="tabClass" class="tab-select"></select>
+            </div>
+            <div class="tab-filter-item">
+              <label><i class="fas fa-calendar-alt"></i> সেশন</label>
+              <select id="tabSession" class="tab-select"></select>
+            </div>
+            <div class="tab-filter-item">
+              <label><i class="fas fa-layer-group"></i> বিভাগ</label>
+              <select id="tabGroup" class="tab-select">
+                <option value="all">সকল বিভাগ (সমন্বিত)</option>
+              </select>
+            </div>
+            <div class="tab-filter-item">
+              <label><i class="fas fa-file-alt"></i> পরীক্ষা</label>
+              <select id="tabExam" class="tab-select" disabled></select>
+            </div>
+          </div>
+          <button id="tabViewBtn" class="tab-view-btn">
+            <i class="fas fa-eye"></i> ভিউ টেবুলেশন
+          </button>
+        </div>
+
+        <!-- Action Controls (visible after data loads) -->
+        <div class="tab-action-bar" id="tabControls">
+          <div class="tab-top-row">
+            <div class="tab-search-wrapper">
+              <i class="fas fa-search"></i>
+              <input type="text" id="tabSearchInput" placeholder="রোল, নাম বা বিভাগ দিয়ে খুঁজুন..." class="tab-search-input">
+            </div>
+            
+            <div class="tab-action-btns">
+              <button id="tabToggleNames" class="tab-action-btn" title="নাম লুকান/দেখান">
+                <i class="fas fa-eye-slash"></i> <span>নাম লুকান</span>
+              </button>
+              <button id="tabPrintBtn" class="tab-action-btn tab-btn-primary" title="প্রিন্ট করুন">
+                <i class="fas fa-print"></i> <span>প্রিন্ট</span>
+              </button>
+            </div>
+          </div>
+          
+          <div class="tab-advanced-filters">
+            <div class="tab-filter-label"><i class="fas fa-sliders-h"></i> অ্যাডভান্সড ফিল্টার ও সর্টিং:</div>
+            <div class="tab-filter-row">
+              <select id="tabAdvFilterType" class="tab-select">
+                  <option value="none">ফিল্টার ধরন নির্বাচন করুন...</option>
+                  <option value="gpa">মোট GPA অনুসারে</option>
+                  <option value="marks">সর্বমোট মার্কস</option>
+                  <option value="cq">লিখিত (CQ) মার্কস</option>
+                  <option value="mcq">MCQ মার্কস</option>
+                  <option value="result">ফলাফল (পাস/ফেল)</option>
+                  <option value="status">উপস্থিতি স্ট্যাটাস</option>
+              </select>
+              
+              <div id="tabFilterNumericGroup" class="tab-filter-group-inline" style="display: none;">
+                <select id="tabFilterOperator" class="tab-select-sm">
+                    <option value=">">&gt;</option>
+                    <option value="<">&lt;</option>
+                    <option value="=">=</option>
+                </select>
+                <input type="number" id="tabFilterNumVal" class="tab-input-sm" placeholder="মান...">
+              </div>
+              
+              <select id="tabFilterEnumVal" class="tab-select" style="display: none;">
+              </select>
+              
+              <select id="tabSortOrder" class="tab-select" style="display: none;">
+                  <option value="desc">সর্বাধিক (বড়-&gt;ছোট)</option>
+                  <option value="asc">সর্বনিম্ন (ছোট-&gt;বড়)</option>
+              </select>
+              
+              <div class="tab-filter-actions">
+                <button id="tabApplyFilterBtn" class="tab-btn-mini tab-btn-primary" style="display: none;">
+                    <i class="fas fa-check"></i> প্রয়োগ
+                </button>
+                <button id="tabResetFilterBtn" class="tab-btn-mini tab-btn-danger" style="display: none;" title="ফিল্টার রিসেট করুন">
+                    <i class="fas fa-undo"></i> রিসেট
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="tabEmptyState" class="tab-empty-state">
+          <div class="tab-empty-icon"><i class="fas fa-table"></i></div>
+          <h3>টেবুলেশন শীট</h3>
+          <p>শ্রেণি, সেশন ও পরীক্ষা নির্বাচন করে <strong>"ভিউ টেবুলেশন"</strong> বাটনে ক্লিক করুন।</p>
+        </div>
+
+        <!-- Tabulation Content -->
+        <div id="tabulationContent" style="display: none;"></div>
       </div>
     </div>
 

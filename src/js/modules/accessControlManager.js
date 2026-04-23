@@ -99,7 +99,8 @@ const AccessControlManager = {
             { id: 'students', label: 'শিক্ষার্থী', icon: 'fa-user-graduate' },
             { id: 'result-entry', label: 'রেজাল্ট এন্ট্রি', icon: 'fa-keyboard' },
             { id: 'marksheet', label: 'মার্কশীট', icon: 'fa-file-alt' },
-            { id: 'admit-card', label: 'এডমিট ও সিট প্লান', icon: 'fa-id-card' }
+            { id: 'admit-card', label: 'এডমিট ও সিট প্লান', icon: 'fa-id-card' },
+            { id: 'tabulation', label: 'টেবুলেশন শীট', icon: 'fa-table' }
         ];
 
         const roles = ['admin', 'teacher'];
