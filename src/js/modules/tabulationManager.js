@@ -647,7 +647,7 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
                         <th rowspan="2">ক্রম</th>
                         <th rowspan="2">শিক্ষার্থীর নাম</th>
                         <th rowspan="2">রোল</th>
-                        <th rowspan="2">বিভাগ</th>
+                        <th rowspan="2" class="tab-col-group">বিভাগ</th>
                         ${subjects.map(s => `
                             <th colspan="4">${s}</th>
                         `).join('')}
@@ -674,7 +674,7 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
                                 </button>
                             </td>
                             <td>${st.id}</td>
-                            <td>${st.group || '—'}</td>
+                            <td class="tab-col-group">${st.group || '—'}</td>
                             ${subjects.map(subj => {
                                 const d = st.subjects[subj] || {};
                                 const cfg = getSubjectCfg(subjectConfigs, subj);
