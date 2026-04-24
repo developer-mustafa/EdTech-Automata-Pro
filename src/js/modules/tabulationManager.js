@@ -280,7 +280,6 @@ async function handleViewTabulation() {
 
                 if (!studentMap.has(key)) {
                     if (latestDoc && (latestDoc.status === false || String(latestDoc.status) === 'false')) return;
-
                     studentMap.set(key, {
                         id: s.id,
                         name: latestDoc ? (latestDoc.name || s.name) : s.name,
@@ -603,7 +602,7 @@ async function handleViewTabulation() {
         });
 
         const selGroupName = selGroup === 'all' ? 'সকল বিভাগ' : selGroup;
-        currentTabulationData = { students, subjects, cls, session, examName, subjectConfigs };
+        currentTabulationData = { students, subjects, cls, session, examName, subjectConfigs, rules };
         renderTabulationSheet(students, subjects, cls, session, examName, subjectConfigs, selGroupName);
 
         // Show controls
@@ -883,27 +882,42 @@ function showStudentDetail(idx) {
     const stGroupNorm = normalizeText(st.group || '');
     const stRollClean = String(st.id || '').trim().replace(/^0+/, '');
 
+    const rules = currentTabulationData.rules || {};
+    const generalSubjects = rules.generalSubjects || [];
+    const groupSubjectsObj = rules.groupSubjects || {};
+    const optionalSubsObj = rules.optionalSubjects || {};
+    const norm = normalizeText;
+
+    const studentGroup = st.group || '';
+    const gKey = Object.keys(groupSubjectsObj).find(k => norm(k) === norm(studentGroup) || norm(k).includes(norm(studentGroup)) || norm(studentGroup).includes(norm(k))) || studentGroup;
+    const oKey = Object.keys(optionalSubsObj).find(k => norm(k) === norm(studentGroup) || norm(k).includes(norm(studentGroup)) || norm(studentGroup).includes(norm(k))) || studentGroup;
+
+    const allowedGroupSubs = gKey ? groupSubjectsObj[gKey] : [];
+    const allowedOptSubs = oKey ? optionalSubsObj[oKey] : [];
+    const allowedSet = new Set([...generalSubjects, ...allowedGroupSubs, ...allowedOptSubs].map(s => norm(s)));
+
     const applicableSubjects = subjects.filter(subj => {
-        const cleanSubjName = normalizeText(subj).replace(/\[.*?\]/g, '').replace(/\s+/g, '');
+        const cleanSubjName = norm(subj).replace(/\[.*?\]/g, '').replace(/\s+/g, '');
+
+        // 1. Check if subject is in the allowed rules for this student's group
+        if (!allowedSet.has(norm(subj))) return false;
         
-        // Find ALL mapping entries for this specific subject
+        // 2. Check roll-based subject mapping
         const allMappingsForThisSubj = subjMapForRender.filter(m => {
-            const mapSubNorm = normalizeText(m.subject).replace(/\[.*?\]/g, '').replace(/\s+/g, '');
+            const mapSubNorm = norm(m.subject).replace(/\[.*?\]/g, '').replace(/\s+/g, '');
             return mapSubNorm === cleanSubjName;
         });
 
-        // If there are NO mappings for this subject at all, it's a global subject (like Bangla/English)
+        // If no roll-based mappings exist for this subject, it's a global subject for this group
         if (allMappingsForThisSubj.length === 0) return true;
 
-        // If there ARE mappings, student must match at least one (Group AND Roll)
-        const isStudentMapped = allMappingsForThisSubj.some(m => {
-            const mapGroupNorm = normalizeText(m.group || '');
-            const groupMatches = (stGroupNorm.includes(mapGroupNorm) || mapGroupNorm.includes(stGroupNorm) || mapGroupNorm === '');
+        // If roll-based mappings EXIST, student must match at least one (Group AND Roll)
+        return allMappingsForThisSubj.some(m => {
+            const mapGroupNorm = norm(m.group || '');
+            const groupMatches = (norm(studentGroup).includes(mapGroupNorm) || mapGroupNorm.includes(norm(studentGroup)) || mapGroupNorm === '');
             const rollMatches = m.rolls.map(r => String(r).replace(/^0+/, '')).includes(stRollClean);
             return groupMatches && rollMatches;
         });
-
-        return isStudentMapped;
     });
 
     let subjectRows = applicableSubjects.map(subj => {
