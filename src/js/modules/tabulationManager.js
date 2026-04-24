@@ -28,6 +28,8 @@ let allExamsCache = null;
 // INITIALIZATION
 // ==========================================
 let stickyObserver = null;
+let stickyScrollHandler = null;
+let stickyResizeHandler = null;
 
 export async function initTabulationManager() {
     setupEventListeners();
@@ -415,39 +417,64 @@ async function handleViewTabulation() {
             const boardStandard = msSettings.boardStandardOptional === true;
 
             const studentGroup = st.group || '';
+            
+            // Build the specific allowed subjects set for THIS student's group
+            const generalSubjects = rules?.generalSubjects || [];
+            const groupSubjectsObj = rules?.groupSubjects || {};
             const optionalSubsObj = rules?.optionalSubjects || {};
             const norm = normalizeText;
-            const optKey = Object.keys(optionalSubsObj).find(k => norm(k) === norm(studentGroup) || norm(k).includes(norm(studentGroup)) || norm(studentGroup).includes(norm(k))) || studentGroup;
-            const optSubs = (optionalSubsObj[optKey] || []).map(os => norm(os));
+            
+            const gKey = Object.keys(groupSubjectsObj).find(k => norm(k) === norm(studentGroup) || norm(k).includes(norm(studentGroup)) || norm(studentGroup).includes(norm(k))) || studentGroup;
+            const oKey = Object.keys(optionalSubsObj).find(k => norm(k) === norm(studentGroup) || norm(k).includes(norm(studentGroup)) || norm(studentGroup).includes(norm(k))) || studentGroup;
+            
+            const allowedGroupSubs = gKey ? groupSubjectsObj[gKey] : [];
+            const allowedOptSubs = oKey ? optionalSubsObj[oKey] : [];
+            const allowedSet = new Set([...generalSubjects, ...allowedGroupSubs, ...allowedOptSubs].map(s => norm(s)));
+
+            const optSubs = allowedOptSubs.map(os => norm(os));
+
+            let hasAnyMarksForStudent = false;
 
             subjects.forEach(subj => {
                 const d = st.subjects[subj];
                 if (!d) return;
 
-                const hasMarks = (d.written !== undefined && d.written !== '') ||
-                    (d.mcq !== undefined && d.mcq !== '') ||
-                    (d.practical !== undefined && d.practical !== '') ||
-                    (d.total > 0);
-                const isAbsentSubject = (d.status || '').toLowerCase() === 'absent' || (d.status || '') === 'অনুপস্থিত';
+                // CRITICAL FIX: Ignore subjects that do not belong to the student's group 
+                // (e.g. Science student accidentally has an empty Business subject record)
+                if (!allowedSet.has(norm(subj))) return;
 
-                const hasAny = hasMarks && !isAbsentSubject;
-                if (hasAny) presentSubjects++;
+                // Check if they have ANY marks for the summary check
+                if ((d.written || 0) > 0 || (d.mcq || 0) > 0 || (d.practical || 0) > 0 || (d.total || 0) > 0) {
+                    hasAnyMarksForStudent = true;
+                }
 
-                totalObtained += d.total || 0;
+                const sTotal = parseFloat(d.total) || 0;
+                totalObtained += sTotal;
 
-                // Check pass/fail using subject config
-                const cfg = getSubjectCfg(subjectConfigs, subj);
-                const wPass = num(cfg.writtenPass);
-                const mPass = num(cfg.mcqPass);
-                const pPass = num(cfg.practicalPass);
-
-                let failed = false;
-                if (num(cfg.written) > 0 && d.written < wPass) failed = true;
-                if (num(cfg.mcq) > 0 && d.mcq < mPass) failed = true;
-                if (num(cfg.practical) > 0 && !cfg.practicalOptional && d.practical < pPass) failed = true;
-
+                // Marksheet attendance logic:
+                // Note: 0 marks + empty status = present (scored 0 while attending)
+                // Only explicit 'অনুপস্থিত' status = absent
                 const status = (d.status || '').toLowerCase();
-                if (status === 'ফেল' || status === 'fail') failed = true;
+                const isExplicitlyAbsent = (status === 'absent' || status === 'অনুপস্থিত');
+                
+                // Track if student participated in any subject to determine overall attendance
+                if (sTotal > 0 || !isExplicitlyAbsent) {
+                    presentSubjects++; 
+                }
+
+                const cfg = getSubjectCfg(subjectConfigs, subj);
+                const maxTotal = parseInt(cfg.total) || 100;
+                const pct = maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0;
+                const gp = getGradePoint(pct);
+                const grade = pct >= 80 ? 'A+' : pct >= 70 ? 'A' : pct >= 60 ? 'A-' : pct >= 50 ? 'B' : pct >= 40 ? 'C' : pct >= 33 ? 'D' : 'F';
+
+                let isFail = (grade === 'F');
+                
+                // Safe component check matching marksheet (parseFloat on empty string is NaN, which correctly fails the < check)
+                if (d.written !== undefined && cfg.writtenPass !== undefined && parseFloat(d.written) < parseFloat(cfg.writtenPass)) isFail = true;
+                if (d.mcq !== undefined && cfg.mcqPass !== undefined && parseFloat(d.mcq) < parseFloat(cfg.mcqPass)) isFail = true;
+                if (d.practical !== undefined && cfg.practicalPass !== undefined && parseFloat(d.practical) < parseFloat(cfg.practicalPass)) isFail = true;
+                if (status === 'ফেল' || status === 'fail') isFail = true;
 
                 const isOptional = optSubs.some(os => {
                     const ns = norm(subj);
@@ -458,36 +485,16 @@ async function handleViewTabulation() {
                     return ns.includes(os) || os.includes(ns);
                 });
 
-                if (failed && hasAny) {
-                    if (isOptional && boardStandard) {
-                        // ignore fail
-                    } else {
-                        failedSubjects++;
+                if (isOptional) {
+                    hasOptionalTaken = true;
+                    if (!isFail && gp > 2.00) {
+                        optionalBonusGP = Math.max(optionalBonusGP, gp - 2.00);
                     }
-                }
-
-                // GPA calculation for this subject
-                if (hasAny) {
-                    let totalMark = d.total || 0;
-                    let maxTotal = num(cfg.total) || 100;
-                    if (maxTotal === 0) maxTotal = 100;
-
-                    let pct = (totalMark / maxTotal) * 100;
-                    let gp = getGradePoint(pct);
-
-                    if (failed) gp = 0.00; // Force 0 if failed components
-
-                    if (isOptional) {
-                        hasOptionalTaken = true;
-                        if (gp > 2.00 && boardStandard) {
-                            optionalBonusGP += (gp - 2.00);
-                        } else if (!boardStandard) {
-                            compulsoryGP += gp;
-                            compulsoryCount++;
-                        }
-                    } else {
-                        compulsoryGP += gp;
-                        compulsoryCount++;
+                } else {
+                    compulsoryGP += gp;
+                    compulsoryCount++;
+                    if (isFail) {
+                        failedSubjects++;
                     }
                 }
             });
@@ -500,7 +507,7 @@ async function handleViewTabulation() {
                     const n = norm(s);
                     return ns === n || ns.includes(n) || n.includes(ns);
                 });
-                const isGrp = (groupSubjectsObj[optKey] || groupSubjectsObj[studentGroup] || []).some(s => {
+                const isGrp = allowedGroupSubs.some(s => {
                     const n = norm(s);
                     return ns === n || ns.includes(n) || n.includes(ns);
                 });
@@ -520,7 +527,8 @@ async function handleViewTabulation() {
             st._failedSubjects = failedSubjects;
             st._presentSubjects = presentSubjects;
 
-            if (presentSubjects === 0) {
+            // Match marksheet summary logic: if they have NO marks anywhere, they are absent from the statistics
+            if (presentSubjects === 0 || !hasAnyMarksForStudent) {
                 st._isAbsent = true;
                 st._attendanceStatus = 'অনুপস্থিত';
             } else if (presentSubjects < reqCount) {
@@ -531,7 +539,7 @@ async function handleViewTabulation() {
                 st._attendanceStatus = 'উপস্থিত';
             }
 
-            st._isPass = failedSubjects === 0 && presentSubjects > 0;
+            st._isPass = !st._isAbsent && failedSubjects === 0;
 
             // Finalize GPA and Grade
             if (st._isPass && compulsoryCount > 0) {
@@ -732,30 +740,50 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
 }
 
 // ==========================================
-// DYNAMIC STICKY HEIGHT OBSERVER
+// DYNAMIC WRAPPER HEIGHT FOR TABLE-LEVEL SCROLL
 // ==========================================
 function setupStickyObserver() {
+    // Cleanup previous observers and listeners
     if (stickyObserver) stickyObserver.disconnect();
+    if (stickyScrollHandler) window.removeEventListener('scroll', stickyScrollHandler);
+    if (stickyResizeHandler) window.removeEventListener('resize', stickyResizeHandler);
     
-    const actionBar = document.getElementById('tabControls');
-    if (!actionBar) return;
-
-    stickyObserver = new ResizeObserver(entries => {
-        if (window.innerWidth < 769) {
-            document.querySelectorAll('#tabulationTable thead th').forEach(th => th.style.top = '');
-            return;
-        }
-        for (let entry of entries) {
-            // Use getBoundingClientRect for absolute precision (including sub-pixels)
-            const rect = entry.target.getBoundingClientRect();
-            const h = rect.height;
-            document.querySelectorAll('#tabulationTable thead th').forEach(th => {
-                th.style.top = `${h}px`;
-            });
-        }
+    const wrapper = document.querySelector('.tabulation-table-wrapper');
+    if (!wrapper) return;
+    
+    // Clear any old inline top values from previous logic
+    document.querySelectorAll('#tabulationTable thead th').forEach(th => {
+        th.style.top = '';
     });
     
-    stickyObserver.observe(actionBar);
+    function updateWrapperHeight() {
+        if (window.innerWidth < 769) {
+            wrapper.style.maxHeight = '';
+            return;
+        }
+        // Calculate remaining viewport height from the wrapper's current position
+        const rect = wrapper.getBoundingClientRect();
+        const available = window.innerHeight - rect.top - 10;
+        wrapper.style.maxHeight = `${Math.max(300, available)}px`;
+    }
+    
+    // Initial calculation
+    updateWrapperHeight();
+    
+    // Update on scroll (wrapper position changes as page scrolls)
+    stickyScrollHandler = updateWrapperHeight;
+    window.addEventListener('scroll', stickyScrollHandler, { passive: true });
+    
+    // Update on resize (viewport height changes)
+    stickyResizeHandler = updateWrapperHeight;
+    window.addEventListener('resize', stickyResizeHandler, { passive: true });
+    
+    // Observe action bar for size changes (e.g. filters expanding)
+    const actionBar = document.getElementById('tabControls');
+    if (actionBar) {
+        stickyObserver = new ResizeObserver(() => updateWrapperHeight());
+        stickyObserver.observe(actionBar);
+    }
 }
 
 // ==========================================

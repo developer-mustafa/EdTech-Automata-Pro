@@ -323,14 +323,16 @@
         border-bottom: 1px solid var(--border-color, #e2e8f0);
       }
       
-      /* Absolutely critical: if wrapper has overflow-x auto, vertical sticky breaks on page scroll */
+      /* The wrapper is the SINGLE scroll context for both vertical and horizontal sticky.
+         thead th sticks vertically (top:0), frozen columns stick horizontally (left:Xpx).
+         max-height is set dynamically by JS to fill remaining viewport. */
       body.is-tabulation .tabulation-table-wrapper {
-        overflow-x: visible !important;
-        overflow-y: visible !important;
+        overflow: auto !important;
       }
       
       body.is-tabulation #tabulationTable thead th {
-        z-index: 400; /* Will get top offset from JS */
+        z-index: 400;
+        top: 0 !important; /* Sticks to top of wrapper */
       }
 
       /* Horizontal Sticky for Desktop */
