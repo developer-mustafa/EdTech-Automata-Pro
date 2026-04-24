@@ -441,6 +441,22 @@
     .dark-mode .tab-subj-tint-4 { background-color: rgba(236, 72, 153, 0.18); }
     .dark-mode .tab-subj-tint-5 { background-color: rgba(14, 165, 233, 0.18); }
     
+    /* Ensure table base is dark so rgba tints blend with dark, not white */
+    .dark-mode .tabulation-table-wrapper,
+    .dark-mode #tabulationTable {
+        background-color: var(--card-bg, #1e293b) !important;
+    }
+    .dark-mode #tabulationTable tbody tr {
+        background-color: transparent !important;
+        border-bottom-color: rgba(255, 255, 255, 0.05);
+    }
+    .dark-mode #tabulationTable tbody td {
+        color: #f1f5f9 !important;
+    }
+    .dark-mode #tabulationTable tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+    }
+    
     /* Stronger vertical dividers between subjects */
     td.tab-subj-last-col {
         border-right: 2px solid #cbd5e1 !important;
@@ -457,12 +473,17 @@
     #tabulationTable thead th.tab-subj-th-4 { background-color: #fdf2f8 !important; border-bottom: 2px solid #fbcfe8 !important; border-right: 2px solid #cbd5e1 !important; }
     #tabulationTable thead th.tab-subj-th-5 { background-color: #f0f9ff !important; border-bottom: 2px solid #bae6fd !important; border-right: 2px solid #cbd5e1 !important; }
 
-    .dark-mode #tabulationTable thead th.tab-subj-th-0 { background-color: rgba(59, 130, 246, 0.18) !important; border-bottom: 2px solid rgba(59, 130, 246, 0.3) !important; border-right: 2px solid #475569 !important; color: #f1f5f9 !important;}
-    .dark-mode #tabulationTable thead th.tab-subj-th-1 { background-color: rgba(16, 185, 129, 0.18) !important; border-bottom: 2px solid rgba(16, 185, 129, 0.3) !important; border-right: 2px solid #475569 !important; color: #f1f5f9 !important;}
-    .dark-mode #tabulationTable thead th.tab-subj-th-2 { background-color: rgba(139, 92, 246, 0.18) !important; border-bottom: 2px solid rgba(139, 92, 246, 0.3) !important; border-right: 2px solid #475569 !important; color: #f1f5f9 !important;}
-    .dark-mode #tabulationTable thead th.tab-subj-th-3 { background-color: rgba(245, 158, 11, 0.22) !important; border-bottom: 2px solid rgba(245, 158, 11, 0.35) !important; border-right: 2px solid #475569 !important; color: #f1f5f9 !important;}
-    .dark-mode #tabulationTable thead th.tab-subj-th-4 { background-color: rgba(236, 72, 153, 0.18) !important; border-bottom: 2px solid rgba(236, 72, 153, 0.3) !important; border-right: 2px solid #475569 !important; color: #f1f5f9 !important;}
-    .dark-mode #tabulationTable thead th.tab-subj-th-5 { background-color: rgba(14, 165, 233, 0.18) !important; border-bottom: 2px solid rgba(14, 165, 233, 0.3) !important; border-right: 2px solid #475569 !important; color: #f1f5f9 !important;}
+    .dark-mode #tabulationTable thead th.tab-subj-th-0 { background-color: #1e3a8a !important; border-bottom: 2px solid #1e40af !important; border-right: 2px solid #475569 !important; color: #dbeafe !important; }
+    .dark-mode #tabulationTable thead th.tab-subj-th-1 { background-color: #064e3b !important; border-bottom: 2px solid #065f46 !important; border-right: 2px solid #475569 !important; color: #d1fae5 !important; }
+    .dark-mode #tabulationTable thead th.tab-subj-th-2 { background-color: #4c1d95 !important; border-bottom: 2px solid #5b21b6 !important; border-right: 2px solid #475569 !important; color: #ede9fe !important; }
+    .dark-mode #tabulationTable thead th.tab-subj-th-3 { background-color: #78350f !important; border-bottom: 2px solid #92400e !important; border-right: 2px solid #475569 !important; color: #fef3c7 !important; }
+    .dark-mode #tabulationTable thead th.tab-subj-th-4 { background-color: #831843 !important; border-bottom: 2px solid #9d174d !important; border-right: 2px solid #475569 !important; color: #fce7f3 !important; }
+    .dark-mode #tabulationTable thead th.tab-subj-th-5 { background-color: #0c4a6e !important; border-bottom: 2px solid #075985 !important; border-right: 2px solid #475569 !important; color: #e0f2fe !important; }
+    
+    /* Override main.css !important row colors for Dark Mode to use solid colors (fixes sticky column transparency) */
+    .dark-mode .tab-table tr.tab-row-pass td { background-color: #1d303e !important; }
+    .dark-mode .tab-table tr.tab-row-fail td { background-color: #322b3b !important; }
+    .dark-mode .tab-table tr.tab-row-absent td { background-color: #282e38 !important; }
     
     .tab-top-row {
       display: flex;
