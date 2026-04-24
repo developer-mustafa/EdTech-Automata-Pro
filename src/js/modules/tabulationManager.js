@@ -296,10 +296,10 @@ async function handleViewTabulation() {
 
                 const hasMarks = (s.written > 0) || (s.mcq > 0) || (s.practical > 0) || (s.total > 0);
                 const subjData = {
-                    written: s.written || 0,
-                    mcq: s.mcq || 0,
-                    practical: s.practical || 0,
-                    total: s.total || 0,
+                    written: s.written,
+                    mcq: s.mcq,
+                    practical: s.practical,
+                    total: s.total,
                     grade: s.grade || '',
                     status: s.status || ''
                 };
@@ -506,10 +506,14 @@ async function handleViewTabulation() {
 
                 let isFail = (grade === 'F');
                 
-                // Safe component check matching marksheet
-                if (d.written !== undefined && cfg.writtenPass !== undefined && parseFloat(d.written) < parseFloat(cfg.writtenPass)) isFail = true;
-                if (d.mcq !== undefined && cfg.mcqPass !== undefined && parseFloat(d.mcq) < parseFloat(cfg.mcqPass)) isFail = true;
-                if (d.practical !== undefined && cfg.practicalPass !== undefined && parseFloat(d.practical) < parseFloat(cfg.practicalPass)) isFail = true;
+                // Match marksheet getMarkClass: if mark=0 or missing, getMarkClass returns '' (no fail)
+                // Only trigger fail if mark is a valid non-zero number that is below pass mark
+                const wMark = d.written;
+                const mMark = d.mcq;
+                const pMark = d.practical;
+                if (wMark && wMark !== '-' && cfg.writtenPass !== undefined && parseFloat(wMark) < parseFloat(cfg.writtenPass)) isFail = true;
+                if (mMark && mMark !== '-' && cfg.mcqPass !== undefined && parseFloat(mMark) < parseFloat(cfg.mcqPass)) isFail = true;
+                if (pMark && pMark !== '-' && cfg.practicalPass !== undefined && parseFloat(pMark) < parseFloat(cfg.practicalPass)) isFail = true;
                 if (status === 'ফেল' || status === 'fail') isFail = true;
 
                 const isOptional = optSubs.some(os => {
@@ -524,7 +528,12 @@ async function handleViewTabulation() {
                 if (isOptional) {
                     hasOptionalTaken = true;
                     if (!isFail && gp > 2.00) {
-                        optionalBonusGP = Math.max(optionalBonusGP, gp - 2.00);
+                        // Align with marksheetManager: replace, not accumulate
+                        optionalBonusGP = gp - 2.00;
+                    }
+                    // Align with marksheetManager: if not board standard, optional fail causes overall fail
+                    if (!boardStandard && isFail) {
+                        failedSubjects++;
                     }
                 } else {
                     compulsoryGP += gp;
@@ -759,9 +768,9 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
             const t = d.total || 0;
             const hasData = w > 0 || m > 0 || p > 0 || t > 0 || d.status;
 
-            const wFail = num(cfg.written) > 0 && w < wPass && d.written !== undefined && d.written !== '';
-            const mFail = num(cfg.mcq) > 0 && m < mPass && d.mcq !== undefined && d.mcq !== '';
-            const pFail = num(cfg.practical) > 0 && !cfg.practicalOptional && p < pPass && d.practical !== undefined && d.practical !== '';
+            const wFail = num(cfg.written) > 0 && w < wPass && !!d.written && d.written !== '-';
+            const mFail = num(cfg.mcq) > 0 && m < mPass && !!d.mcq && d.mcq !== '-';
+            const pFail = num(cfg.practical) > 0 && !cfg.practicalOptional && p < pPass && !!d.practical && d.practical !== '-';
             const isSubjFail = wFail || mFail || pFail || ((d.status || '').toLowerCase() === 'fail') || ((d.status || '').toLowerCase() === 'ফেল');
 
             const tintCls = `tab-subj-tint-${i % 6}`;
