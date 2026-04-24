@@ -712,6 +712,14 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
                         <th rowspan="2">ফলাফল</th>
                         <th rowspan="2">স্ট্যাটাস</th>
                     </tr>
+                    <tr>
+                        ${subjects.map((s, i) => `
+                            <th class="tab-subj-sub-th tab-subj-th-${i % 6}">লিঃ</th>
+                            <th class="tab-subj-sub-th tab-subj-th-${i % 6}">নৈঃ</th>
+                            <th class="tab-subj-sub-th tab-subj-th-${i % 6}">ব্যঃ</th>
+                            <th class="tab-subj-sub-th tab-subj-th-${i % 6}">মোট</th>
+                        `).join('')}
+                    </tr>
                 </thead>
                 <tbody>
                     ${students.map((st, idx) => {
