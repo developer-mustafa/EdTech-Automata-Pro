@@ -5,6 +5,12 @@
  */
 
 import { convertToEnglishDigits, normalizeText } from './utils.js';
+import localforage from 'localforage';
+
+localforage.config({
+    name: 'EdTechAutomataPro',
+    storeName: 'firestoreCache'
+});
 
 /**
  * Lazy-load Firestore and Auth modules to ensure code-splitting is effective.
@@ -42,34 +48,83 @@ export const COLLECTIONS = {
 const _cache = {
     exams: null,
     examsExpiry: 0,
+    students: null,
+    studentsExpiry: 0,
+    lookupMap: null,
     accessRequests: null,
     accessRequestsExpiry: 0,
     CACHE_DURATION: 10 * 60 * 1000 // 10 minutes cache
+};
+
+// Promise cache to prevent concurrent identical fetches
+const _pendingPromises = {
+    exams: null,
+    students: null
 };
 
 // ==========================================
 // STUDENTS COLLECTION OPERATIONS
 // ==========================================
 
-/**
- * Get all students from Firestore
- * @returns {Promise<Array>} - Array of student documents
- */
 export async function getAllStudents() {
-    try {
-        const { db, collection, query, orderBy, getDocs } = await getFirestore();
-        const studentsRef = collection(db, COLLECTIONS.students);
-        const q = query(studentsRef, orderBy('id', 'asc'));
-        const snapshot = await getDocs(q);
-
-        return snapshot.docs.map(doc => ({
-            docId: doc.id,
-            ...doc.data()
-        }));
-    } catch (error) {
-        console.error('শিক্ষার্থীদের ডেটা লোড করতে সমস্যা:', error);
-        return [];
+    const now = Date.now();
+    
+    if (_cache.students && now < _cache.studentsExpiry) {
+        return _cache.students;
     }
+
+    if (_pendingPromises.students) {
+        return _pendingPromises.students;
+    }
+
+    _pendingPromises.students = (async () => {
+        try {
+            // Check IndexedDB cache first
+            const cachedStudents = await localforage.getItem('studentsCache');
+            const cachedExpiry = await localforage.getItem('studentsExpiry');
+
+            if (cachedStudents && cachedExpiry && now < cachedExpiry) {
+                _cache.students = cachedStudents;
+                _cache.studentsExpiry = cachedExpiry;
+                return cachedStudents;
+            }
+
+            const { db, collection, query, orderBy, getDocs } = await getFirestore();
+            const studentsRef = collection(db, COLLECTIONS.students);
+            const q = query(studentsRef, orderBy('id', 'asc'));
+            const snapshot = await getDocs(q);
+
+            const students = snapshot.docs.map(doc => ({
+                docId: doc.id,
+                ...doc.data()
+            }));
+            
+            const expiry = now + _cache.CACHE_DURATION;
+            _cache.students = students;
+            _cache.studentsExpiry = expiry;
+            _cache.lookupMap = null; // Invalidate dependent lookup map
+
+            // Save to IndexedDB
+            await localforage.setItem('studentsCache', students);
+            await localforage.setItem('studentsExpiry', expiry);
+            
+            return students;
+        } catch (error) {
+            console.error('শিক্ষার্থীদের ডেটা লোড করতে সমস্যা:', error);
+            
+            // Fallback to stale cache if offline
+            const staleCache = await localforage.getItem('studentsCache');
+            if (staleCache) {
+                console.warn('অফলাইন মোডে ক্যাশ ডেটা দেখানো হচ্ছে।');
+                return staleCache;
+            }
+            return [];
+        } finally {
+            _pendingPromises.students = null;
+        }
+    })();
+    
+    return _pendingPromises.students;
 }
 
 /**
@@ -136,12 +191,19 @@ export async function getUnifiedStudents() {
  * @returns {Promise<Map>} Student lookup map
  */
 export async function getStudentLookupMap() {
+    // If the map is already built and students cache is valid, return the cached map
+    if (_cache.lookupMap && _cache.students && Date.now() < _cache.studentsExpiry) {
+        return _cache.lookupMap;
+    }
+
     const students = await getAllStudents();
     const lookupMap = new Map();
     students.forEach(s => {
         const key = generateStudentDocId(s);
         lookupMap.set(key, s);
     });
+    
+    _cache.lookupMap = lookupMap;
     return lookupMap;
 }
 
@@ -457,59 +519,70 @@ export async function getSavedExams() {
 
     // 1. Try Memory Cache (Fastest)
     if (_cache.exams && now < _cache.examsExpiry) {
-        console.log('Returning memory-cached exams (Ultra Fast)');
+        // console.log('Returning memory-cached exams (Ultra Fast)');
         return _cache.exams;
     }
 
-    // 2. Try LocalStorage Cache (Persistence across refreshes)
-    try {
-        const localData = localStorage.getItem(CACHE_KEY);
-        if (localData) {
-            const parsed = JSON.parse(localData);
-            if (now - parsed.timestamp < PERSISTENT_DURATION) {
-                console.log('Returning persistent-cached exams (Disk Cache)');
-                _cache.exams = parsed.data;
-                _cache.examsExpiry = now + _cache.CACHE_DURATION;
-                return parsed.data;
-            }
-        }
-    } catch (e) {
-        console.warn('LocalStorage cache read failed:', e);
+    // Prevent concurrent fetches racing each other
+    if (_pendingPromises.exams) {
+        return _pendingPromises.exams;
     }
 
-    // 3. Fetch from Firestore (Fallback)
-    try {
-        console.log('Fetching fresh exams from Firestore (Cache expired or empty)');
-        const { db, collection, query, orderBy, getDocs } = await getFirestore();
-        const examsRef = collection(db, COLLECTIONS.exams);
-        const q = query(examsRef, orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(q);
-
-        const exams = snapshot.docs.map(doc => ({
-            docId: doc.id,
-            ...doc.data()
-        }));
-
-        // Update Memory Cache
-        _cache.exams = exams;
-        _cache.examsExpiry = now + _cache.CACHE_DURATION;
-
-        // Update LocalStorage Cache
+    _pendingPromises.exams = (async () => {
         try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({
-                data: exams,
-                timestamp: now
-            }));
-        } catch (e) {
-            console.warn('LocalStorage cache write failed:', e);
-        }
+            // 2. Try IndexedDB Cache (Persistence across refreshes)
+            try {
+                const localData = await localforage.getItem(CACHE_KEY);
+                if (localData) {
+                    if (now - localData.timestamp < PERSISTENT_DURATION) {
+                        // console.log('Returning persistent-cached exams (IndexedDB Cache)');
+                        _cache.exams = localData.data;
+                        _cache.examsExpiry = now + _cache.CACHE_DURATION;
+                        return localData.data;
+                    }
+                }
+            } catch (e) {
+                console.warn('IndexedDB cache read failed:', e);
+            }
 
-        return exams;
-    } catch (error) {
-        console.error('পরীক্ষার তালিকা লোড করতে সমস্যা:', error);
-        return [];
-    }
+            // 3. Fetch from Firestore (Fallback)
+            console.log('Fetching fresh exams from Firestore (Cache expired or empty)');
+            const { db, collection, query, orderBy, getDocs } = await getFirestore();
+            const examsRef = collection(db, COLLECTIONS.exams);
+            const q = query(examsRef, orderBy('createdAt', 'desc'));
+            const snapshot = await getDocs(q);
+
+            const exams = snapshot.docs.map(doc => ({
+                docId: doc.id,
+                ...doc.data()
+            }));
+
+            // Update Memory Cache
+            _cache.exams = exams;
+            _cache.examsExpiry = now + _cache.CACHE_DURATION;
+
+            // Update IndexedDB Cache
+            try {
+                await localforage.setItem(CACHE_KEY, {
+                    data: exams,
+                    timestamp: now
+                });
+            } catch (e) {
+                console.warn('IndexedDB cache write failed:', e);
+            }
+
+            return exams;
+        } catch (error) {
+            console.error('পরীক্ষার তালিকা লোড করতে সমস্যা:', error);
+            return [];
+        } finally {
+            _pendingPromises.exams = null;
+        }
+    })();
+    
+    return _pendingPromises.exams;
 }
+
 
 /**
  * Get exams matching specific criteria (Class, Session)
@@ -1177,6 +1250,7 @@ export async function createTeacherAccount(userData) {
             displayName: userData.name,
             phone: userData.phone || '',
             role: userData.role || 'teacher',
+            passwordSetByAdmin: true,
             tempPassword: userData.password,
             createdAt: serverTimestamp(),
             lastLogin: null
@@ -1197,14 +1271,34 @@ export async function createTeacherAccount(userData) {
 
 /**
  * Update a teacher's password (Super Admin only)
+ * Automatically fetches email and current password from Firestore
+ * @param {string} uid - Teacher's UID
+ * @param {string} newPassword - New password to set
+ * @returns {Promise<Object>} - { success: boolean, error?: string }
  */
-export async function updateTeacherPassword(uid, email, currentPassword, newPassword) {
+export async function updateTeacherPassword(uid, newPassword) {
     let secondaryApp;
     try {
         const { initializeApp, deleteApp } = await import('firebase/app');
         const { getAuth, signInWithEmailAndPassword, updatePassword, signOut } = await import('firebase/auth');
         const { firebaseConfig } = await import('./firebase.js');
-        const { db, doc, updateDoc, serverTimestamp } = await getFirestore();
+        const { db, doc, getDoc, updateDoc, serverTimestamp } = await getFirestore();
+
+        // Fetch user doc to get email and current tempPassword
+        const userRef = doc(db, COLLECTIONS.users, uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            return { success: false, error: 'user-not-found' };
+        }
+
+        const userData = userSnap.data();
+        const email = userData.email;
+        const currentPassword = userData.tempPassword;
+
+        if (!email || !currentPassword) {
+            return { success: false, error: 'missing-credentials' };
+        }
 
         secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
         const secondaryAuth = getAuth(secondaryApp);
@@ -1215,9 +1309,11 @@ export async function updateTeacherPassword(uid, email, currentPassword, newPass
         await signOut(secondaryAuth);
         await deleteApp(secondaryApp);
 
-        const userRef = doc(db, COLLECTIONS.users, uid);
+        // Update Firestore with new tempPassword
         await updateDoc(userRef, {
             tempPassword: newPassword,
+            passwordSetByAdmin: true,
+            passwordUpdatedAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         });
 

@@ -1,9 +1,21 @@
-﻿/**
+/**
  * Utilities Module - Helper functions for student data processing
  * @module utils
  */
 
 import { GRADING_SYSTEM, FAILING_THRESHOLD, CHART_COLORS, GROUP_NAMES } from './constants.js';
+
+/**
+ * HTML Entity Escape — XSS প্রতিরোধের জন্য
+ * innerHTML-এ ইউজার ডেটা ব্যবহারের আগে এটি দিয়ে escape করতে হবে
+ * @param {string} str - Raw user string
+ * @returns {string} HTML-safe string
+ */
+export function escapeHtml(str) {
+    if (!str) return '';
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(str).replace(/[&<>"']/g, c => map[c]);
+}
 
 /**
  * Robust Bengali and English text normalization
@@ -464,15 +476,20 @@ export function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     
-    // Add icon based on type
-    const icons = {
-        success: '<i class="fas fa-check-circle"></i>',
-        error: '<i class="fas fa-exclamation-circle"></i>',
-        warning: '<i class="fas fa-exclamation-triangle"></i>',
-        info: '<i class="fas fa-info-circle"></i>'
+    const iconClassMap = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
     };
-    
-    notification.innerHTML = `${icons[type] || icons.info} <span>${message}</span>`;
+
+    const icon = document.createElement('i');
+    icon.className = `fas ${iconClassMap[type] || iconClassMap.info}`;
+
+    const text = document.createElement('span');
+    text.textContent = message;
+
+    notification.append(icon, document.createTextNode(' '), text);
     document.body.appendChild(notification);
 
     // Auto remove after delay
@@ -572,4 +589,23 @@ export function formatDateBengali(date) {
     const timeStr = `${convertToBengaliDigits(hours)}:${convertToBengaliDigits(minutes)} ${ampm}`;
 
     return `${day} ${month} ${year}, ${timeStr}`;
+}
+
+/**
+ * Creates a debounced function that delays invoking func until after wait milliseconds
+ * have elapsed since the last time the debounced function was invoked.
+ * @param {Function} func - The function to debounce
+ * @param {number} wait - The number of milliseconds to delay
+ * @returns {Function} - Returns the new debounced function
+ */
+export function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
