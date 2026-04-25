@@ -205,7 +205,7 @@ function bindPwaInstallButton() {
 async function init() {
     // Prevent multiple initializations from HMR if already initialized
     if (state.isInitialized && state.onDataUpdateUnsubscribe) {
-        console.log('App already initialized, skipping init...');
+        // Already initialized (HMR guard)
         return;
     }
 
@@ -402,7 +402,7 @@ async function init() {
         // Marksheet Settings Sync (College Name, Address, Logo, Subject Mappings)
         const initMarksheetSettingsSub = async () => {
              state.onMarksheetSettingsUnsubscribe = await subscribeToMarksheetSettings((msData) => {
-                console.log('Marksheet settings updated, refreshing dashboard header and exam cards...');
+
                 updateProfileUI(state.currentUser, state.isAdmin, state.isSuperAdmin, state.userRole);
                 updateAppFooter(msData); // Also sync footer info from marksheet settings
                 updateViews();
@@ -2249,6 +2249,23 @@ window.addEventListener('appinstalled', (event) => {
         elements.installAppBtn.style.display = 'none';
     }
     showNotification('অ্যাপটি সফলভাবে ইনস্টল হয়েছে!');
+});
+
+// ==========================================
+// Global Error Boundary — Prevents blank screen on unhandled errors
+// ==========================================
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled Promise Rejection:', event.reason);
+    try {
+        showNotification('কিছু সমস্যা হয়েছে। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।', 'error', 5000);
+    } catch (e) { /* notification system may not be ready */ }
+});
+
+window.addEventListener('error', (event) => {
+    console.error('Runtime Error:', event.error);
+    try {
+        showNotification('একটি ত্রুটি ঘটেছে। পেজ রিফ্রেশ করুন।', 'error', 5000);
+    } catch (e) { /* notification system may not be ready */ }
 });
 
 if (document.readyState === 'loading') {

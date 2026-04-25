@@ -110,7 +110,7 @@ export async function setupAuthListener(callbacks = {}) {
     } = callbacks;
 
     return await onAuthChange(async (user) => {
-        console.log('Auth state changed:', user ? user.email : 'Logged Out');
+        console.log('Auth state:', user ? 'Logged In' : 'Logged Out');
         state.currentUser = user;
 
         if (user) {
