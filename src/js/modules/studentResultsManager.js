@@ -442,22 +442,33 @@ async function displayStudentMarksheet(studentResult) {
 
     // 5. Pass 1: Light Render Ranks for everyone (EXACT parity with master module)
     const allRendered = [];
+    let loop1Idx = 0;
     for (const st of allStudents) {
-        const lightHtml = await renderSingleMarksheet(st, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, true, highestMarks);
-        allRendered.push({ key: `${st.id}_${st.group}`, group: st.group, html: lightHtml, id: st.id, subjects: st.subjects });
+        const stats = await renderSingleMarksheet(st, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, true, highestMarks);
+        allRendered.push({ key: `${st.id}_${st.group}`, group: st.group, html: stats, id: st.id, subjects: st.subjects });
+        
+        // Yield to main thread every 5 students to prevent UI freeze during search
+        if (++loop1Idx % 5 === 0) await new Promise(r => setTimeout(r, 0));
     }
 
     const meritResults = allRendered.map(item => {
-        const isPass = item.html.includes('ms-result-pass');
-        const isAbsent = !Object.values(item.subjects).some(d => (d.written || 0) > 0 || (d.mcq || 0) > 0 || (d.practical || 0) > 0 || (d.total || 0) > 0);
-        let gpa = 0;
-        const gpaMatch = item.html.match(/ms-gpa-value">\s*([\d.]+)\s*<\/span>/);
-        if (gpaMatch) gpa = parseFloat(gpaMatch[1]);
-        let totalMarks = 0;
-        const marksMatch = item.html.match(/মোট নম্বর<\/span>\s*<span class="ms-result-value">\s*(\d+)/);
-        if (marksMatch) totalMarks = parseInt(marksMatch[1]);
-        const failedCount = (!isPass && !isAbsent) ? (item.html.match(/ms-grade-fail/g) || []).length || 1 : 0;
-        return { key: item.key, group: item.group, id: parseInt(convertToEnglishDigits(String(item.id))) || 0, isPass, gpa, totalMarks, failedCount, isAbsent };
+        const stats = item.html; // This is the stats object from renderSingleMarksheet (skipHeavyOps=true)
+        const isPass = stats.isPass;
+        const isAbsent = stats.isAbsent;
+        const gpa = stats.gpa || 0;
+        const totalMarks = stats.totalMarks || 0;
+        const failedCount = stats.failedCount || 0;
+        
+        return { 
+            key: item.key, 
+            group: item.group, 
+            id: parseInt(convertToEnglishDigits(String(item.id))) || 0, 
+            isPass, 
+            gpa, 
+            totalMarks, 
+            failedCount, 
+            isAbsent 
+        };
     });
 
     meritResults.sort((a, b) => {
@@ -495,10 +506,10 @@ async function displayStudentMarksheet(studentResult) {
         gs.examinees++;
         if (res.isPass) {
             gs.pass++;
-            // Extract grade for distribution
+            // Use overallGrade directly from the stats object
             const rankItem = allRendered.find(i => i.key === res.key);
-            const gMatch = rankItem.html.match(/<span class="ms-result-label">গ্রেড<\/span>\s*<span class="ms-result-value">\s*(A\+|A|A-|B|C|D)\s*<\/span>/);
-            if (gMatch && gradeCounts[gMatch[1]] !== undefined) gradeCounts[gMatch[1]]++;
+            const grade = rankItem.html.overallGrade;
+            if (grade && gradeCounts[grade] !== undefined) gradeCounts[grade]++;
         } else {
             gs.fail++;
             gradeCounts['F']++;
