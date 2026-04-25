@@ -10,7 +10,6 @@ const AccessControlManager = {
     init() {
         this.setupEventListeners();
         this.subscribeToUpdates();
-        console.log('AccessControlManager ইমপ্লিমেন্টেড');
     },
 
     setupEventListeners() {

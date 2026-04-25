@@ -19,7 +19,7 @@
         "education",
         "bengali"
     ],
-    "author": "",
+    "author": "Mustafa Rahman",
     "license": "MIT",
     "devDependencies": {
         "autoprefixer": "^10.4.27",
