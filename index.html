@@ -1225,6 +1225,9 @@
       <button class="page-nav-btn" data-page="notices" id="navNoticeBtn">
         <i class="fas fa-bullhorn"></i> <span>নোটিশ</span>
       </button>
+      <button class="page-nav-btn super-admin-only" data-page="tutorial-marksheet" style="display: none;">
+        <i class="fas fa-clipboard-check" style="color: #f59e0b;"></i> <span>টিউটোরিয়াল মার্কশীট</span>
+      </button>
 
       <style>
         .nav-badge {
@@ -1345,6 +1348,45 @@
               </div>
             </div>
             <span id="savedExamsCount" class="exams-count-badge">মোট: ০টি এক্সাম</span>
+            <button id="tutorialModeToggle" class="tutorial-mode-toggle-btn" title="ক্লাস টেস্ট / টিউটোরিয়াল পরীক্ষার কার্ড দেখুন">
+              <i class="fas fa-clipboard-check"></i> <span>টিউটোরিয়াল</span>
+            </button>
+            <style>
+              .tutorial-mode-toggle-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 5px 14px;
+                border-radius: 50px;
+                border: 2px solid #f59e0b;
+                background: transparent;
+                color: #d97706;
+                font-weight: 700;
+                font-size: 0.8rem;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                white-space: nowrap;
+              }
+              .tutorial-mode-toggle-btn:hover {
+                background: rgba(245, 158, 11, 0.1);
+                transform: translateY(-1px);
+              }
+              .tutorial-mode-toggle-btn.active {
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                color: white;
+                border-color: #d97706;
+                box-shadow: 0 3px 10px rgba(245, 158, 11, 0.3);
+              }
+              .tutorial-mode-toggle-btn.active:hover {
+                background: linear-gradient(135deg, #d97706, #b45309);
+              }
+              @media (max-width: 768px) {
+                .tutorial-mode-toggle-btn {
+                  padding: 4px 10px;
+                  font-size: 0.72rem;
+                }
+              }
+            </style>
           </div>
 
           <!-- --- DYNAMIC NOTICE BULLETIN (MARQUEE) --- -->
@@ -2084,6 +2126,19 @@
     <div id="resultEntryPage" class="app-page" style="display: none;">
       <div class="card">
 
+        <!-- Tutorial/Regular Mode Toggle for Result Entry -->
+        <div class="re-exam-type-toggle" style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; margin-bottom: 0; border-bottom: 1px solid var(--border-color); background: var(--surface);">
+          <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-color); opacity: 0.7;"><i class="fas fa-exchange-alt"></i> পরীক্ষার ধরন:</span>
+          <div style="display: flex; gap: 6px;">
+            <button id="reRegularModeBtn" class="re-type-btn active" data-type="regular" style="padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: #059669; color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;">
+              <i class="fas fa-file-alt"></i> সেমেস্টার পরীক্ষা
+            </button>
+            <button id="reTutorialModeBtn" class="re-type-btn" data-type="tutorial" style="padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: transparent; color: #d97706; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;">
+              <i class="fas fa-clipboard-check"></i> ক্লাস টেস্ট / টিউটোরিয়াল
+            </button>
+          </div>
+        </div>
+
         <!-- Selection Cascading Dropdowns -->
         <div class="result-entry-selectors">
           <div class="selector-group">
@@ -2475,6 +2530,20 @@
             </div>
           </div>
         </div>
+
+        <!-- Tutorial/Regular Mode Toggle for Report -->
+        <div class="rpt-exam-type-toggle" style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-bottom: 1px solid var(--border-color); background: var(--surface);">
+          <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-color); opacity: 0.7;"><i class="fas fa-exchange-alt"></i> রিপোর্ট ধরন:</span>
+          <div style="display: flex; gap: 6px;">
+            <button id="rptRegularModeBtn" class="re-type-btn active" data-type="regular" style="padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: #059669; color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;">
+              <i class="fas fa-file-alt"></i> সেমেস্টার পরীক্ষা
+            </button>
+            <button id="rptTutorialModeBtn" class="re-type-btn" data-type="tutorial" style="padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: transparent; color: #d97706; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;">
+              <i class="fas fa-clipboard-check"></i> ক্লাস টেস্ট / টিউটোরিয়াল
+            </button>
+          </div>
+        </div>
+
         <div class="result-entry-selectors">
           <div class="selector-group"><label>শ্রেণি</label><select id="rptClass" class="form-control"
               data-dynamic="class"></select></div>
@@ -3770,6 +3839,18 @@
                 <input type="text" id="configSubjectName" class="form-control" placeholder="যেমন: ICT, Bangla">
               </div>
 
+              <!-- Exam Type Mode Switch -->
+              <div class="form-group full-width" style="margin-bottom: 15px;">
+                <div style="display: flex; gap: 10px; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px;">
+                  <button id="modeMainExamBtn" class="btn-primary" style="flex: 1; padding: 8px; font-size: 0.9rem; border-radius: 6px;">
+                    <i class="fas fa-file-alt"></i> মেইন পরীক্ষা
+                  </button>
+                  <button id="modeTutorialBtn" class="btn-secondary" style="flex: 1; padding: 8px; font-size: 0.9rem; border-radius: 6px; background: transparent; color: #cbd5e1; border: 1px solid transparent;">
+                    <i class="fas fa-clipboard-check"></i> টিউটোরিয়াল (ডিফল্ট)
+                  </button>
+                </div>
+              </div>
+
               <!-- Written -->
               <div class="mark-group">
                 <label><i class="fas fa-pen"></i> লিখিত (Written)</label>
@@ -3826,6 +3907,8 @@
                 <span id="calcTotalPreview" class="calc-preview">গণনা: 0</span>
               </div>
             </div>
+
+
 
             <div class="form-actions">
               <button id="deleteSubjectBtn" class="btn-danger-outline super-admin-only" style="display: none;">
@@ -4034,6 +4117,9 @@
               <div class="config-menu-item" data-tab="ms-subjects">
                 <i class="fas fa-tasks"></i> বিষয় নিয়ন্ত্রণ
               </div>
+              <div class="config-menu-item" data-tab="ms-tutorial">
+                <i class="fas fa-percent"></i> টিউটোরিয়াল মার্কস
+              </div>
               <div class="config-menu-item" data-tab="ms-history">
                 <i class="fas fa-history"></i> পরীক্ষার হিস্টোরী
               </div>
@@ -4135,6 +4221,46 @@
                   </div>
                 </div>
 
+                <!-- Tutorial Marks Settings -->
+                <div class="config-tab-content" id="ms-tutorial">
+                  <div class="form-header">
+                    <h3><i class="fas fa-percent"></i> টিউটোরিয়াল মার্কস ইন্টিগ্রেশন</h3>
+                    <p>মার্কশীটে টিউটোরিয়াল পরীক্ষার গড় নম্বর যুক্ত করা হবে কিনা এবং কোন কোন পরীক্ষার নম্বর যুক্ত হবে তা নির্ধারণ করুন।</p>
+                  </div>
+                  
+                  <div class="form-group" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div style="background: var(--bg-color); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <h4 style="margin: 0; font-size: 1rem; color: var(--primary);">টিউটোরিয়াল মার্কস যুক্ত করুন</h4>
+                        <p style="margin: 5px 0 0; font-size: 0.8rem; opacity: 0.7;">চালু থাকলে: টিউটোরিয়াল পরীক্ষার গড় নম্বরের নির্দিষ্ট পার্সেন্টেজ মূল নম্বরের সাথে যোগ হয়ে চূড়ান্ত গ্রেড নির্ণয় হবে।</p>
+                      </div>
+                      <label class="ac-sw">
+                        <input type="checkbox" id="msEnableTutorialIntegration" checked>
+                        <span class="ac-sw-sl"></span>
+                      </label>
+                    </div>
+
+                    <div style="background: var(--bg-color); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <h4 style="margin: 0; font-size: 1rem; color: var(--text-color);">কাস্টম পার্সেন্টেজ (%)</h4>
+                        <p style="margin: 5px 0 0; font-size: 0.8rem; opacity: 0.7;">সকল টিউটোরিয়ালের গড়ের ওপর কত শতাংশ মার্ক মূল মার্কের সাথে যুক্ত হবে।</p>
+                      </div>
+                      <div style="width: 100px;">
+                        <input type="number" id="msTutorialGlobalPercentage" class="form-control" value="100" min="0" max="100" style="text-align: center;">
+                      </div>
+                    </div>
+
+                    <div id="msTutorialExamsContainer" style="border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; background: var(--container-bg);">
+                      <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 0.95rem;">যুক্ত করার জন্য টিউটোরিয়াল পরীক্ষাসমূহ নির্বাচন করুন:</h4>
+                      <div id="msTutorialExamsChecklist" class="checklist-container" style="max-height: 200px; overflow-y: auto; display: grid; grid-template-columns: 1fr; gap: 10px;">
+                        <div class="ms-loading-spinner" style="text-align: center; padding: 20px; opacity: 0.5;">
+                          <i class="fas fa-spinner fa-spin"></i> ডাটা লোড হচ্ছে...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Marksheet Exam History Settings -->
                 <div class="config-tab-content" id="ms-history">
                   <div class="form-header">
@@ -4143,13 +4269,22 @@
                       সাজানো বাঞ্ছনীয়)</p>
                   </div>
 
-                  <div class="ms-history-selection-box">
-                    <div id="msHistoryChecklist" class="checklist-container"
-                      style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; background: var(--container-bg); display: grid; grid-template-columns: 1fr; gap: 10px;">
-                      <!-- Exam checkboxes will be populated via JS -->
-                      <div class="ms-loading-spinner" style="text-align: center; padding: 20px; opacity: 0.5;">
-                        <i class="fas fa-spinner fa-spin"></i> ডাটা লোড হচ্ছে...
-                      </div>
+                  <div class="ms-history-selection-box" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: var(--text-color);">মেইন এক্সাম হিস্টোরী:</h4>
+                        <div id="msHistoryMainExams" class="checklist-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; background: var(--container-bg); display: grid; grid-template-columns: 1fr; gap: 10px;">
+                            <div class="ms-loading-spinner" style="text-align: center; padding: 20px; opacity: 0.5;">
+                            <i class="fas fa-spinner fa-spin"></i> ডাটা লোড হচ্ছে...
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: var(--text-color);">টিউটোরিয়াল এক্সাম হিস্টোরী:</h4>
+                        <div id="msHistoryTutorialExams" class="checklist-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; background: var(--container-bg); display: grid; grid-template-columns: 1fr; gap: 10px;">
+                            <div class="ms-loading-spinner" style="text-align: center; padding: 20px; opacity: 0.5;">
+                            <i class="fas fa-spinner fa-spin"></i> ডাটা লোড হচ্ছে...
+                            </div>
+                        </div>
                     </div>
                   </div>
                   <p style="margin-top: 10px; font-size: 0.8rem; color: var(--primary);">* শুধুমাত্র এখানে সিলেক্ট করা
@@ -4935,6 +5070,60 @@
 
       </div>
     </div>
+
+    <!-- ========== PAGE: TUTORIAL MARKSHEET (টিউটোরিয়াল মার্কশীট কার্ড) ========== -->
+    <div id="tutorialMarksheetPage" class="app-page" style="display: none;">
+      <div class="card" style="border-top: 4px solid #f59e0b;">
+        <div class="card-header">
+          <div class="header-main-unified">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-clipboard-check" style="color: white; font-size: 1.1rem;"></i>
+              </div>
+              <div>
+                <h2 class="card-title" style="margin: 0;">টিউটোরিয়াল মার্কশীট কার্ড</h2>
+                <p style="margin: 2px 0 0; font-size: 0.78rem; color: #888;">ক্লাস টেস্ট / টিউটোরিয়াল পরীক্ষার রিপোর্ট কার্ড তৈরি করুন</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="result-entry-selectors">
+          <div class="selector-group">
+            <label>শ্রেণি</label>
+            <select id="tutMsClass" class="form-control" data-dynamic="class"></select>
+          </div>
+          <div class="selector-group">
+            <label>সেশন</label>
+            <select id="tutMsSession" class="form-control" data-dynamic="session"></select>
+          </div>
+          <div class="selector-group">
+            <label>পরীক্ষা</label>
+            <select id="tutMsExamName" class="form-control">
+              <option value="">শ্রেণি ও সেশন নির্বাচন করুন</option>
+            </select>
+          </div>
+          <div class="selector-group">
+            <label>গ্রুপ</label>
+            <select id="tutMsGroup" class="form-control" data-dynamic="group">
+              <option value="all">সকল গ্রুপ</option>
+            </select>
+          </div>
+          <button id="tutMsGenerateBtn" class="dm-btn dm-save" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+            <i class="fas fa-file-alt"></i> <span class="dm-btn-text">রিপোর্ট কার্ড তৈরি</span>
+          </button>
+        </div>
+        <div class="marksheet-preview-wrapper">
+          <div id="tutMsPreview" class="marksheet-preview-area">
+            <div class="empty-state-msg">
+              <i class="fas fa-clipboard-check" style="font-size: 2.5rem; opacity: 0.25; color: #f59e0b;"></i>
+              <p style="margin-top: 12px;">টিউটোরিয়াল রিপোর্ট কার্ড দেখতে শ্রেণি, সেশন ও পরীক্ষা নির্বাচন করে "রিপোর্ট কার্ড তৈরি" বাটনে ক্লিক করুন।</p>
+              <p style="font-size: 0.8rem; color: #999; margin-top: 4px;">(বিস্তারিত রিপোর্ট কার্ড ফিচার শীঘ্রই আসছে)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="examConfigPage" class="app-page" style="display: none; padding: 0 20px 20px 20px;">
       <div class="exam-config-grid">
         <div class="card"
@@ -5005,9 +5194,134 @@
           </div>
         </div>
       </div>
+
+      <!-- ========== TUTORIAL / CLASS TEST EXAM CONFIG ========== -->
+      <div style="margin-top: 30px; border-top: 3px solid var(--primary); padding-top: 25px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+          <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-clipboard-check" style="color: white; font-size: 1.3rem;"></i>
+          </div>
+          <div>
+            <h2 style="margin: 0; font-size: 1.3rem; color: var(--text-color);">ক্লাস টেস্ট / টিউটোরিয়াল পরীক্ষা কনফিগ</h2>
+            <p style="margin: 2px 0 0; font-size: 0.82rem; color: #888;">মাসিক টিউটোরিয়াল বা ক্লাস টেস্ট পরীক্ষার নাম ও কাস্টম মার্কস সেট করুন</p>
+          </div>
+        </div>
+
+        <div class="exam-config-grid">
+          <!-- Add Tutorial Config Form -->
+          <div class="card" style="padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 4px solid #f59e0b;">
+            <h3 style="margin-top: 0; color: #d97706;"><i class="fas fa-plus-circle"></i> নতুন টিউটোরিয়াল পরীক্ষা তৈরি করুন</h3>
+            <form id="addTutorialExamConfigForm" style="display: flex; flex-direction: column; gap: 15px;">
+              <div class="form-group">
+                <label for="tutorialConfigClass">ক্লাস সিলেক্ট করুন</label>
+                <select id="tutorialConfigClass" class="form-control" data-dynamic="class" required>
+                  <option value="">সিলেক্ট করুন</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="tutorialConfigSession">সেশন সিলেক্ট করুন</label>
+                <select id="tutorialConfigSession" class="form-control" data-dynamic="session" required>
+                  <option value="">সিলেক্ট করুন</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="tutorialConfigExamName">পরীক্ষার নাম (উদা: ১ম টিউটোরিয়াল পরীক্ষা - এপ্রিল ২০২৬)</label>
+                <input type="text" id="tutorialConfigExamName" class="form-control" required placeholder="টিউটোরিয়াল পরীক্ষার নাম লিখুন">
+              </div>
+              <div class="form-group">
+                <label for="tutorialConfigCustomMarks">কাস্টম মার্কস (ঐচ্ছিক — উদা: ৩০, ৫০)</label>
+                <input type="number" id="tutorialConfigCustomMarks" class="form-control" placeholder="যেমন: ৩০ বা ৫০ (খালি রাখলে বিষয় কনফিগ অনুসারে হবে)" min="1" max="200">
+              </div>
+              <div class="form-group">
+                <label for="tutorialConfigExamDate">পরীক্ষার তারিখ (ঐচ্ছিক)</label>
+                <input type="date" id="tutorialConfigExamDate" class="form-control">
+              </div>
+              <div class="form-group">
+                <button type="submit" class="btn-primary" style="width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+                  <i class="fas fa-save"></i> সংরক্ষণ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Tutorial Config Table -->
+          <div class="card" style="padding: 20px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 10px; flex-wrap: wrap;">
+              <h3 style="margin: 0; color: #d97706; flex: 1;"><i class="fas fa-list"></i> তৈরি করা টিউটোরিয়াল পরীক্ষাসমূহ</h3>
+              <div style="display: flex; gap: 10px;">
+                <select id="filterTutorialConfigClass" class="form-select" data-dynamic="class" style="max-width: 140px;">
+                  <option value="all">সব ক্লাস</option>
+                </select>
+                <select id="filterTutorialConfigSession" class="form-select" data-dynamic="session" style="max-width: 140px;">
+                  <option value="all">সব সেশন</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+              <table class="data-table">
+                <thead style="position: sticky; top: 0; z-index: 10; background-color: var(--surface);">
+                  <tr>
+                    <th>ক্লাস</th>
+                    <th>পরীক্ষার নাম</th>
+                    <th>মার্কস</th>
+                    <th>তারিখ</th>
+                    <th>তৈরি করেছেন</th>
+                    <th style="text-align: right;">অ্যাকশন</th>
+                  </tr>
+                </thead>
+                <tbody id="tutorialExamConfigTableBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center; padding: 20px;">লোড হচ্ছে...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- END TUTORIAL EXAM CONFIG -->
+    </div>
+
+    <!-- Edit Tutorial Config Modal -->
+    <div id="editTutorialConfigModal" class="modal">
+      <div class="modal-content" style="max-width: 500px;">
+        <span class="close" id="closeEditTutorialConfigModal">&times;</span>
+        <h2 style="color: #d97706;"><i class="fas fa-edit"></i> টিউটোরিয়াল পরীক্ষা সম্পাদনা</h2>
+        <form id="editTutorialConfigForm" style="display: flex; flex-direction: column; gap: 15px;">
+          <input type="hidden" id="editTutorialConfigDocId">
+          <div class="form-group">
+            <label>ক্লাস</label>
+            <select id="editTutorialConfigClass" class="form-control" data-dynamic="class" required>
+              <option value="">সিলেক্ট করুন</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>সেশন</label>
+            <select id="editTutorialConfigSession" class="form-control" data-dynamic="session" required>
+              <option value="">সিলেক্ট করুন</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>পরীক্ষার নাম</label>
+            <input type="text" id="editTutorialConfigExamName" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>কাস্টম মার্কস</label>
+            <input type="number" id="editTutorialConfigCustomMarks" class="form-control" placeholder="ঐচ্ছিক" min="1" max="200">
+          </div>
+          <div class="form-group">
+            <label>পরীক্ষার তারিখ</label>
+            <input type="date" id="editTutorialConfigExamDate" class="form-control">
+          </div>
+          <button type="submit" class="btn-primary" style="width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
+            <i class="fas fa-save"></i> আপডেট করুন
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Add/Edit Student Modal -->
+
     <div id="addStudentModal" class="modal">
       <div class="modal-content" style="max-width: 500px;">
         <span class="close" id="closeAddStudentModal">&times;</span>

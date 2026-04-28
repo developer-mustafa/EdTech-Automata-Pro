@@ -464,11 +464,13 @@ async function init() {
             }
             if (pageId === 'exam-config') {
                 const { initExamConfigManager, loadExamConfigs } = await import('./js/modules/examConfigManager.js');
+                const { initTutorialExamConfigManager, loadTutorialExamConfigs } = await import('./js/modules/tutorialExamConfigManager.js');
                 if (!initializedModules.has('exam-config')) {
                     initExamConfigManager();
+                    initTutorialExamConfigManager();
                     initializedModules.add('exam-config');
                 }
-                await loadExamConfigs();
+                await Promise.all([loadExamConfigs(), loadTutorialExamConfigs()]);
             }
             if (pageId === 'marksheet-settings') {
                 if (!initializedModules.has('marksheet-rules')) {
@@ -533,6 +535,24 @@ async function init() {
                 } else {
                     populateTabulationDropdowns();
                 }
+            }
+            if (pageId === 'tutorial-marksheet') {
+                // Tutorial marksheet page - populate dropdowns
+                const { populateTutorialExamNameDropdown } = await import('./js/modules/tutorialExamConfigManager.js');
+                const tutMsClass = document.getElementById('tutMsClass');
+                const tutMsSession = document.getElementById('tutMsSession');
+                const tutMsExam = document.getElementById('tutMsExamName');
+                
+                const updateTutMsExams = async () => {
+                    const cls = tutMsClass?.value;
+                    const sess = tutMsSession?.value;
+                    if (cls && sess) {
+                        await populateTutorialExamNameDropdown(tutMsExam, cls, sess);
+                    }
+                };
+                
+                tutMsClass?.addEventListener('change', updateTutMsExams);
+                tutMsSession?.addEventListener('change', updateTutMsExams);
             }
         });
 
@@ -1146,6 +1166,96 @@ function initEventListeners() {
     bindChartHeaderToggle();
     bindDashboardFilterControls();
     bindDashboardSearchAndViewControls();
+
+    // ========== TUTORIAL MODE TOGGLE (Dashboard) ==========
+    const tutorialModeToggle = document.getElementById('tutorialModeToggle');
+    if (tutorialModeToggle) {
+        tutorialModeToggle.addEventListener('click', async () => {
+            state.isTutorialMode = !state.isTutorialMode;
+            tutorialModeToggle.classList.toggle('active', state.isTutorialMode);
+
+            if (state.isTutorialMode) {
+                // Load tutorial exams only
+                const { getSavedExamsByType } = await import('./js/firestoreService.js');
+                const tutorialExams = await getSavedExamsByType('tutorial');
+                const countBadge = document.getElementById('savedExamsCount');
+                if (countBadge) countBadge.textContent = `টিউটোরিয়াল: ${tutorialExams.length}টি`;
+                
+                // Temporarily swap saved exams to tutorial ones for rendering
+                state._regularExamsBackup = state.savedExams;
+                state.savedExams = tutorialExams;
+                renderSavedExams();
+            } else {
+                // Restore regular exams
+                if (state._regularExamsBackup) {
+                    state.savedExams = state._regularExamsBackup;
+                    state._regularExamsBackup = null;
+                }
+                const countBadge = document.getElementById('savedExamsCount');
+                if (countBadge) countBadge.textContent = `মোট: ${state.savedExams.length}টি এক্সাম`;
+                renderSavedExams();
+            }
+        });
+    }
+
+    // ========== RESULT ENTRY - Tutorial/Regular Mode Toggle ==========
+    const reRegularBtn = document.getElementById('reRegularModeBtn');
+    const reTutorialBtn = document.getElementById('reTutorialModeBtn');
+    
+    const switchREMode = (isTutorial) => {
+        state.isTutorialEntryMode = isTutorial;
+        
+        if (isTutorial) {
+            reTutorialBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(245,158,11,0.3);');
+            reRegularBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: transparent; color: #059669; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;');
+            reTutorialBtn?.classList.add('active');
+            reRegularBtn?.classList.remove('active');
+        } else {
+            reRegularBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(5,150,105,0.3);');
+            reTutorialBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: transparent; color: #d97706; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;');
+            reRegularBtn?.classList.add('active');
+            reTutorialBtn?.classList.remove('active');
+        }
+        
+        // Trigger exam name dropdown refresh
+        const reClass = document.getElementById('reClass');
+        const reSession = document.getElementById('reSession');
+        if (reClass && reSession) {
+            reClass.dispatchEvent(new Event('change'));
+        }
+    };
+    
+    reRegularBtn?.addEventListener('click', () => switchREMode(false));
+    reTutorialBtn?.addEventListener('click', () => switchREMode(true));
+
+    // ========== REPORT - Tutorial/Regular Mode Toggle ==========
+    const rptRegularBtn = document.getElementById('rptRegularModeBtn');
+    const rptTutorialBtn = document.getElementById('rptTutorialModeBtn');
+    
+    const switchRPTMode = (isTutorial) => {
+        state.isTutorialReportMode = isTutorial;
+        
+        if (isTutorial) {
+            rptTutorialBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(245,158,11,0.3);');
+            rptRegularBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: transparent; color: #059669; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;');
+            rptTutorialBtn?.classList.add('active');
+            rptRegularBtn?.classList.remove('active');
+        } else {
+            rptRegularBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(5,150,105,0.3);');
+            rptTutorialBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: transparent; color: #d97706; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;');
+            rptRegularBtn?.classList.add('active');
+            rptTutorialBtn?.classList.remove('active');
+        }
+        
+        // Trigger exam name dropdown refresh in report
+        const rptClass = document.getElementById('rptClass');
+        if (rptClass) {
+            rptClass.dispatchEvent(new Event('change'));
+        }
+    };
+    
+    rptRegularBtn?.addEventListener('click', () => switchRPTMode(false));
+    rptTutorialBtn?.addEventListener('click', () => switchRPTMode(true));
 
     // Developer Contact Modal
     elements.contactDevBtn?.addEventListener('click', () => {

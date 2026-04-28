@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Data Management Module
  */
 
@@ -246,6 +246,10 @@ export async function handleSaveExam(examData) {
                 .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedName);
             subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
             if (matchedKey) console.log(`[Data Manager] ⚡ Fuzzy matched subject "${examData.subject}" with config key "${matchedKey}"`);
+        }
+
+        if (state.isTutorialEntryMode && subjectConfig.tutorial) {
+            subjectConfig = subjectConfig.tutorial;
         }
 
         const statsOptions = {

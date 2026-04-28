@@ -409,6 +409,59 @@ async function generateMarksheets() {
         }
     });
 
+    // --- TUTORIAL MARKS INTEGRATION ---
+    const tutorialIntegrationEnabled = marksheetSettings.tutorialIntegrationEnabled !== false;
+    const selectedTutorialExams = marksheetSettings.tutorialExams || [];
+
+    if (tutorialIntegrationEnabled && selectedTutorialExams.length > 0) {
+        // Fetch all tutorial exams
+        const allTutorialExams = allExams.filter(e =>
+            e.examType === 'tutorial' &&
+            e.class === cls &&
+            e.session === session &&
+            selectedTutorialExams.includes(e.name)
+        );
+
+        // Collect tutorial marks per student per subject
+        allTutorialExams.forEach(exam => {
+            if (!exam.studentData) return;
+            exam.studentData.forEach(s => {
+                const sGroup = normalizeText(s.group || '');
+                const sRoll = convertToEnglishDigits(String(s.id || '').trim().replace(/^0+/, '')) || '0';
+                const key = `${sRoll}_${sGroup}`;
+
+                if (!studentAgg.has(key)) return;
+
+                const studentData = studentAgg.get(key);
+                const subjKey = normalizeText(exam.subject).replace(/\s+/g, '') || exam.subject;
+
+                if (!studentData.subjects[subjKey]) {
+                    studentData.subjects[subjKey] = { written: 0, mcq: 0, practical: 0, total: 0, grade: '', gpa: '', status: '' };
+                }
+
+                if (!studentData.subjects[subjKey].tutorialMarksArr) {
+                    studentData.subjects[subjKey].tutorialMarksArr = [];
+                }
+
+                const tutMark = Number(s.total || 0);
+                if (tutMark > 0) {
+                    studentData.subjects[subjKey].tutorialMarksArr.push(tutMark);
+                }
+            });
+        });
+
+        // Calculate per-subject tutorial averages
+        for (const [key, student] of studentAgg.entries()) {
+            for (const [subjKey, subjData] of Object.entries(student.subjects)) {
+                if (subjData.tutorialMarksArr && subjData.tutorialMarksArr.length > 0) {
+                    const sum = subjData.tutorialMarksArr.reduce((a, b) => a + Number(b), 0);
+                    subjData.tutorialAvg = Math.round(sum / subjData.tutorialMarksArr.length);
+                }
+            }
+        }
+    }
+    // --- END TUTORIAL MARKS INTEGRATION ---
+
     // ALL active students for the exam summary (unfiltered by group/student)
     const allStudentsForSummary = [...studentAgg.values()]
         .filter(s => String(s.status) !== 'false')
@@ -491,7 +544,7 @@ async function generateMarksheets() {
             group: student.group,
             subjects: student.subjects
         });
-        
+
         // Yield to main thread every 5 students to prevent UI freeze
         if (++loop1Idx % 5 === 0) await new Promise(r => setTimeout(r, 0));
     }
@@ -504,15 +557,15 @@ async function generateMarksheets() {
         };
         const numId = parseInt(toEng(item.student.id)) || 0;
 
-        return { 
-            key: item.key, 
-            group: item.group || 'general', 
-            id: numId, 
-            isPass: item.stats.isPass, 
-            gpa: item.stats.gpa, 
-            totalMarks: item.stats.totalMarks, 
-            failedCount: item.stats.failedCount, 
-            isAbsent: item.stats.isAbsent 
+        return {
+            key: item.key,
+            group: item.group || 'general',
+            id: numId,
+            isPass: item.stats.isPass,
+            gpa: item.stats.gpa,
+            totalMarks: item.stats.totalMarks,
+            failedCount: item.stats.failedCount,
+            isAbsent: item.stats.isAbsent
         };
     });
 
@@ -560,7 +613,7 @@ async function generateMarksheets() {
     for (const item of allRenderedData) {
         const exactRanks = exactRanksMap.get(item.key);
         item.html = await renderSingleMarksheet(item.student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, false, highestMarks, exactRanks);
-        
+
         // Yield to main thread every 5 students to prevent UI freeze
         if (++loop2Idx % 5 === 0) await new Promise(r => setTimeout(r, 0));
     }
@@ -850,8 +903,14 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
     const cacheKeyBase = `${cls}_${session}_h${hiddenKey}`;
 
     let examSessions = [...new Set(allExams.filter(e => e.class === cls && e.session === session).map(e => e.name))];
-    if (marksheetSettings.historyExams && marksheetSettings.historyExams.length > 0) {
-        examSessions = examSessions.filter(name => marksheetSettings.historyExams.includes(name));
+
+    // Merge main history and tutorial history settings
+    const allowedMain = marksheetSettings.historyExams || [];
+    const allowedTutorial = marksheetSettings.tutorialHistoryExams || [];
+    const allAllowed = [...allowedMain, ...allowedTutorial];
+
+    if (allAllowed.length > 0) {
+        examSessions = examSessions.filter(name => allAllowed.includes(name));
     }
 
     for (const examName of examSessions) {
@@ -924,9 +983,13 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
 
                     const config = subjectConfigs?.[subj] || { total: 100 };
                     const maxTotal = parseInt(config.total) || 100;
-                    const pct = maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0;
-                    const gp = getGradePoint(pct);
-                    const grade = getLetterGrade(pct);
+                    
+                    // Use absolute marks for Main Exams (fixed board scale),
+                    // but use percentage scaling for Tutorial exams.
+                    const effectivePct = state.isTutorialMode ? (maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0) : sTotal;
+                    
+                    const gp = getGradePoint(effectivePct);
+                    const grade = getLetterGrade(effectivePct);
 
                     let isFail = (grade === 'F');
                     if (data.written !== undefined && config.writtenPass !== undefined && parseFloat(data.written) < parseFloat(config.writtenPass)) isFail = true;
@@ -1338,6 +1401,49 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     // Track Relative Excellence Sum
     let relativeExcellenceSum = 0;
+    let totalTutorialAvgSum = 0;
+
+    const tutIntEnabled = marksheetSettings.tutorialIntegrationEnabled !== false;
+    const selectedTutorialExams = marksheetSettings.tutorialExams || [];
+    const tutCount = selectedTutorialExams.length;
+    const tutorialHeader = tutIntEnabled && tutCount > 0 ? `<th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important; width:55px; font-size:0.6rem;">টিউটোরিয়াল<br>গড় - ${tutCount}টি</th>` : '';
+
+    // --- TUTORIAL GPA BONUS CALCULATION ---
+    let tutorialExtraGP = 0;
+    if (tutIntEnabled && tutCount > 0) {
+        visibleSubjects.forEach(subjObj => {
+            const isObj = typeof subjObj === 'object';
+            const subjName = isObj ? subjObj.name : subjObj;
+
+            const checkSubject = (name) => {
+                const key = normalizeText(name).replace(/\s+/g, '');
+                const data = (student.subjects && student.subjects[key]) ? student.subjects[key] : {};
+                const tutAvg = data.tutorialAvg || 0;
+                if (tutAvg > 0) {
+                    const config = state.subjectConfigs?.[name] || { total: 100 };
+                    const max = parseInt(config.total) || 100;
+                    const pct = (tutAvg / max) * 100;
+                    if (pct >= 80) return 1.0;
+                    if (pct >= 50) return 0.7;
+                    if (pct >= 33) return 0.5;
+                    if (pct >= 1) return 0.3;
+                }
+                return 0;
+            };
+
+            if (isCombinedMode && isObj && subjObj.isCombined) {
+                (subjObj.papers || []).forEach(p => {
+                    tutorialExtraGP += checkSubject(p);
+                });
+            } else {
+                tutorialExtraGP += checkSubject(subjName);
+            }
+        });
+    }
+    student.tutorialExtraGPA = tutorialExtraGP;
+    // --- END TUTORIAL GPA BONUS ---
+
+    const dynamicColspan = (isCombinedMode ? 3 : 2) + (tutIntEnabled && tutCount > 0 ? 1 : 0);
 
     const subjectRows = visibleSubjects.flatMap((subjObj, idx) => {
         const isObj = typeof subjObj === 'object';
@@ -1385,6 +1491,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 }
 
                 cells += `<td class="ms-td-subject">${paperName}</td>`;
+                if (tutIntEnabled && tutCount > 0) {
+                    const tAvg = data.tutorialAvg || 0;
+                    totalTutorialAvgSum += tAvg;
+                    cells += `<td class="ms-td-num" style="color:#6d28d9; font-weight:600;">${tAvg > 0 ? tAvg : '-'}</td>`;
+                }
                 const highMarkObj = highestMarks[pSubjKey] !== undefined ? highestMarks[pSubjKey] : '-';
                 cells += `<td class="ms-td-num" style="font-weight: 600;">${highMarkObj}</td>`;
                 cells += `<td class="ms-td-num">${maxTotal}</td>`;
@@ -1479,9 +1590,12 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             grandTotal += total;
             maxGrand += maxTotal;
 
-            const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-            let grade = getLetterGrade(pct);
-            let gp = getGradePoint(pct);
+            // Use absolute marks for Main Exams (fixed board scale),
+            // but use percentage scaling for Tutorial exams.
+            const effectivePct = state.isTutorialMode ? (maxTotal > 0 ? (total / maxTotal) * 100 : 0) : total;
+            
+            let grade = getLetterGrade(effectivePct);
+            let gp = getGradePoint(effectivePct);
 
             // Strict Component Pass/Fail check
             const isCompFail = getMarkClass(data.written, config.writtenPass) === 'ms-mark-fail' ||
@@ -1587,6 +1701,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                             </div>
                         </td>
                         <td class="ms-td-subject">${subj}</td>
+                        ${tutIntEnabled && tutCount > 0 ? (() => {
+                        const tAvg = data.tutorialAvg || 0;
+                        totalTutorialAvgSum += tAvg;
+                        return `<td class="ms-td-num" style="color:#6d28d9; font-weight:600;">${tAvg > 0 ? tAvg : '-'}</td>`;
+                    })() : ''}
                         <td class="ms-td-num" style="font-weight: 600;">${highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'}</td>
                         <td class="ms-td-num">${maxTotal}</td>
                         <td class="ms-td-num ${getMarkClass(data.written, config.writtenPass)}">${data.written || '-'}</td>
@@ -1617,6 +1736,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                                 ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারণ বিষয় নীতি'}</div>` : ''}
                             </div>
                         </td>
+                        ${tutIntEnabled && tutCount > 0 ? (() => {
+                        const tAvg = data.tutorialAvg || 0;
+                        totalTutorialAvgSum += tAvg;
+                        return `<td class="ms-td-num" style="color:#6d28d9; font-weight:600;">${tAvg > 0 ? tAvg : '-'}</td>`;
+                    })() : ''}
                         <td class="ms-td-num" style="font-weight: 600;">${highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'}</td>
                         <td class="ms-td-num">${maxTotal}</td>
                         <td class="ms-td-num ${getMarkClass(data.written, config.writtenPass)}">${data.written || '-'}</td>
@@ -1636,13 +1760,13 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     let avgGPA = '0.00';
     if (isCombinedMode) {
-        const totalGP = compulsoryGP + optionalBonusGP;
+        const totalGP = compulsoryGP + optionalBonusGP + tutorialExtraGP;
         const finalGP = compulsoryCount > 0 ? Math.min(5.00, totalGP / compulsoryCount) : 0;
         avgGPA = allPassed ? finalGP.toFixed(2) : '0.00';
     } else {
         // Single Paper Mode (both ON/OFF): GPA = (Compulsory GP + Bonus) / Compulsory Count
         if (allPassed && compulsoryCount > 0) {
-            const totalGP = compulsoryGP + optionalBonusGP;
+            const totalGP = compulsoryGP + optionalBonusGP + tutorialExtraGP;
             const finalGP = Math.min(5.00, totalGP / compulsoryCount);
             avgGPA = finalGP.toFixed(2);
         } else {
@@ -1714,6 +1838,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             <th class="ms-th-sl" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ক্রঃ</th>
             <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">বিষয়ের নাম</th>
             <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পত্র সমূহ</th>
+            ${tutorialHeader}
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">সর্বোচ্চ নম্বর</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পূর্ণমান</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">CQ</th>
@@ -1727,6 +1852,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
         <tr>
             <th class="ms-th-sl" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ক্রঃ</th>
             <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">বিষয়ের নাম</th>
+            ${tutorialHeader}
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">সর্বোচ্চ নম্বর</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পূর্ণমান</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">লিখিত</th>
@@ -1873,7 +1999,10 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         </tbody>
                         <tfoot>
                             <tr class="ms-row-total">
-                                <td colspan="${isCombinedMode ? 4 : 3}" class="ms-td-total-label">সর্বমোট</td>
+                                <td colspan="2" class="ms-td-total-label">সর্বমোট</td>
+                                ${isCombinedMode ? '<td class="ms-td-num"></td>' : ''}
+                                ${tutIntEnabled && tutCount > 0 ? `<td class="ms-td-num" style="color:#6d28d9; font-weight:700;">${totalTutorialAvgSum}</td>` : ''}
+                                <td class="ms-td-num"></td>
                                 <td class="ms-td-num">${maxGrand}</td>
                                 <td colspan="3"></td>
                                 <td class="ms-td-num ms-td-total">${grandTotal}</td>
@@ -1885,62 +2014,69 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     </table>
                 </div>
 
-                <!-- Result Summary -->
-                <div class="ms-result-section">
-                    ${optionalBonusGP > 0 ? `
-                    <div class="ms-result-box" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border: 1px solid #a5d6a7; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
-                        <span class="ms-result-label" style="color: #2e7d32; font-size: 0.55rem;">ঐচ্ছিক পয়েন্ট</span>
-                        <span class="ms-result-value" style="color: #1b5e20; font-size: 1.1rem;">+${optionalBonusGP.toFixed(2)}</span>
+                <!-- Result Summary Section -->
+                <div class="ms-result-section" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    
+                    <!-- Primary Results (Focus Points) -->
+                    <div class="ms-result-row-primary" style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                        <div class="ms-result-box" style="flex: 1; min-width: 100px; padding: 10px; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
+                            <span class="ms-result-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #64748b;">GPA</span>
+                            <span class="ms-result-value ms-gpa-value" style="font-size: 1.4rem; font-weight: 800; color: #1e293b;">${avgGPA}</span>
+                        </div>
+                        <div class="ms-result-box" style="flex: 1; min-width: 100px; padding: 10px; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
+                            <span class="ms-result-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #64748b;">গ্রেড</span>
+                            <span class="ms-result-value" style="font-size: 1.4rem; font-weight: 800; color: #1e293b;">${overallGrade}</span>
+                        </div>
+                        <div class="ms-result-box ${resultClass}" style="flex: 1.5; min-width: 130px; padding: 10px;">
+                            <span class="ms-result-label" style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">ফলাফল</span>
+                            <span class="ms-result-value" style="font-size: 1.4rem; font-weight: 800;">${resultText}</span>
+                        </div>
                     </div>
-                    ` : ''}
-                    ${grandTotal === 0 ? `
-                    <div class="ms-result-box" style="background: #ffffff; border: 1.5px solid #e53935;">
-                        <span class="ms-result-label" style="color: #e53935; font-size: 0.55rem;">স্ট্যাটাস</span>
-                        <span class="ms-result-value" style="color: #d32f2f; font-size: 1rem; font-weight: 700; letter-spacing: 1px;">অনুপস্থিত</span>
-                    </div>
-                    ` : ''}
-                    <div class="ms-result-box" style="${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
-                        <span class="ms-result-label">GPA</span>
-                        <span class="ms-result-value ms-gpa-value">${avgGPA}</span>
-                    </div>
-                    <div class="ms-result-box" style="${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
-                        <span class="ms-result-label">গ্রেড</span>
-                        <span class="ms-result-value">${overallGrade}</span>
-                    </div>
-                    <div class="ms-result-box ${resultClass}">
-                        <span class="ms-result-label">ফলাফল</span>
-                        <span class="ms-result-value">${resultText}</span>
-                    </div>
-                    <div class="ms-result-box" style="${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
-                        <span class="ms-result-label">মোট প্রাপ্ত নম্বর</span>
-                        <span class="ms-result-value">${grandTotal} / ${maxGrand}</span>
-                    </div>
-                    ${(() => {
-            if (grandTotal === 0 && !allPassed) return ''; // Absent: Do nothing
 
-            // subjectRows is already a string at this point (joined at line 1411)
-            const failedCount = (subjectRows.match(/ms-grade-fail/g) || []).length;
+                    <!-- Secondary/Detail Metrics -->
+                    <div class="ms-result-row-secondary" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                        ${optionalBonusGP > 0 ? `
+                        <div class="ms-result-box" style="flex: 1; min-width: 85px; padding: 6px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
+                            <span class="ms-result-label" style="color: #166534; font-size: 0.55rem; font-weight: 600;">ঐচ্ছিক পয়েন্ট</span>
+                            <span class="ms-result-value" style="color: #15803d; font-size: 0.95rem; font-weight: 700;">+${optionalBonusGP.toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${(tutIntEnabled && tutCount > 0 && tutorialExtraGP > 0) ? `
+                        <div class="ms-result-box" style="flex: 1; min-width: 85px; padding: 6px; background: linear-gradient(135deg, #f5f3ff, #ede9fe); border: 1px solid #ddd6fe; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
+                            <span class="ms-result-label" style="color: #5b21b6; font-size: 0.55rem; font-weight: 600;">টিউটোরিয়াল পয়েন্ট</span>
+                            <span class="ms-result-value" style="color: #6d28d9; font-size: 0.95rem; font-weight: 700;">+${tutorialExtraGP.toFixed(2)}</span>
+                        </div>
+                        ` : ''}
 
-            // Fallback logic incase manual status failure triggered but no F grade printed
-            const finalCount = (!allPassed && failedCount === 0) ? 1 : failedCount;
+                        <div class="ms-result-box" style="flex: 1; min-width: 100px; padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
+                            <span class="ms-result-label" style="color: #64748b; font-size: 0.55rem; font-weight: 600;">মোট প্রাপ্ত নম্বর</span>
+                            <span class="ms-result-value" style="color: #334155; font-size: 0.95rem; font-weight: 700;">${grandTotal} / ${maxGrand}</span>
+                        </div>
 
-            const bgStyle = (!allPassed || finalCount > 0) ? 'background: #fef2f2; border: 1px solid #fecaca;' : 'background: #f0fdf4; border: 1px solid #bbf7d0;';
-            const labelStyle = (!allPassed || finalCount > 0) ? 'color: #991b1b; font-size: 0.55rem;' : 'color: #166534; font-size: 0.55rem;';
-            const valStyle = (!allPassed || finalCount > 0) ? 'color: #dc2626; font-size: 0.85rem; font-weight: 700;' : 'color: #15803d; font-size: 0.85rem; font-weight: 700;';
+                        ${(() => {
+                if (grandTotal === 0 && !allPassed) return ''; 
+                const failedCount = (subjectRows.match(/ms-grade-fail/g) || []).length;
+                const finalCount = (!allPassed && failedCount === 0) ? 1 : failedCount;
 
-            let text = 'সকল বিষয়ে উত্তীর্ণ';
-            if (!allPassed || finalCount > 0) {
-                const banglaNum = Number(finalCount).toLocaleString('bn-BD');
-                text = `${banglaNum} বিষয় ফেল`;
-            }
+                const bgStyle = (!allPassed || finalCount > 0) ? 'background: #fff1f2; border: 1px solid #fecdd3;' : 'background: #f0fdf4; border: 1px solid #bbf7d0;';
+                const labelStyle = (!allPassed || finalCount > 0) ? 'color: #be123c; font-size: 0.55rem; font-weight: 600;' : 'color: #166534; font-size: 0.55rem; font-weight: 600;';
+                const valStyle = (!allPassed || finalCount > 0) ? 'color: #e11d48; font-size: 0.85rem; font-weight: 700;' : 'color: #15803d; font-size: 0.85rem; font-weight: 700;';
 
-            return `
-                        <div class="ms-result-box" style="${bgStyle}">
+                let text = 'সকল বিষয়ে উত্তীর্ণ';
+                if (!allPassed || finalCount > 0) {
+                    const banglaNum = Number(finalCount).toLocaleString('bn-BD');
+                    text = `${banglaNum} বিষয় ফেল`;
+                }
+
+                return `
+                        <div class="ms-result-box" style="flex: 1.2; min-width: 110px; padding: 6px; ${bgStyle}">
                             <span class="ms-result-label" style="${labelStyle}">বিষয়ভিত্তিক অবস্থা:</span>
                             <span class="ms-result-value" style="${valStyle}">${text}</span>
                         </div>`;
-        })()}
+            })()}
                     </div>
+                </div>
                     <!--EXAM_SUMMARY_PLACEHOLDER-->
 
                 <!-- Grade Scale Reference -->
@@ -2201,7 +2337,11 @@ async function updateSettingsLivePreview() {
         idSearchShowQRCode: document.getElementById('msIdSearchShowQRCode') ? document.getElementById('msIdSearchShowQRCode').checked : true,
         idSearchShowComments: document.getElementById('msIdSearchShowComments') ? document.getElementById('msIdSearchShowComments').checked : true,
         idSearchStatusMode: document.querySelector('input[name="msIdSearchStatusMode"]:checked')?.value || 'full',
-        signatures: marksheetSettings.signatures || []
+        signatures: marksheetSettings.signatures || [],
+        // Include tutorial settings for live preview
+        tutorialIntegrationEnabled: document.getElementById('msTutorialEnabled')?.checked,
+        tutorialGlobalPercentage: parseInt(document.getElementById('msTutorialPct')?.value || 100),
+        tutorialExams: marksheetSettings.tutorialExams || []
     };
 
     // Render the mock preview using existing render function
@@ -2210,14 +2350,15 @@ async function updateSettingsLivePreview() {
         name: 'মোহাম্মদ আব্দুল্লাহ',
         roll: '১০১',
         group: 'বিজ্ঞান',
-        marks: {
-            'Bangla': { cq: 65, mcq: 25, practical: 0, total: 90 },
-            'English': { cq: 85, mcq: 0, practical: 0, total: 85 },
-            'Math': { cq: 75, mcq: 20, practical: 0, total: 95 }
+        subjects: {
+            'বাংলা': { written: 65, mcq: 25, practical: 0, total: 90, grade: 'A+', gpa: 5.00 },
+            'ইংরেজি': { written: 85, mcq: 0, practical: 0, total: 85, grade: 'A+', gpa: 5.00 },
+            'গণিত': { written: 75, mcq: 20, practical: 0, total: 95, grade: 'A+', gpa: 5.00 }
         }
     };
 
-    const html = await renderSingleMarksheet(mockStudent, currentSettings, '২০২৫-২০২৬', 'অর্ধ-বার্ষিক পরীক্ষা ২০২৬');
+    const previewSubjects = state.lastGeneratedSubjects || ['বাংলা', 'ইংরেজি', 'গণিত'];
+    const html = await renderSingleMarksheet(mockStudent, previewSubjects, '২০২৫-২০২৬', 'অর্ধ-বার্ষিক পরীক্ষা ২০২৬', currentSettings);
     previewContainer.innerHTML = html;
 
     // Render QRs in preview
@@ -2251,62 +2392,7 @@ function initMarksheetSettingsModal() {
     const menuItems = document.querySelectorAll('.config-menu-item');
     const tabContents = document.querySelectorAll('.config-tab-content');
 
-    // MOCK DATA for Live Preview
-    const MOCK_PREVIEW_STUDENT = {
-        id: 'mock-123',
-        name: 'মোহাম্মদ আব্দুল্লাহ',
-        roll: '১০১',
-        group: 'বিজ্ঞান',
-        subjects: {
-            'Bangla': { written: 65, mcq: 25, practical: 0, total: 90 },
-            'English': { written: 85, mcq: 0, practical: 0, total: 85 },
-            'Math': { written: 75, mcq: 20, practical: 0, total: 95 }
-        }
-    };
 
-    /**
-     * Update Live Preview in Settings
-     */
-    const updateSettingsLivePreview = async () => {
-        const previewContainer = document.getElementById('msSettingsLivePreview');
-        if (!previewContainer) return;
-
-        const currentSettings = {
-            institutionName: document.getElementById('msInstitutionName').value || 'প্রতিষ্ঠানের নাম',
-            institutionAddress: document.getElementById('msInstitutionAddress').value || 'ঠিকানা এখানে',
-            headerLine1: document.getElementById('msHeaderLine1').value || 'পরীক্ষার ফলাফল পত্র',
-            primaryColor: document.getElementById('msPrimaryColor').value,
-            fontSize: document.getElementById('msFontSize').value,
-            theme: document.getElementById('msTheme').value,
-            borderStyle: document.getElementById('msBorderStyle').value,
-            typography: document.getElementById('msTypography').value,
-            rowDensity: document.getElementById('msRowDensity').value,
-            watermarkUrl: marksheetSettings.watermarkUrl || '',
-            watermarkOpacity: parseInt(document.getElementById('msWatermarkOpacity').value) / 100,
-            signatures: marksheetSettings.signatures || [
-                { label: 'শ্রেণি শিক্ষক', url: '' },
-                { label: 'পরীক্ষা কমিটি', url: '' },
-                { label: 'অধ্যক্ষ', url: '' }
-            ]
-        };
-
-        const mockSubjects = Object.keys(MOCK_PREVIEW_STUDENT.subjects);
-
-        // Render the preview
-        const html = await renderSingleMarksheet(MOCK_PREVIEW_STUDENT, mockSubjects, 'অর্ধ-বার্ষিক পরীক্ষা ২০২৬', '২০২৫-২০২৬', currentSettings);
-
-        // Use a wrapper to keep the scale separate from the content
-        previewContainer.innerHTML = html;
-
-        // Render QRs in preview
-        setTimeout(async () => {
-            await renderMarksheetQRCodes(previewContainer);
-        }, 100);
-
-        // Hide non-printable action buttons in preview
-        const actions = previewContainer.querySelectorAll('.ms-actions-float');
-        actions.forEach(a => a.style.display = 'none');
-    };
 
 
     // Add listeners to all form controls for live preview
@@ -2416,6 +2502,7 @@ function initMarksheetSettingsModal() {
             // Render checklists
             renderSubjectVisibilityToggles();
             renderHistoryExamsChecklist();
+            renderTutorialExamsChecklist();
 
             // Populate mapping dropdown (async load all subjects)
             try {
@@ -2446,6 +2533,7 @@ function initMarksheetSettingsModal() {
     // Initialize Checklists
     renderSubjectVisibilityToggles();
     renderHistoryExamsChecklist();
+    renderTutorialExamsChecklist();
 
     if (closeBtn) {
 
@@ -2554,7 +2642,11 @@ function initMarksheetSettingsModal() {
                     { label: 'শ্রেণি শিক্ষক', url: '' },
                     { label: 'পরীক্ষা কমিটি', url: '' },
                     { label: 'অধ্যক্ষ', url: '' }
-                ]
+                ],
+                tutorialExams: marksheetSettings.tutorialExams || [],
+                tutorialIntegrationEnabled: document.getElementById('msEnableTutorialIntegration')?.checked !== false,
+                tutorialGlobalPercentage: parseInt(document.getElementById('msTutorialGlobalPercentage')?.value) || 100,
+                tutorialHistoryExams: marksheetSettings.tutorialHistoryExams || []
             });
 
             if (modal) modal.classList.remove('active');
@@ -2934,53 +3026,119 @@ export function initStudentMappingUI() {
 }
 
 /**
- * Render Exam History checklist in settings modal
+ * Render Exam History checklists in settings modal
  */
 async function renderHistoryExamsChecklist() {
-    const container = document.getElementById('msHistoryChecklist');
+    const mainContainer = document.getElementById('msHistoryMainExams');
+    const tutorialContainer = document.getElementById('msHistoryTutorialExams');
+    if (!mainContainer && !tutorialContainer) return;
+
+    try {
+        const exams = await getSavedExams();
+
+        // Filter exams
+        const mainExams = exams.filter(e => (e.examType !== 'tutorial' && e.type !== 'tutorial'));
+        const tutorialExams = exams.filter(e => (e.examType === 'tutorial' || e.type === 'tutorial'));
+
+        const renderList = (container, examList, settingsKey) => {
+            if (!container) return;
+
+            const uniqueExamNames = [...new Set(examList.map(e => e.name).filter(Boolean))].sort();
+
+            if (uniqueExamNames.length === 0) {
+                container.innerHTML = '<p style="opacity: 0.6; font-size: 0.85rem; padding: 10px;">কোনো পরীক্ষা পাওয়া যায়নি।</p>';
+                return;
+            }
+
+            const selectedSet = new Set(marksheetSettings[settingsKey] || []);
+
+            container.innerHTML = uniqueExamNames.map(examName => {
+                return `
+                <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                    <input type="checkbox" class="ms-history-toggle" data-val="${examName}" data-key="${settingsKey}" ${selectedSet.has(examName) ? 'checked' : ''} style="width: 18px; height: 18px;">
+                    <span style="font-size: 0.85rem; font-weight: 600;">${examName}</span>
+                </label>`;
+            }).join('');
+
+            // Add listeners
+            container.querySelectorAll('.ms-history-toggle').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    const val = checkbox.dataset.val;
+                    const key = checkbox.dataset.key;
+                    if (!marksheetSettings[key]) marksheetSettings[key] = [];
+
+                    if (checkbox.checked) {
+                        if (!marksheetSettings[key].includes(val)) {
+                            marksheetSettings[key].push(val);
+                        }
+                    } else {
+                        marksheetSettings[key] = marksheetSettings[key].filter(e => e !== val);
+                    }
+                });
+            });
+        };
+
+        renderList(mainContainer, mainExams, 'historyExams');
+        renderList(tutorialContainer, tutorialExams, 'tutorialHistoryExams');
+
+    } catch (err) {
+        console.error("Failed to load exams for checklist", err);
+        if (mainContainer) mainContainer.innerHTML = '<p style="color:red;">লোড করতে ব্যর্থ</p>';
+    }
+}
+
+/**
+ * Render Tutorial Integration checklist in settings modal
+ */
+async function renderTutorialExamsChecklist() {
+    const container = document.getElementById('msTutorialExamsChecklist');
     if (!container) return;
 
     try {
         const exams = await getSavedExams();
-        const uniqueExamNames = [...new Set(exams.map(e => e.name).filter(Boolean))].sort();
+        // Only show tutorial type exams
+        const tutorialExams = exams.filter(e => (e.examType === 'tutorial' || e.type === 'tutorial'));
+        const uniqueTutorialNames = [...new Set(tutorialExams.map(e => e.name).filter(Boolean))].sort();
 
-        if (uniqueExamNames.length === 0) {
-            container.innerHTML = '<p style="opacity: 0.6; font-size: 0.9rem;">কোনো পরীক্ষা পাওয়া যায়নি।</p>';
+        if (uniqueTutorialNames.length === 0) {
+            container.innerHTML = '<p style="opacity: 0.6; font-size: 0.9rem; padding: 10px;">কোনো টিউটোরিয়াল পরীক্ষা পাওয়া যায়নি।</p>';
             return;
         }
 
-        const selectedHistory = new Set(marksheetSettings.historyExams || []);
+        const selectedTutorials = new Set(marksheetSettings.tutorialExams || []);
 
-        container.innerHTML = uniqueExamNames.map(examName => {
+        container.innerHTML = uniqueTutorialNames.map(examName => {
             return `
             <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: all 0.2s;">
-                <input type="checkbox" class="ms-history-toggle" data-val="${examName}" ${selectedHistory.has(examName) ? 'checked' : ''} style="width: 18px; height: 18px;">
+                <input type="checkbox" class="ms-tutorial-toggle" data-val="${examName}" ${selectedTutorials.has(examName) ? 'checked' : ''} style="width: 18px; height: 18px;">
                 <span style="font-size: 0.9rem; font-weight: 600;">${examName}</span>
             </label>`;
         }).join('');
 
         // Add listeners
-        container.querySelectorAll('.ms-history-toggle').forEach(checkbox => {
+        container.querySelectorAll('.ms-tutorial-toggle').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 const val = checkbox.dataset.val;
-                if (!marksheetSettings.historyExams) marksheetSettings.historyExams = [];
+                if (!marksheetSettings.tutorialExams) marksheetSettings.tutorialExams = [];
 
                 if (checkbox.checked) {
-                    if (!marksheetSettings.historyExams.includes(val)) {
-                        marksheetSettings.historyExams.push(val);
+                    if (!marksheetSettings.tutorialExams.includes(val)) {
+                        marksheetSettings.tutorialExams.push(val);
                     }
                 } else {
-                    marksheetSettings.historyExams = marksheetSettings.historyExams.filter(e => e !== val);
+                    marksheetSettings.tutorialExams = marksheetSettings.tutorialExams.filter(e => e !== val);
                 }
 
-                // Note: live preview for history is tricky as it's not in the mock data usually
-                // but we can refresh the main UI if needed.
+                // Trigger preview update if tutorial integration is enabled
+                if (marksheetSettings.tutorialIntegrationEnabled !== false) {
+                    updateSettingsLivePreview();
+                }
             });
         });
 
     } catch (err) {
-        console.error("Failed to load exams for checklist", err);
-        container.innerHTML = '<p style="color:red;">ডাটা লোড করতে ব্যর্থ হয়েছে</p>';
+        console.error("Failed to load tutorial exams", err);
+        container.innerHTML = '<p style="color:red; padding:10px;">ডাটা লোড করতে ব্যর্থ হয়েছে</p>';
     }
 }
 
@@ -3079,9 +3237,12 @@ export function applyCombinedPaperLogic(studentsArray, currentSubjects, rules, a
                     const papersCount = [p1, p2].filter(p => student.subjects[p]).length || 1;
                     combinedData.avgMarks = combinedData.total / papersCount;
 
-                    const pct = totalMax > 0 ? (combinedData.total / totalMax) * 100 : 0;
-                    combinedData.grade = getLetterGrade(pct);
-                    combinedData.gpa = getGradePoint(pct);
+                    // Use average marks for Main Exams (fixed board scale) in combined subjects,
+                    // but use percentage scaling for Tutorial exams.
+                    const effectivePct = state.isTutorialMode ? (totalMax > 0 ? (combinedData.total / totalMax) * 100 : 0) : combinedData.avgMarks;
+                    
+                    combinedData.grade = getLetterGrade(effectivePct);
+                    combinedData.gpa = getGradePoint(effectivePct);
 
                     student.subjects[combinedName] = combinedData;
                 }

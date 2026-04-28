@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { getMarksheetSettings, loadMarksheetSettings, applyCombinedPaperLogic } from './marksheetManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 import { showNotification, convertToBengaliDigits, convertToEnglishDigits, isAbsent, determineStatus, normalizeText, calculateStatistics, isStudentEligibleForSubject } from '../utils.js';
-import { getSavedExams, getSettings, getUnifiedStudents, getExamConfigs, getStudentLookupMap, generateStudentDocId, getSubjectConfigs } from '../firestoreService.js';
+import { getSavedExams, getSettings, getUnifiedStudents, getExamConfigs, getTutorialExamConfigs, getStudentLookupMap, generateStudentDocId, getSubjectConfigs, getSavedExamsByType } from '../firestoreService.js';
 import { FAILING_THRESHOLD } from '../constants.js';
 import { APP_VERSION } from '../version.js';
 
@@ -69,8 +69,13 @@ export async function populateReportDropdowns() {
             return;
         }
         try {
-            const configs = await getExamConfigs(selClass, selSession);
-            const examNames = [...new Set(configs.map(c => c.examName).filter(Boolean))].sort();
+            let configs;
+            if (state.isTutorialReportMode) {
+                configs = await getTutorialExamConfigs(selClass, selSession);
+            } else {
+                configs = await getExamConfigs(selClass, selSession);
+            }
+            const examNames = [...new Set((configs || []).map(c => c.examName).filter(Boolean))].sort();
 
             examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন</option>';
             if (examNames.length === 0) {
@@ -135,6 +140,13 @@ export async function generateReport() {
         return;
     }
 
+    const tutorialExams = await getSavedExamsByType('tutorial');
+    const relevantTutorialExams = tutorialExams.filter(e => {
+        const dbClass = normalizeText(e.class);
+        const dbSession = normalizeText(e.session);
+        return dbClass === clsNorm && dbSession === sesNorm;
+    });
+
     const masterStudents = rawAllStudents.filter(s => {
         // Exclude inactive students via lookup map for dashboard consistency
         const key = generateStudentDocId({ id: s.id, group: s.group, class: rptClass, session: rptSession });
@@ -192,6 +204,30 @@ export async function generateReport() {
             studentAgg.get(rollKey).subjects[exam.subject] = curSub;
         });
     });
+
+    // Calculate and integrate tutorial marks
+    relevantTutorialExams.forEach(exam => {
+        if (exam.studentData) {
+            exam.studentData.forEach(s => {
+                const rollKey = String(s.id || s.roll).trim();
+                
+                if (studentAgg.has(rollKey)) {
+                    const subjKey = exam.subject || '';
+                    if (studentAgg.get(rollKey).subjects[subjKey]) {
+                        const targetSubjData = studentAgg.get(rollKey).subjects[subjKey];
+                        if (!targetSubjData.tutorialMarksArr) {
+                            targetSubjData.tutorialMarksArr = [];
+                        }
+                        if (s.total > 0 || String(s.status) === 'Absent') {
+                            targetSubjData.tutorialMarksArr.push(Number(s.total) || 0);
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+
 
     const subjects = [...subjectsSet].sort();
     lastGeneratedSubjects = subjects;
@@ -521,7 +557,8 @@ export async function generateReport() {
                 papers.forEach(p => {
                     const pSubjKey = normalizeText(p).replace(/\s+/g, '');
                     const pData = student.subjects[pSubjKey] || {};
-                    const pConfig = state.subjectConfigs?.[p] || {};
+                    let pConfig = state.subjectConfigs?.[p] || {};
+                    if (state.isTutorialReportMode && pConfig.tutorial) pConfig = pConfig.tutorial;
 
                     if (isCompFail(pData.written, pConfig.writtenPass, FAILING_THRESHOLD.written) ||
                         isCompFail(pData.mcq, pConfig.mcqPass, FAILING_THRESHOLD.mcq) ||
@@ -573,15 +610,21 @@ export async function generateReport() {
                 const total = data.total || 0;
                 sTotalMarks += parseFloat(total) || 0;
 
-                const config = state.subjectConfigs?.[subjName] ||
+                let config = state.subjectConfigs?.[subjName] ||
                     Object.entries(state.subjectConfigs || {}).find(([k]) =>
                         normalizeText(k).replace(/\s+/g, '') === sSubjKey
                     )?.[1] || { total: 100 };
+                if (state.isTutorialReportMode && config.tutorial) {
+                    config = config.tutorial;
+                }
                 const maxTotal = parseInt(config.total) || 100;
-                const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+                
+                // Use absolute marks for Main Exams (fixed board scale),
+                // but use percentage scaling for Tutorial exams.
+                const effectivePct = state.isTutorialReportMode ? (maxTotal > 0 ? (total / maxTotal) * 100 : 0) : total;
 
-                let gp = getGradePoint(pct);
-                let grade = getLetterGrade(pct);
+                let gp = getGradePoint(effectivePct);
+                let grade = getLetterGrade(effectivePct);
 
                 if (isCompFail(data.written, config.writtenPass, FAILING_THRESHOLD.written) ||
                     isCompFail(data.mcq, config.mcqPass, FAILING_THRESHOLD.mcq) ||
@@ -1095,6 +1138,9 @@ export async function generateReport() {
                     Object.entries(state.subjectConfigs || {}).find(([k]) => 
                         normalizeText(k).replace(/\s+/g, '') === sSubjKey
                     )?.[1] || null;
+                if (state.isTutorialReportMode && cfg && cfg.tutorial) {
+                    cfg = cfg.tutorial;
+                }
 
                 if (!cfg) {
                     cfg = specificConfigs.find(c => normalizeText(c.subjectName) === normalizeText(subj)) || null;

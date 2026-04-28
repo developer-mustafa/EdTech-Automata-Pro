@@ -41,7 +41,8 @@ export const COLLECTIONS = {
     examConfigs: 'examConfigs',
     academicStructure: 'academicStructure',
     accessControl: 'accessControl',
-    notices: 'notices'
+    notices: 'notices',
+    tutorialExamConfigs: 'tutorialExamConfigs'
 };
 
 // Memory cache for expensive read operations
@@ -501,6 +502,7 @@ export async function saveExam(examData) {
         // Invalidate both memory and persistent caches
         _cache.exams = null;
         localStorage.removeItem('ems_cache_persistent');
+        if (typeof localforage !== 'undefined') localforage.removeItem('ems_cache_persistent');
         return true;
     } catch (error) {
         console.error('পরীক্ষা সেভ করতে সমস্যা:', error);
@@ -628,6 +630,7 @@ export async function deleteExam(docId) {
         // Invalidate both memory and persistent caches
         _cache.exams = null;
         localStorage.removeItem('ems_cache_persistent');
+        if (typeof localforage !== 'undefined') localforage.removeItem('ems_cache_persistent');
         return true;
     } catch (error) {
         console.error('পরীক্ষা মুছতে সমস্যা:', error);
@@ -652,6 +655,7 @@ export async function updateExam(docId, updates) {
         // Invalidate both memory and persistent caches
         _cache.exams = null;
         localStorage.removeItem('ems_cache_persistent');
+        if (typeof localforage !== 'undefined') localforage.removeItem('ems_cache_persistent');
         return true;
     } catch (error) {
         console.error('পরীক্ষা আপডেট করতে সমস্যা:', error);
@@ -1911,4 +1915,128 @@ export async function subscribeToNotices(callback) {
     }, (error) => {
         console.error('নোটিশ সিঙ্ক সমস্যা:', error);
     });
+}
+
+// ==========================================
+// TUTORIAL / CLASS TEST EXAM CONFIGS OPERATIONS
+// ==========================================
+
+/**
+ * Add a new Tutorial Exam Configuration
+ * @param {Object} configData - { class, session, examName, examDate, customMarks, createdBy, creatorName }
+ * @returns {Promise<boolean>}
+ */
+export async function addTutorialExamConfig(configData) {
+    try {
+        const { db, collection, doc, setDoc, serverTimestamp } = await getFirestore();
+        const docRef = doc(collection(db, COLLECTIONS.tutorialExamConfigs));
+        await setDoc(docRef, {
+            ...configData,
+            examType: 'tutorial',
+            createdAt: serverTimestamp(),
+            docId: docRef.id
+        });
+        return true;
+    } catch (error) {
+        console.error('টিউটোরিয়াল এক্সাম কনফিগ যোগ করতে সমস্যা:', error);
+        return false;
+    }
+}
+
+/**
+ * Get Tutorial Exam Configurations (Optionally filtered by class and session)
+ * @param {string} [className] - Optional class name to filter
+ * @param {string} [session] - Optional session to filter
+ * @returns {Promise<Array>}
+ */
+export async function getTutorialExamConfigs(className = null, session = null) {
+    try {
+        const { db, collection, query, where, getDocs } = await getFirestore();
+        const configsRef = collection(db, COLLECTIONS.tutorialExamConfigs);
+        let q = query(configsRef);
+
+        const conditions = [];
+        if (className && className !== 'all') {
+            conditions.push(where('class', '==', className));
+        }
+        if (session && session !== 'all') {
+            conditions.push(where('session', '==', session));
+        }
+
+        if (conditions.length > 0) {
+            q = query(configsRef, ...conditions);
+        }
+
+        const snapshot = await getDocs(q);
+        const configs = snapshot.docs.map(doc => ({
+            docId: doc.id,
+            ...doc.data()
+        }));
+
+        return configs.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis() || 0;
+            const timeB = b.createdAt?.toMillis() || 0;
+            return timeB - timeA;
+        });
+    } catch (error) {
+        console.error('টিউটোরিয়াল এক্সাম কনফিগ লোড করতে সমস্যা:', error);
+        return [];
+    }
+}
+
+/**
+ * Delete a Tutorial Exam Configuration
+ * @param {string} docId 
+ * @returns {Promise<boolean>}
+ */
+export async function deleteTutorialExamConfig(docId) {
+    try {
+        const { db, doc, deleteDoc } = await getFirestore();
+        const docRef = doc(db, COLLECTIONS.tutorialExamConfigs, docId);
+        await deleteDoc(docRef);
+        return true;
+    } catch (error) {
+        console.error('টিউটোরিয়াল এক্সাম কনফিগ মুছতে সমস্যা:', error);
+        return false;
+    }
+}
+
+/**
+ * Update an existing Tutorial Exam Configuration
+ * @param {string} docId 
+ * @param {Object} data 
+ * @returns {Promise<boolean>}
+ */
+export async function updateTutorialExamConfig(docId, data) {
+    try {
+        const { db, doc, setDoc, serverTimestamp } = await getFirestore();
+        const docRef = doc(db, COLLECTIONS.tutorialExamConfigs, docId);
+        await setDoc(docRef, {
+            ...data,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+        return true;
+    } catch (error) {
+        console.error('টিউটোরিয়াল এক্সাম কনফিগ আপডেট করতে সমস্যা:', error);
+        return false;
+    }
+}
+
+/**
+ * Get saved exams filtered by examType (tutorial/regular)
+ * @param {string} examType - 'tutorial' or 'regular' (default)
+ * @returns {Promise<Array>}
+ */
+export async function getSavedExamsByType(examType = 'regular') {
+    try {
+        const exams = await getSavedExams();
+        if (examType === 'tutorial') {
+            return exams.filter(e => e.examType === 'tutorial');
+        }
+        // Regular exams = those WITHOUT examType or with examType 'regular'
+        return exams.filter(e => !e.examType || e.examType === 'regular');
+    } catch (error) {
+        console.error('Exam type filter error:', error);
+        return [];
+    }
 }
