@@ -59,10 +59,36 @@ function setupEventListeners() {
             toggleNameBtn.classList.toggle('active', hideNames);
         };
     }
-
     const searchInput = document.getElementById('tabSearchInput');
     if (searchInput) {
         searchInput.oninput = filterTabulationTable;
+    }
+
+    const regularModeBtn = document.getElementById('tabRegularModeBtn');
+    const tutorialModeBtn = document.getElementById('tabTutorialModeBtn');
+
+    if (regularModeBtn && tutorialModeBtn) {
+        regularModeBtn.onclick = async () => {
+            state.isTutorialTabulationMode = false;
+            regularModeBtn.classList.add('active');
+            regularModeBtn.style.background = '#059669';
+            regularModeBtn.style.color = 'white';
+            tutorialModeBtn.classList.remove('active');
+            tutorialModeBtn.style.background = 'transparent';
+            tutorialModeBtn.style.color = '#d97706';
+            await populateTabulationDropdowns();
+        };
+
+        tutorialModeBtn.onclick = async () => {
+            state.isTutorialTabulationMode = true;
+            tutorialModeBtn.classList.add('active');
+            tutorialModeBtn.style.background = '#f59e0b';
+            tutorialModeBtn.style.color = 'white';
+            regularModeBtn.classList.remove('active');
+            regularModeBtn.style.background = 'transparent';
+            regularModeBtn.style.color = '#059669';
+            await populateTabulationDropdowns();
+        };
     }
 
     const advType = document.getElementById('tabAdvFilterType');
@@ -143,7 +169,11 @@ export async function populateTabulationDropdowns() {
     if (!classSelect || !sessionSelect) return;
 
     try {
-        allExamsCache = await getSavedExams();
+        if (state.isTutorialTabulationMode) {
+            allExamsCache = await getSavedExamsByType('tutorial');
+        } else {
+            allExamsCache = await getSavedExams();
+        }
         const classes = [...new Set(allExamsCache.map(e => e.class).filter(Boolean))].sort();
         const sessions = [...new Set(allExamsCache.map(e => e.session).filter(Boolean))].sort().reverse();
 
@@ -171,7 +201,8 @@ async function updateGroupDropdown() {
     }
 
     try {
-        const exams = (allExamsCache || await getSavedExams()).filter(e => e.class === cls && e.session === session);
+        const examsSource = state.isTutorialTabulationMode ? await getSavedExamsByType('tutorial') : (allExamsCache || await getSavedExams());
+        const exams = examsSource.filter(e => e.class === cls && e.session === session);
         const groupSet = new Set();
         exams.forEach(ex => {
             (ex.studentData || []).forEach(s => {
@@ -204,8 +235,8 @@ async function updateExamDropdown() {
     }
 
     examSelect.disabled = false;
-    const exams = (allExamsCache || await getSavedExams())
-        .filter(e => e.class === cls && e.session === session);
+    const examsSource = state.isTutorialTabulationMode ? await getSavedExamsByType('tutorial') : (allExamsCache || await getSavedExams());
+    const exams = examsSource.filter(e => e.class === cls && e.session === session);
     const examNames = [...new Set(exams.map(e => e.name).filter(Boolean))].sort();
 
     examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন করুন</option>';
@@ -243,8 +274,8 @@ async function handleViewTabulation() {
         const lookupMap = await getStudentLookupMap();
 
         // Fetch all exams for this class/session/examName
-        const allExams = allExamsCache || await getSavedExams();
-        const relevantExams = allExams.filter(e =>
+        const examsSource = state.isTutorialTabulationMode ? await getSavedExamsByType('tutorial') : (allExamsCache || await getSavedExams());
+        const relevantExams = examsSource.filter(e =>
             e.class === cls && e.session === session && e.name === examName
         );
 
@@ -537,7 +568,7 @@ async function handleViewTabulation() {
                 
                 // Use absolute marks for Main Exams (fixed board scale), 
                 // but use percentage scaling for Tutorial exams.
-                const isTutorialTab = relevantExams[0]?.type === 'tutorial';
+                const isTutorialTab = state.isTutorialTabulationMode;
                 const effectivePct = isTutorialTab ? (maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0) : sTotal;
                 
                 const gp = getGradePoint(effectivePct);
@@ -698,7 +729,7 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
             <div class="tab-header-text">
                 <h2 class="tab-college-name">${collegeName}</h2>
                 <p class="tab-college-address">${collegeAddress}</p>
-                <h3 class="tab-exam-title">টেবুলেশন শীট — ${examName}</h3>
+                <h3 class="tab-exam-title">${state.isTutorialTabulationMode ? 'টিউটোরিয়াল ' : ''}টেবুলেশন শীট — ${examName}</h3>
                 <p class="tab-meta">শ্রেণি: ${cls} | সেশন: ${session} | বিভাগ: ${selGroupName}</p>
             </div>
         </div>
@@ -1187,19 +1218,29 @@ function num(val) {
 }
 
 function getSubjectCfg(configs, subjectName) {
-    let found = configs?.[subjectName];
+    if (!configs) return { total: 100, written: 100, writtenPass: 33, mcq: 0, mcqPass: 0, practical: 0, practicalPass: 0 };
+
+    // When in Tutorial mode, prioritize tutorial-specific suffixes
+    if (state.isTutorialTabulationMode) {
+        const suffixes = [' (টিউটোরিয়াল)', ' (Tutorial)', ' ক্লাস টেস্ট', ' Class test', ' Tutorial exam', ' Class test exam', ' ক্লাস টেস্ট পরীক্ষা'];
+        for (const sfx of suffixes) {
+            const targetName = subjectName + sfx;
+            if (configs[targetName]) return configs[targetName];
+            
+            const normTarget = normalizeText(targetName);
+            const foundKey = Object.keys(configs).find(k => k !== 'updatedAt' && normalizeText(k) === normTarget);
+            if (foundKey) return configs[foundKey];
+        }
+    }
+
+    let found = configs[subjectName];
     if (!found) {
         const normalized = normalizeText(subjectName);
-        const key = Object.keys(configs || {}).find(k => k !== 'updatedAt' && normalizeText(k) === normalized);
+        const key = Object.keys(configs).find(k => k !== 'updatedAt' && normalizeText(k) === normalized);
         found = key ? configs[key] : null;
     }
     
-    if (found) {
-        if (state.isTutorialReportMode && found.tutorial) {
-            return found.tutorial;
-        }
-        return found;
-    }
+    if (found) return found;
     
     return { total: 100, written: 100, writtenPass: 33, mcq: 0, mcqPass: 0, practical: 0, practicalPass: 0 };
 }

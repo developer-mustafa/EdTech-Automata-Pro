@@ -1,4 +1,4 @@
-import { state } from './state.js';
+﻿import { state } from './state.js';
 import { getMarksheetSettings, loadMarksheetSettings, applyCombinedPaperLogic } from './marksheetManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 import { showNotification, convertToBengaliDigits, convertToEnglishDigits, isAbsent, determineStatus, normalizeText, calculateStatistics, isStudentEligibleForSubject } from '../utils.js';
@@ -44,108 +44,6 @@ function getMappedKey(group, keys) {
     return keys.find(k => normalizeText(k) === normGroup) || group;
 }
 
-/**
- * Helper to check for tutorial specific configs
- */
-function getSubjectCfg(subjName) {
-    let cfg = state.subjectConfigs?.[subjName] || {};
-    
-    if (state.isTutorialReportMode) {
-        // 1. Check if there's a nested 'tutorial' config inside the main subject
-        if (cfg.tutorial) return cfg.tutorial;
-
-        // 2. Fallback to suffix-based configs (e.g. "Bangla (Tutorial)")
-        const suffixes = [' (টিউটোরিয়াল)', ' (Tutorial)', ' ক্লাস টেস্ট', ' Class test', ' Tutorial exam', ' Class test exam', ' ক্লাস টেস্ট পরীক্ষা'];
-        for (const sfx of suffixes) {
-            const target = subjName + sfx;
-            if (state.subjectConfigs?.[target]) return state.subjectConfigs[target];
-        }
-    }
-    return cfg;
-}
-
-/**
- * NEW: Generates Grading Policy & Subject Config section for Tutorial Reports
- */
-function generateGradingPolicySection(subjects, hiddenSet, globalMaxMarks = null) {
-    const activeSubjects = subjects.filter(s => !hiddenSet.has(normalizeText(s)));
-    if (activeSubjects.length === 0) return '';
-    
-    const gradeConfigs = [
-        { g: 'A+', min: 80, max: 100, c: '#059669', bg: '#ecfdf5' }, // Green
-        { g: 'A',  min: 70, max: 79.99, c: '#2563eb', bg: '#eff6ff' }, // Blue
-        { g: 'A-', min: 60, max: 69.99, c: '#4f46e5', bg: '#f5f3ff' }, // Indigo
-        { g: 'B',  min: 50, max: 59.99, c: '#d97706', bg: '#fffbeb' }, // Amber
-        { g: 'C',  min: 40, max: 49.99, c: '#ea580c', bg: '#fff7ed' }, // Orange
-        { g: 'D',  min: 33, max: 39.99, c: '#7c3aed', bg: '#f5f3ff' }, // Violet
-        { g: 'F',  min: 0,  max: 32.99, c: '#dc2626', bg: '#fef2f2' }  // Red
-    ];
-
-    return `
-    <div class="rpt-section" style="margin-top: 25px; page-break-inside: avoid;">
-        <div class="rpt-section-title" style="background: linear-gradient(135deg, #4f46e5, #3b82f6); color: white;">
-            <i class="fas fa-list-check"></i> বিষয়ভিত্তিক পরীক্ষার কাঠামো ও গ্রেডিং পলিসি
-        </div>
-        <div style="background: white; border: 1px solid #e2e8f0; border-top: none;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.72rem;">
-                <thead>
-                    <tr style="background: #f8fafc; color: #1e293b; border-bottom: 2px solid #e2e8f0;">
-                        <th style="padding: 10px 8px; text-align: left; width: 22%;">বিষয়</th>
-                        <th style="padding: 10px 5px; text-align: center; width: 8%;">পূর্ণমান</th>
-                        <th style="padding: 10px 5px; text-align: center; width: 8%;">পাস</th>
-                        <th style="padding: 10px 8px; text-align: left; width: 62%;">গ্রেডিং স্কেল (প্রাপ্ত নম্বর ও গ্রেড)</th>
-                    </tr>
-                </thead>
-                <tbody>${activeSubjects.map(s => {
-                    const cfg = getSubjectCfg(s);
-                    const max = globalMaxMarks || parseInt(cfg.total) || 100;
-                    
-                    let pass = Number(cfg.pass || cfg.totalPass);
-                    if (isNaN(pass) || pass === 0) {
-                        const wp = Number(cfg.writtenPass) || 0;
-                        const mp = Number(cfg.mcqPass) || 0;
-                        const pp = Number(cfg.practicalPass) || 0;
-                        pass = wp + mp + pp;
-                    }
-                    if (pass === 0) pass = max * 0.33;
-
-                    const scales = gradeConfigs.map(gc => {
-                        let low, high;
-                        if (gc.g === 'F') {
-                            low = 0;
-                            high = pass - 0.1;
-                        } else if (gc.g === 'D') {
-                            low = pass;
-                            high = (gc.max * max) / 100;
-                        } else {
-                            low = (gc.min * max) / 100;
-                            high = (gc.max * max) / 100;
-                        }
-
-                        const lStr = convertToBengaliDigits(low.toFixed(1).replace(/\.0$/, ''));
-                        const hStr = convertToBengaliDigits(high.toFixed(1).replace(/\.0$/, ''));
-                        const range = gc.g === 'A+' ? `${lStr}+` : `${lStr}-${hStr}`;
-
-                        return `
-                        <div style="display:inline-flex; align-items:center; margin-right:3px; margin-bottom:2px; border:1px solid #e2e8f0; border-radius:3px; overflow:hidden; background:white; line-height:1;">
-                            <span style="padding:2px 4px; background:${gc.bg}; color:${gc.c}; font-weight:800; border-right:1px solid #e2e8f0; font-size:0.65rem;">${gc.g}</span>
-                            <span style="padding:2px 4px; color:#475569; font-size:0.6rem; letter-spacing:-0.2px;">${range}</span>
-                        </div>`;
-                    }).join('');
-
-                    return `
-                    <tr style="border-bottom:1px solid #f1f5f9;">
-                        <td style="padding:8px; font-weight:700; color:#1e293b;">${s}</td>
-                        <td style="text-align:center; font-weight:600; color:#475569;">${convertToBengaliDigits(max)}</td>
-                        <td style="text-align:center; font-weight:700; color:#dc2626;">${convertToBengaliDigits(Math.ceil(pass))}</td>
-                        <td style="padding:8px 5px; white-space: nowrap;">${scales}</td>
-                    </tr>`;
-                }).join('')}</tbody>
-            </table>
-        </div>
-    </div>`;
-}
-
 export async function populateReportDropdowns() {
     const classSelect = document.getElementById('rptClass');
     const sessionSelect = document.getElementById('rptSession');
@@ -153,56 +51,41 @@ export async function populateReportDropdowns() {
 
     if (!classSelect || !sessionSelect || !examSelect) return;
 
-    const allExams = await getSavedExams();
-    
-    // Only populate Class/Session if empty to preserve user selection
-    if (classSelect.options.length <= 1) {
-        const classes = [...new Set(allExams.map(e => e.class).filter(Boolean))].sort();
-        classSelect.innerHTML = '<option value="">শ্রেণি নির্বাচন</option>';
-        classes.forEach(c => classSelect.innerHTML += `<option value="${c}">${c}</option>`);
-    }
+    const exams = await getSavedExams();
+    const classes = [...new Set(exams.map(e => e.class).filter(Boolean))].sort();
+    const sessions = [...new Set(exams.map(e => e.session).filter(Boolean))].sort().reverse();
 
-    if (sessionSelect.options.length <= 1) {
-        const sessions = [...new Set(allExams.map(e => e.session).filter(Boolean))].sort().reverse();
-        sessionSelect.innerHTML = '<option value="">সেশন নির্বাচন</option>';
-        sessions.forEach(s => sessionSelect.innerHTML += `<option value="${s}">${s}</option>`);
-    }
+    classSelect.innerHTML = '<option value="">αª╢αºìαª░αºçαªúαª┐ αª¿αª┐αª░αºìαª¼αª╛αªÜαª¿</option>';
+    classes.forEach(c => classSelect.innerHTML += `<option value="${c}">${c}</option>`);
+
+    sessionSelect.innerHTML = '<option value="">αª╕αºçαª╢αª¿ αª¿αª┐αª░αºìαª¼αª╛αªÜαª¿</option>';
+    sessions.forEach(s => sessionSelect.innerHTML += `<option value="${s}">${s}</option>`);
 
     const updateExams = async () => {
         const selClass = classSelect.value;
         const selSession = sessionSelect.value;
         if (!selClass || !selSession) {
-            examSelect.innerHTML = '<option value="">শ্রেণি ও সেশন নির্বাচন করুন</option>';
+            examSelect.innerHTML = '<option value="">αª╢αºìαª░αºçαªúαª┐ αªô αª╕αºçαª╢αª¿ αª¿αª┐αª░αºìαª¼αª╛αªÜαª¿ αªòαª░αºüαª¿</option>';
             return;
         }
         try {
-            const normClass = normalizeText(selClass);
-            const normSess = normalizeText(selSession);
+            let configs;
+            if (state.isTutorialReportMode) {
+                configs = await getTutorialExamConfigs(selClass, selSession);
+            } else {
+                configs = await getExamConfigs(selClass, selSession);
+            }
+            const examNames = [...new Set((configs || []).map(c => c.examName).filter(Boolean))].sort();
 
-            const flt = allExams.filter(e => {
-                const dbClass = normalizeText(e.class || '');
-                const dbSess = normalizeText(e.session || '');
-                if (dbClass !== normClass || dbSess !== normSess) return false;
-                
-                const name = e.examName || e.name || '';
-                const hasTutSuffix = /(টিউটোরিয়াল|Tutorial|Class test|ক্লাস টেস্ট)/i.test(name);
-                const isTutType = e.type === 'tutorial' || e.examType === 'tutorial';
-                const isTutorial = isTutType || hasTutSuffix;
-
-                return state.isTutorialReportMode ? isTutorial : !isTutorial;
-            });
-
-            const examNames = [...new Set(flt.map(c => c.examName || c.name).filter(Boolean))].sort();
-
-            examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন</option>';
+            examSelect.innerHTML = '<option value="">αª¬αª░αºÇαªòαºìαª╖αª╛ αª¿αª┐αª░αºìαª¼αª╛αªÜαª¿</option>';
             if (examNames.length === 0) {
-                examSelect.innerHTML = '<option value="">শাখা/শ্রেণিতে কোনো এক্সাম কনফিগ নেই</option>';
+                examSelect.innerHTML = '<option value="">αª╢αª╛αªûαª╛/αª╢αºìαª░αºçαªúαª┐αªñαºç αªòαºïαª¿αºï αªÅαªòαºìαª╕αª╛αª« αªòαª¿αª½αª┐αªù αª¿αºçαªç</option>';
             } else {
                 examNames.forEach(n => examSelect.innerHTML += `<option value="${n}">${n}</option>`);
             }
         } catch (err) {
             console.error('Dropdown error:', err);
-            examSelect.innerHTML = '<option value="">লোড করতে সমস্যা হয়েছে</option>';
+            examSelect.innerHTML = '<option value="">αª▓αºïαªí αªòαª░αªñαºç αª╕αª«αª╕αºìαª»αª╛ αª╣αºƒαºçαª¢αºç</option>';
         }
     };
 
@@ -211,11 +94,8 @@ export async function populateReportDropdowns() {
         sessionSelect.onchange = updateExams;
         reportDropdownsBound = true;
     }
-    
-    // Always trigger updateExams on mode change or re-population
-    if (classSelect.value && sessionSelect.value) {
-        updateExams();
-    }
+
+    if (classSelect.value && sessionSelect.value) updateExams();
 }
 
 export async function generateReport() {
@@ -225,7 +105,7 @@ export async function generateReport() {
     const calcMode = document.getElementById('rptCalculationMode')?.value || 'auto';
 
     if (!rptClass || !rptSession || !examName) {
-        showNotification('শ্রেণি, সেশন এবং পরীক্ষা নির্বাচন করুন!', 'warning');
+        showNotification('αª╢αºìαª░αºçαªúαª┐, αª╕αºçαª╢αª¿ αªÅαª¼αªé αª¬αª░αºÇαªòαºìαª╖αª╛ αª¿αª┐αª░αºìαª¼αª╛αªÜαª¿ αªòαª░αºüαª¿!', 'warning');
         return;
     }
 
@@ -234,7 +114,7 @@ export async function generateReport() {
         getSavedExams(),
         loadMarksheetRules(), // Ensures latest rules are loaded
         loadMarksheetSettings(), // Ensures latest subject mappings are loaded
-        state.isTutorialReportMode ? getTutorialExamConfigs(rptClass, rptSession) : getExamConfigs(rptClass, rptSession),
+        getExamConfigs(rptClass, rptSession),
         getStudentLookupMap(),
         getUnifiedStudents(),
         getSubjectConfigs()
@@ -256,7 +136,7 @@ export async function generateReport() {
     });
 
     if (relevantExams.length === 0) {
-        showNotification('ডেটা পাওয়া যায়নি!', 'error');
+        showNotification('αªíαºçαªƒαª╛ αª¬αª╛αªôαºƒαª╛ αª»αª╛αºƒαª¿αª┐!', 'error');
         return;
     }
 
@@ -266,10 +146,6 @@ export async function generateReport() {
         const dbSession = normalizeText(e.session);
         return dbClass === clsNorm && dbSession === sesNorm;
     });
-
-    // Find specific exam config for custom marks (tutorial only)
-    const currentExamConfig = specificConfigs.find(c => normalizeText(c.examName || '') === examNorm);
-    const tutorialCustomMarks = (state.isTutorialReportMode && currentExamConfig?.customMarks) ? Number(currentExamConfig.customMarks) : null;
 
     const masterStudents = rawAllStudents.filter(s => {
         // Exclude inactive students via lookup map for dashboard consistency
@@ -370,36 +246,36 @@ export async function generateReport() {
 
     const getCanonicalGroup = (grp) => {
         const t = normalizeText(grp || '');
-        if (t.includes('বিজ্ঞান') || t.includes('science')) return 'বিজ্ঞান গ্রুপ';
-        if (t.includes('ব্যবসায়') || t.includes('business')) return 'ব্যবসায় গ্রুপ';
-        if (t.includes('মানবিক') || t.includes('arts') || t.includes('humanities')) return 'মানবিক গ্রুপ';
-        return 'অন্যান্য';
+        if (t.includes('αª¼αª┐αª£αºìαª₧αª╛αª¿') || t.includes('science')) return 'αª¼αª┐αª£αºìαª₧αª╛αª¿ αªùαºìαª░αºüαª¬';
+        if (t.includes('αª¼αºìαª»αª¼αª╕αª╛αª»αª╝') || t.includes('business')) return 'αª¼αºìαª»αª¼αª╕αª╛αª»αª╝ αªùαºìαª░αºüαª¬';
+        if (t.includes('αª«αª╛αª¿αª¼αª┐αªò') || t.includes('arts') || t.includes('humanities')) return 'αª«αª╛αª¿αª¼αª┐αªò αªùαºìαª░αºüαª¬';
+        return 'αªàαª¿αºìαª»αª╛αª¿αºìαª»';
     };
 
     const getGroupBadge = (grp) => {
         const canonical = getCanonicalGroup(grp);
-        if (canonical === 'বিজ্ঞান গ্রুপ') {
+        if (canonical === 'αª¼αª┐αª£αºìαª₧αª╛αª¿ αªùαºìαª░αºüαª¬') {
             return `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; font-weight: 700; font-size: 0.85em;">${canonical}</span>`;
-        } else if (canonical === 'ব্যবসায় গ্রুপ') {
+        } else if (canonical === 'αª¼αºìαª»αª¼αª╕αª╛αª»αª╝ αªùαºìαª░αºüαª¬') {
             return `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; font-weight: 700; font-size: 0.85em;">${canonical}</span>`;
-        } else if (canonical === 'মানবিক গ্রুপ') {
+        } else if (canonical === 'αª«αª╛αª¿αª¼αª┐αªò αªùαºìαª░αºüαª¬') {
             return `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; font-weight: 700; font-size: 0.85em;">${canonical}</span>`;
         }
         return `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; font-size: 0.85em;">${grp || 'N/A'}</span>`;
     };
 
     const getBengaliOrdinal = (n) => {
-        if (n === 1) return '১ম';
-        if (n === 2) return '২য়';
-        if (n === 3) return '৩য়';
-        if (n === 4) return '৪র্থ';
-        if (n === 5) return '৫ম';
-        if (n === 6) return '৬ষ্ঠ';
-        if (n === 7) return '৭ম';
-        if (n === 8) return '৮ম';
-        if (n === 9) return '৯ম';
-        if (n === 10) return '১০ম';
-        return convertToBengaliDigits(n) + 'তম';
+        if (n === 1) return 'αººαª«';
+        if (n === 2) return 'αº¿αºƒ';
+        if (n === 3) return 'αº⌐αºƒ';
+        if (n === 4) return 'αº¬αª░αºìαªÑ';
+        if (n === 5) return 'αº½αª«';
+        if (n === 6) return 'αº¼αª╖αºìαªá';
+        if (n === 7) return 'αº¡αª«';
+        if (n === 8) return 'αº«αª«';
+        if (n === 9) return 'αº»αª«';
+        if (n === 10) return 'αººαºªαª«';
+        return convertToBengaliDigits(n) + 'αªñαª«';
     };
 
     // ============================================================
@@ -475,7 +351,7 @@ export async function generateReport() {
         displaySubjects = applyCombinedPaperLogic(allSummaryStudents, subjects, clsRules, allOptSubsList);
     }
 
-    // Count totals from summary students — GROUP-WISE breakdown (marksheet lines 561-603)
+    // Count totals from summary students ΓÇö GROUP-WISE breakdown (marksheet lines 561-603)
     const studentResultRecords = [];
     const fullyAbsentStudents = [];
     const partiallyAbsentStudents = [];
@@ -535,7 +411,7 @@ export async function generateReport() {
                 if (data) {
                     const hasVal = (v) => v !== undefined && v !== null && v !== '';
                     const hasActualMarks = (hasVal(data.written) || hasVal(data.mcq) || hasVal(data.practical) || hasVal(data.total));
-                    const isExplicitlyAbsent = data.status === 'অনুপস্থিত' || String(data.status).toLowerCase() === 'absent';
+                    const isExplicitlyAbsent = data.status === 'αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ' || String(data.status).toLowerCase() === 'absent';
                     return hasActualMarks || isExplicitlyAbsent;
                 }
 
@@ -599,7 +475,7 @@ export async function generateReport() {
             if (isCombinedMode && isObj && subjObj.isCombined) {
                 const combinedData = student.subjects[subjName] || {};
                 let hasMarks = false;
-                let hasExplicitAbs = (String(combinedData.status).toLowerCase() === 'absent' || combinedData.status === 'অনুপস্থিত');
+                let hasExplicitAbs = (String(combinedData.status).toLowerCase() === 'absent' || combinedData.status === 'αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ');
                 const papers = subjObj.papers || [];
                 papers.forEach(p => {
                     const pd = student.subjects[normalizeText(p).replace(/\s+/g, '')] || {};
@@ -608,13 +484,13 @@ export async function generateReport() {
                     const pr = parseFloat(pd.practical) || 0;
                     const t = parseFloat(pd.total) || 0;
                     if (w > 0 || m > 0 || pr > 0 || t > 0) hasMarks = true;
-                    if (String(pd.status).toLowerCase() === 'absent' || pd.status === 'অনুপস্থিত') hasExplicitAbs = true;
+                    if (String(pd.status).toLowerCase() === 'absent' || pd.status === 'αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ') hasExplicitAbs = true;
                 });
                 if (hasExplicitAbs || !hasMarks) isAbs = true;
             } else {
                 const sSubjKey = normalizeText(subjName).replace(/\s+/g, '');
                 const d = student.subjects[sSubjKey] || {};
-                const hasExplicitAbs = (String(d.status).toLowerCase() === 'absent' || d.status === 'অনুপস্থিত');
+                const hasExplicitAbs = (String(d.status).toLowerCase() === 'absent' || d.status === 'αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ');
                 const hasMarks = (parseFloat(d.written) || 0) > 0 || (parseFloat(d.mcq) || 0) > 0 || (parseFloat(d.practical) || 0) > 0 || (parseFloat(d.total) || 0) > 0;
                 if (hasExplicitAbs || !hasMarks) isAbs = true;
             }
@@ -670,13 +546,6 @@ export async function generateReport() {
                 const m = parseFloat(mark) || 0;
                 let p = (passMark !== undefined && passMark !== '' && passMark !== null) ? parseFloat(passMark) : defaultPass;
                 if (isNaN(p)) p = 0;
-                
-                // NEW: If we are in tutorial mode and have a global scale (e.g. 20), 
-                // we must scale the default/board pass mark down if the passMark wasn't explicitly provided for tutorial.
-                if (state.isTutorialReportMode && tutorialCustomMarks && (!passMark || passMark === defaultPass)) {
-                    p = (p * tutorialCustomMarks) / 100;
-                }
-                
                 return (p > 0 && m < p);
             };
 
@@ -714,7 +583,7 @@ export async function generateReport() {
                     gp = 0;
                 }
 
-                if (combinedData.status === 'ফেল' || combinedData.status === 'fail') {
+                if (combinedData.status === 'αª½αºçαª▓' || combinedData.status === 'fail') {
                     if (ms.boardStandardOptional === true) {
                         if (!isOptional) allPassed = false;
                     } else {
@@ -741,8 +610,14 @@ export async function generateReport() {
                 const total = data.total || 0;
                 sTotalMarks += parseFloat(total) || 0;
 
-                let config = getSubjectCfg(subjName);
-                const maxTotal = tutorialCustomMarks || parseInt(config.total) || 100;
+                let config = state.subjectConfigs?.[subjName] ||
+                    Object.entries(state.subjectConfigs || {}).find(([k]) =>
+                        normalizeText(k).replace(/\s+/g, '') === sSubjKey
+                    )?.[1] || { total: 100 };
+                if (state.isTutorialReportMode && config.tutorial) {
+                    config = config.tutorial;
+                }
+                const maxTotal = parseInt(config.total) || 100;
                 
                 // Use absolute marks for Main Exams (fixed board scale),
                 // but use percentage scaling for Tutorial exams.
@@ -751,31 +626,14 @@ export async function generateReport() {
                 let gp = getGradePoint(effectivePct);
                 let grade = getLetterGrade(effectivePct);
 
-                // Robust pass mark detection for report consistency
-                let pPass = Number(config.pass || config.totalPass);
-                if (isNaN(pPass) || pPass === 0) {
-                    const wp = Number(config.writtenPass) || 0;
-                    const mp = Number(config.mcqPass) || 0;
-                    const pp = Number(config.practicalPass) || 0;
-                    pPass = wp + mp + pp;
-                }
-                
-                // Scale pPass if it's from a 100-mark config but we have a custom scale
-                if (state.isTutorialReportMode && tutorialCustomMarks && pPass > tutorialCustomMarks) {
-                    pPass = (pPass * tutorialCustomMarks) / 100;
-                }
-                
-                if (pPass === 0) pPass = maxTotal * 0.33;
-
                 if (isCompFail(data.written, config.writtenPass, FAILING_THRESHOLD.written) ||
                     isCompFail(data.mcq, config.mcqPass, FAILING_THRESHOLD.mcq) ||
-                    isCompFail(data.practical, config.practicalPass, 0) ||
-                    (state.isTutorialReportMode && total < pPass)) {
+                    isCompFail(data.practical, config.practicalPass, 0)) {
                     grade = 'F';
                     gp = 0;
                 }
 
-                if (data.status === 'ফেল' || data.status === 'fail') {
+                if (data.status === 'αª½αºçαª▓' || data.status === 'fail') {
                     if (ms.boardStandardOptional === true) {
                         if (!isOptional) allPassed = false;
                     } else {
@@ -871,7 +729,7 @@ export async function generateReport() {
         `<div class="ftr-dev-main" style="display: flex; align-items: center; gap: 4px; justify-content: center;">
             <img src="/edtechmataprologomain.png" style="width: 12px; height: 12px; object-fit: contain;">
             <span>${dev.text || 'Developed By:'} <strong>${dev.name || ''}</strong></span> 
-            <span style="opacity: 0.6; font-size: 0.85em; margin-left: 4px;">| এডটেক অটোমাটা প্রো- v${APP_VERSION}</span>
+            <span style="opacity: 0.6; font-size: 0.85em; margin-left: 4px;">| αªÅαªíαªƒαºçαªò αªàαªƒαºïαª«αª╛αªƒαª╛ αª¬αºìαª░αºï- v${APP_VERSION}</span>
         </div>` : '';
     const devFullHtml = devNameHtml;
 
@@ -895,24 +753,24 @@ export async function generateReport() {
     // 1. Generate Passed Students HTML
     const passedStudents = studentResultRecords.filter(r => r.allPassed);
     let passedHtml = `
-        <div class="rpt-section" style="page-break-inside: avoid;">
+        <div class="rpt-section">
             <div class="rpt-section-title">
-                <i class="fas fa-user-graduate"></i>পরীক্ষায় সকল বিষয় পাশ শিক্ষার্থী
-                <span style="margin-left: auto; font-size: 0.7rem; opacity: 0.9; font-weight: 600;">(মোট: ${convertToBengaliDigits(passedStudents.length)} জন)</span>
+                <i class="fas fa-user-graduate"></i>αª¬αª░αºÇαªòαºìαª╖αª╛αºƒ αª╕αªòαª▓ αª¼αª┐αª╖αºƒ αª¬αª╛αª╢ αª╢αª┐αªòαºìαª╖αª╛αª░αºìαªÑαºÇ
+                <span style="margin-left: auto; font-size: 0.7rem; opacity: 0.9; font-weight: 600;">(αª«αºïαªƒ: ${convertToBengaliDigits(passedStudents.length)} αª£αª¿)</span>
             </div>
             <div style="overflow-x: auto;">
                 <table class="rpt-subject-table rpt-passed-table">
                     <thead>
                         <tr>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">ক্র.নং</span></th>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">রোল</span></th>
-                            <th style="background: #065f46 !important; color: white !important; text-align: left !important; padding-left: 10px !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">নাম</span></th>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">বিভাগ</span></th>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">জিপিএ</span></th>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">গ্রেড</span></th>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">ক্লাস মেধাক্রমিং</span></th>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">গ্রুপ মেধাক্রমিং</span></th>
-                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">স্ট্যাটাস</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αªòαºìαª░.αª¿αªé</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αª░αºïαª▓</span></th>
+                            <th style="background: #065f46 !important; color: white !important; text-align: left !important; padding-left: 10px !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αª¿αª╛αª«</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αª¼αª┐αª¡αª╛αªù</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αª£αª┐αª¬αª┐αªÅ</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αªùαºìαª░αºçαªí</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αªòαºìαª▓αª╛αª╕ αª«αºçαªºαª╛αªòαºìαª░αª«αª┐αªé</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αªùαºìαª░αºüαª¬ αª«αºçαªºαª╛αªòαºìαª░αª«αª┐αªé</span></th>
+                            <th style="background: #065f46 !important; color: white !important; font-weight: 900 !important; border: 1px solid #ffffff33 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact;"><span style="color: white !important;">αª╕αºìαªƒαºìαª»αª╛αªƒαª╛αª╕</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -926,7 +784,7 @@ export async function generateReport() {
                                 <td style="font-weight: 900; color: #166534; background: #f0fdf4;">${st.grade}</td>
                                 <td style="font-weight: 700; color: #4338ca;">${getBengaliOrdinal(st.classRank)}</td>
                                 <td style="font-weight: 700; color: #0369a1;">${getBengaliOrdinal(st.groupRank)}</td>
-                                <td style="color: #166534; font-weight: bold;">পাশ</td>
+                                <td style="color: #166534; font-weight: bold;">αª¬αª╛αª╢</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -946,15 +804,15 @@ export async function generateReport() {
     const failedCountsSorted = Object.keys(failedByCount).map(Number).sort((a, b) => a - b);
 
     let failedHtml = `
-        <div class="rpt-section" style="margin-top: 40px; page-break-inside: avoid;">
+        <div class="rpt-section" style="margin-top: 40px;">
             <div class="rpt-section-title" style="color: #b91c1c; border-bottom: 2px solid #b91c1c;">
-                <i class="fas fa-exclamation-circle"></i>পরীক্ষায় অকৃতকার্য শিক্ষার্থীর তালিকা
-                <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(ফেল করা বিষয়ের সংখ্যা অনুযায়ী)</span>
+                <i class="fas fa-exclamation-circle"></i>αª¬αª░αºÇαªòαºìαª╖αª╛αºƒ αªàαªòαºâαªñαªòαª╛αª░αºìαª» αª╢αª┐αªòαºìαª╖αª╛αª░αºìαªÑαºÇαª░ αªñαª╛αª▓αª┐αªòαª╛
+                <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(αª½αºçαª▓ αªòαª░αª╛ αª¼αª┐αª╖αºƒαºçαª░ αª╕αªéαªûαºìαª»αª╛ αªàαª¿αºüαª»αª╛αºƒαºÇ)</span>
             </div>
     `;
 
     if (failedCountsSorted.length === 0) {
-        failedHtml += `<div style="text-align: center; padding: 30px; background: #fef2f2; color: #991b1b; font-weight: bold; border: 1px dashed #f87171; border-radius: 8px;">কোনো শিক্ষার্থী ফেল করেনি</div>`;
+        failedHtml += `<div style="text-align: center; padding: 30px; background: #fef2f2; color: #991b1b; font-weight: bold; border: 1px dashed #f87171; border-radius: 8px;">αªòαºïαª¿αºï αª╢αª┐αªòαºìαª╖αª╛αª░αºìαªÑαºÇ αª½αºçαª▓ αªòαª░αºçαª¿αª┐</div>`;
     }
 
     failedCountsSorted.forEach(count => {
@@ -966,18 +824,18 @@ export async function generateReport() {
         failedHtml += `
             <div style="margin-top: 25px; page-break-inside: avoid;">
                 <div style="background: #f1f5f9; color: #334155; padding: 10px 20px; font-weight: bold; font-size: 1.1rem; display: inline-block; border-radius: 6px 6px 0 0; border: 1px solid #cbd5e1; border-bottom: none;">
-                    ${convertToBengaliDigits(count)} বিষয় ফেল 
-                    <span style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${convertToBengaliDigits(studentsInCount.length)} জন</span>
+                    ${convertToBengaliDigits(count)} αª¼αª┐αª╖αºƒ αª½αºçαª▓ 
+                    <span style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.8rem; padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${convertToBengaliDigits(studentsInCount.length)} αª£αª¿</span>
                 </div>
                 <div style="overflow-x: auto; border: 1px solid #cbd5e1; border-top: none; border-radius: 0 6px 6px 6px;">
                     <table class="rpt-subject-table" style="width: 100%; margin: 0; box-shadow: none;">
                         <thead>
                             <tr>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">ক্র.নং</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">রোল</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">নাম</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">বিভাগ</th>
-                                <th style="background: #f8fafc !important; color: #b91c1c !important; border-bottom: 2px solid #cbd5e1 !important;">স্ট্যাটাস</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αªòαºìαª░.αª¿αªé</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αª░αºïαª▓</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">αª¿αª╛αª«</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αª¼αª┐αª¡αª╛αªù</th>
+                                <th style="background: #f8fafc !important; color: #b91c1c !important; border-bottom: 2px solid #cbd5e1 !important;">αª╕αºìαªƒαºìαª»αª╛αªƒαª╛αª╕</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -987,7 +845,7 @@ export async function generateReport() {
                                     <td style="font-weight: bold; color: #0f172a;">${convertToBengaliDigits(st.id)}</td>
                                     <td style="text-align: left !important; padding-left: 10px !important; font-weight: 500;">${st.name}</td>
                                     <td style="color: #475569;">${getGroupBadge(st.group)}</td>
-                                    <td style="color: #dc2626; font-weight: bold; background: #fef2f2;">ফেল</td>
+                                    <td style="color: #dc2626; font-weight: bold; background: #fef2f2;">αª½αºçαª▓</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1005,21 +863,20 @@ export async function generateReport() {
         partiallyAbsentStudents.sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
         partiallyAbsentHtml = `
-            <div class="rpt-section" style="margin-top: 40px; page-break-inside: avoid;">
+            <div class="rpt-section" style="margin-top: 40px;">
                 <div class="rpt-section-title" style="color: #0f172a; border-bottom: 2px solid #0f172a;">
-                    <i class="fas fa-calendar-minus"></i>পরীক্ষায় আংশিক অনুপস্থিত শিক্ষার্থী
-                    <span style="margin-left: auto; font-size: 0.7rem; opacity: 0.9; font-weight: 600;">(মোট: ${convertToBengaliDigits(partiallyAbsentStudents.length)} জন)</span>
+                    <i class="fas fa-calendar-minus"></i>αª¬αª░αºÇαªòαºìαª╖αª╛αºƒ αªåαªéαª╢αª┐αªò αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ αª╢αª┐αªòαºìαª╖αª╛αª░αºìαªÑαºÇ
                 </div>
                 <div style="overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 6px;">
                     <table class="rpt-subject-table" style="width: 100%; margin: 0; box-shadow: none;">
                         <thead>
                             <tr>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">ক্র.নং</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">রোল</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">নাম</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">বিভাগ</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">যে সকল বিষয়ে অনুপস্থিত</th>
-                                <th style="background: #f8fafc !important; color: #ea580c !important; border-bottom: 2px solid #cbd5e1 !important;">স্ট্যাটাস</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αªòαºìαª░.αª¿αªé</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αª░αºïαª▓</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">αª¿αª╛αª«</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αª¼αª┐αª¡αª╛αªù</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">αª»αºç αª╕αªòαª▓ αª¼αª┐αª╖αºƒαºç αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ</th>
+                                <th style="background: #f8fafc !important; color: #ea580c !important; border-bottom: 2px solid #cbd5e1 !important;">αª╕αºìαªƒαºìαª»αª╛αªƒαª╛αª╕</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1032,7 +889,7 @@ export async function generateReport() {
                                     <td style="text-align: left !important; padding-left: 10px !important; color: #475569; font-size: 0.9em; line-height: 1.4;">
                                         ${st.absentSubjects.map((sub, idx) => `${convertToBengaliDigits(idx + 1)}. ${sub}`).join('<br>')}
                                     </td>
-                                    <td style="color: #ea580c; font-weight: bold; background: #fff7ed;">আংশিক পরীক্ষার্থী</td>
+                                    <td style="color: #ea580c; font-weight: bold; background: #fff7ed;">αªåαªéαª╢αª┐αªò αª¬αª░αºÇαªòαºìαª╖αª╛αª░αºìαªÑαºÇ</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1053,18 +910,17 @@ export async function generateReport() {
         fullyAbsentHtml = `
             <div class="rpt-section" style="margin-top: 40px; page-break-inside: avoid;">
                 <div class="rpt-section-title" style="color: #0f172a; border-bottom: 2px solid #0f172a;">
-                    <i class="fas fa-calendar-times"></i>পরীক্ষায় সকল বিষয়ে অনুপস্থিত শিক্ষার্থী
-                    <span style="margin-left: auto; font-size: 0.7rem; opacity: 0.9; font-weight: 600;">(মোট: ${convertToBengaliDigits(fullyAbsentStudents.length)} জন)</span>
+                    <i class="fas fa-calendar-times"></i>αª¬αª░αºÇαªòαºìαª╖αª╛αºƒ αª╕αªòαª▓ αª¼αª┐αª╖αºƒαºç αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ αª╢αª┐αªòαºìαª╖αª╛αª░αºìαªÑαºÇ
                 </div>
                 <div style="overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 6px;">
                     <table class="rpt-subject-table" style="width: 100%; margin: 0; box-shadow: none;">
                         <thead>
                             <tr>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">ক্র.নং</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">রোল</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">নাম</th>
-                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">বিভাগ</th>
-                                <th style="background: #f8fafc !important; color: #b91c1c !important; border-bottom: 2px solid #cbd5e1 !important;">স্ট্যাটাস</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αªòαºìαª░.αª¿αªé</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αª░αºïαª▓</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; text-align: left !important; padding-left: 10px !important; border-bottom: 2px solid #cbd5e1 !important;">αª¿αª╛αª«</th>
+                                <th style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important;">αª¼αª┐αª¡αª╛αªù</th>
+                                <th style="background: #f8fafc !important; color: #b91c1c !important; border-bottom: 2px solid #cbd5e1 !important;">αª╕αºìαªƒαºìαª»αª╛αªƒαª╛αª╕</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1074,7 +930,7 @@ export async function generateReport() {
                                     <td style="font-weight: bold; color: #0f172a;">${convertToBengaliDigits(st.id)}</td>
                                     <td style="text-align: left !important; padding-left: 10px !important; font-weight: 500;">${st.name}</td>
                                     <td style="color: #475569;">${getGroupBadge(st.group)}</td>
-                                    <td style="color: #dc2626; font-weight: bold; background: #fef2f2;">অনুপস্থিত</td>
+                                    <td style="color: #dc2626; font-weight: bold; background: #fef2f2;">αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1103,17 +959,6 @@ export async function generateReport() {
             .rpt-section-title {
                 color: inherit !important;
             }
-            .rpt-section {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-            }
-            table {
-                page-break-inside: auto;
-            }
-            tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
         }
     </style>
     <div class="rpt-page" id="rpt_page_main">
@@ -1122,92 +967,91 @@ export async function generateReport() {
                 ${ms.watermarkUrl ? `<img src="${ms.watermarkUrl}" class="rpt-logo" alt="Logo">` :
             `<div class="rpt-logo-placeholder"><i class="fas fa-graduation-cap"></i></div>`}
                 <div class="rpt-header-text">
-                    <h1 class="rpt-inst-name">${ms.institutionName || 'শিক্ষা প্রতিষ্ঠানের নাম'}</h1>
+                    <h1 class="rpt-inst-name">${ms.institutionName || 'αª╢αª┐αªòαºìαª╖αª╛ αª¬αºìαª░αªñαª┐αª╖αºìαªáαª╛αª¿αºçαª░ αª¿αª╛αª«'}</h1>
                     ${ms.institutionAddress ? `<p class="rpt-inst-addr">${ms.institutionAddress}</p>` : ''}
                 </div>
             </div>
 
             <div class="rpt-title-pill">
-                <div class="rpt-pill-left">পরীক্ষার সামারি রিপোর্ট</div>
-                <div class="rpt-pill-right">${examName} — ${rptSession}</div>
+                <div class="rpt-pill-left">αª¬αª░αºÇαªòαºìαª╖αª╛αª░ αª╕αª╛αª«αª╛αª░αª┐ αª░αª┐αª¬αºïαª░αºìαªƒ</div>
+                <div class="rpt-pill-right">${examName} ΓÇö ${rptSession}</div>
             </div>
 
             <div class="rpt-meta-row" style="margin-top: 20px; margin-bottom: 25px;">
                 <div class="rpt-meta-item">
                     <i class="fas fa-graduation-cap"></i> 
-                    <span>শ্রেণি: <strong>${rptClass}</strong></span>
+                    <span>αª╢αºìαª░αºçαªúαª┐: <strong>${rptClass}</strong></span>
                 </div>
                 <div class="rpt-meta-item">
                     <i class="fas fa-calendar-check"></i> 
-                    <span>সেশন: <strong>${rptSession}</strong></span>
+                    <span>αª╕αºçαª╢αª¿: <strong>${rptSession}</strong></span>
                 </div>
                 <div class="rpt-meta-item">
                     <i class="fas fa-list-ul"></i> 
-                    <span>মোট বিষয়: <strong>${convertToBengaliDigits(subjects.length)}</strong></span>
+                    <span>αª«αºïαªƒ αª¼αª┐αª╖αºƒ: <strong>${convertToBengaliDigits(subjects.length)}</strong></span>
                 </div>
             </div>
 
-            <div class="rpt-section" style="page-break-inside: avoid;">
+            <div class="rpt-section">
                 <div class="rpt-section-title">
-                    <i class="fas fa-chart-bar"></i> সামগ্রিক ফলাফল পরিসংখ্যান
-                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(সকল বিষয়ের পাশ মার্ক বিবেচনায়)</span>
+                    <i class="fas fa-chart-bar"></i> αª╕αª╛αª«αªùαºìαª░αª┐αªò αª½αª▓αª╛αª½αª▓ αª¬αª░αª┐αª╕αªéαªûαºìαª»αª╛αª¿
+                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(αª╕αªòαª▓ αª¼αª┐αª╖αºƒαºçαª░ αª¬αª╛αª╢ αª«αª╛αª░αºìαªò αª¼αª┐αª¼αºçαªÜαª¿αª╛αºƒ)</span>
                 </div>
                 <div class="rpt-stats-grid">
                     <div class="rpt-stat-card rpt-stat-total">
                         <div class="rpt-stat-icon"><i class="fas fa-users"></i></div>
                         <div class="rpt-stat-info">
                             <span class="rpt-stat-value">${convertToBengaliDigits(gT)}</span>
-                            <span class="rpt-stat-label">মোট শিক্ষার্থী</span>
+                            <span class="rpt-stat-label">αª«αºïαªƒ αª╢αª┐αªòαºìαª╖αª╛αª░αºìαªÑαºÇ</span>
                         </div>
                     </div>
                     <div class="rpt-stat-card rpt-stat-examinees">
                         <div class="rpt-stat-icon"><i class="fas fa-user-check"></i></div>
                         <div class="rpt-stat-info">
                             <span class="rpt-stat-value">${convertToBengaliDigits(gE)}</span>
-                            <span class="rpt-stat-label">পরীক্ষায় অংশগ্রহণ</span>
+                            <span class="rpt-stat-label">αª¬αª░αºÇαªòαºìαª╖αª╛αª»αª╝ αªàαªéαª╢αªùαºìαª░αª╣αªú</span>
                         </div>
                     </div>
                     <div class="rpt-stat-card rpt-stat-absent">
                         <div class="rpt-stat-icon" style="background: #fdf4ff !important; color: #a21caf !important;"><i class="fas fa-user-minus"></i></div>
                         <div class="rpt-stat-info">
                             <span class="rpt-stat-value" style="color: #a21caf !important;">${convertToBengaliDigits(gT - gE)}</span>
-                            <span class="rpt-stat-label">অনুপস্থিত</span>
+                            <span class="rpt-stat-label">αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ</span>
                         </div>
                     </div>
                     <div class="rpt-stat-card rpt-stat-pass">
                         <div class="rpt-stat-icon"><i class="fas fa-check-circle"></i></div>
                         <div class="rpt-stat-info">
-                            <span class="rpt-stat-value">${convertToBengaliDigits(gP)} জন</span>
-                            <span class="rpt-stat-label">সকল বিষয়ে পাশ</span>
+                            <span class="rpt-stat-value">${convertToBengaliDigits(gP)} αª£αª¿</span>
+                            <span class="rpt-stat-label">αª╕αªòαª▓ αª¼αª┐αª╖αª»αª╝αºç αª¬αª╛αª╢</span>
                         </div>
                     </div>
                     <div class="rpt-stat-card rpt-stat-fail">
                         <div class="rpt-stat-icon"><i class="fas fa-times-circle"></i></div>
                         <div class="rpt-stat-info">
-                            <span class="rpt-stat-value">${convertToBengaliDigits(gF)} জন</span>
-                            <span class="rpt-stat-label">ফেল</span>
+                            <span class="rpt-stat-value">${convertToBengaliDigits(gF)} αª£αª¿</span>
+                            <span class="rpt-stat-label">αª½αºçαª▓</span>
                         </div>
                     </div>
-                <div class="rpt-stat-card rpt-stat-rate">
+                    <div class="rpt-stat-card rpt-stat-rate">
                         <div class="rpt-stat-icon"><i class="fas fa-percentage"></i></div>
                         <div class="rpt-stat-info">
                             <span class="rpt-stat-value">${convertToBengaliDigits(pRate)}%</span>
-                            <span class="rpt-stat-label">পাশের হার</span>
+                            <span class="rpt-stat-label">αª¬αª╛αª╢αºçαª░ αª╣αª╛αª░</span>
                         </div>
                     </div>
                 </div>
             </div>
-            ${state.isTutorialReportMode ? generateGradingPolicySection(subjects, hiddenSet, tutorialCustomMarks) : ''}
 
-            <div class="rpt-section" style="page-break-inside: avoid;">
+            <div class="rpt-section">
                 <div class="rpt-section-title">
-                    <i class="fas fa-layer-group"></i> বিভাগভিত্তিক ফলাফল বিশ্লেষণ
-                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(সকল বিষয়ের পাশ মার্ক বিবেচনায়)</span>
+                    <i class="fas fa-layer-group"></i> αª¼αª┐αª¡αª╛αªùαª¡αª┐αªñαºìαªñαª┐αªò αª½αª▓αª╛αª½αª▓ αª¼αª┐αª╢αºìαª▓αºçαª╖αªú
+                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(αª╕αªòαª▓ αª¼αª┐αª╖αºƒαºçαª░ αª¬αª╛αª╢ αª«αª╛αª░αºìαªò αª¼αª┐αª¼αºçαªÜαª¿αª╛αºƒ)</span>
                 </div>
                 <table class="rpt-summary-table">
                     <thead>
                         <tr>
-                            <th>বিভাগ</th><th>মোট</th><th>অংশগ্রহণ</th><th>অনুপস্থিত</th><th>পাশ</th><th>ফেল</th><th>পাশের হার</th>
+                            <th>αª¼αª┐αª¡αª╛αªù</th><th>αª«αºïαªƒ</th><th>αªàαªéαª╢αªùαºìαª░αª╣αªú</th><th>αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ</th><th>αª¬αª╛αª╢</th><th>αª½αºçαª▓</th><th>αª¬αª╛αª╢αºçαª░ αª╣αª╛αª░</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1227,7 +1071,7 @@ export async function generateReport() {
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td>সর্বমোট</td>
+                            <td>αª╕αª░αºìαª¼αª«αºïαªƒ</td>
                             <td>${convertToBengaliDigits(gT)}</td>
                             <td>${convertToBengaliDigits(gE)}</td>
                             <td>${convertToBengaliDigits(gT - gE)}</td>
@@ -1239,10 +1083,10 @@ export async function generateReport() {
                 </table>
             </div>
 
-            <div class="rpt-section" style="page-break-inside: avoid;">
+            <div class="rpt-section">
                 <div class="rpt-section-title">
-                    <i class="fas fa-medal"></i> গ্রেডিং পরিসংখ্যান
-                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(সকল বিষয়ের পাশ মার্ক বিবেচনায়)</span>
+                    <i class="fas fa-medal"></i> αªùαºìαª░αºçαªíαª┐αªé αª¬αª░αª┐αª╕αªéαªûαºìαª»αª╛αª¿
+                    <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8; margin-left: 8px;">(αª╕αªòαª▓ αª¼αª┐αª╖αºƒαºçαª░ αª¬αª╛αª╢ αª«αª╛αª░αºìαªò αª¼αª┐αª¼αºçαªÜαª¿αª╛αºƒ)</span>
                 </div>
                 <div class="rpt-grade-grid">
                     ${['A+', 'A', 'A-', 'B', 'C', 'D', 'F'].map(grade => {
@@ -1252,35 +1096,35 @@ export async function generateReport() {
                         <div class="rpt-grade-item rpt-g-${gClass}">
                             <div class="rpt-grade-letter">${grade}</div>
                             <div class="rpt-grade-count">${convertToBengaliDigits(count)}</div>
-                            <div class="rpt-grade-label">জন</div>
+                            <div class="rpt-grade-label">αª£αª¿</div>
                         </div>`;
             }).join('')}
                 </div>
             </div>
 
-            <div class="rpt-section" style="page-break-inside: avoid;">
+            <div class="rpt-section">
                 <div class="rpt-section-title">
-                    <i class="fas fa-book-open"></i>পরীক্ষার বিষয়ভিত্তিক বিস্তারিত ফলাফল 
-                    <span style="margin-left: auto; font-size: 0.7rem; opacity: 0.9; font-weight: 600;">(মোট শিক্ষার্থী: ${convertToBengaliDigits(masterStudents.length)} জন)</span>
+                    <i class="fas fa-book-open"></i>αª¬αª░αºÇαªòαºìαª╖αª╛αª░ αª¼αª┐αª╖αºƒαª¡αª┐αªñαºìαªñαª┐αªò αª¼αª┐αª╕αºìαªñαª╛αª░αª┐αªñ αª½αª▓αª╛αª½αª▓ 
+                    <span style="margin-left: auto; font-size: 0.7rem; opacity: 0.9; font-weight: 600;">(αª«αºïαªƒ αª╢αª┐αªòαºìαª╖αª╛αª░αºìαªÑαºÇ: ${convertToBengaliDigits(masterStudents.length)} αª£αª¿)</span>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="rpt-subject-table">
                         <thead>
                             <tr>
-                                <th rowspan="2" style="text-align: left !important; padding-left: 20px !important; background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">বিষয়ের নাম</th>
-                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">মোট</th>
-                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">অনুপস্থিত</th>
-                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">পরীক্ষার্থী</th>
-                                <th rowspan="2" style="background: #dcfce7 !important; color: #166534 !important; border-bottom: 2px solid #bbf7d0 !important; font-weight: 800 !important;">পাশ</th>
-                                <th rowspan="2" style="background: #fee2e2 !important; color: #991b1b !important; border-bottom: 2px solid #fecaca !important; font-weight: 800 !important;">ফেল(F)</th>
+                                <th rowspan="2" style="text-align: left !important; padding-left: 20px !important; background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">αª¼αª┐αª╖αª»αª╝αºçαª░ αª¿αª╛αª«</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">αª«αºïαªƒ</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">αªàαª¿αºüαª¬αª╕αºìαªÑαª┐αªñ</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">αª¬αª░αºÇαªòαºìαª╖αª╛αª░αºìαªÑαºÇ</th>
+                                <th rowspan="2" style="background: #dcfce7 !important; color: #166534 !important; border-bottom: 2px solid #bbf7d0 !important; font-weight: 800 !important;">αª¬αª╛αª╢</th>
+                                <th rowspan="2" style="background: #fee2e2 !important; color: #991b1b !important; border-bottom: 2px solid #fecaca !important; font-weight: 800 !important;">αª½αºçαª▓(F)</th>
                                 <th colspan="3" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">Achievement</th>
-                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">পাশের হার</th>
-                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">সর্বোচ্চ মার্ক্স</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">αª¬αª╛αª╢αºçαª░ αª╣αª╛αª░</th>
+                                <th rowspan="2" style="background: #f8fafc !important; color: #1e293b !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 800 !important;">αª╕αª░αºìαª¼αºïαªÜαºìαªÜ αª«αª╛αª░αºìαªòαºìαª╕</th>
                             </tr>
                             <tr>
-                                <th style="background: #f8fafc !important; color: #166534 !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">উত্তম(A+,A)</th>
-                                <th style="background: #f8fafc !important; color: #1e40af !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">মাঝারি(A-,B)</th>
-                                <th style="background: #f8fafc !important; color: #ea580c !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">দুর্বল(C,D)</th>
+                                <th style="background: #f8fafc !important; color: #166534 !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">αªëαªñαºìαªñαª«(A+,A)</th>
+                                <th style="background: #f8fafc !important; color: #1e40af !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">αª«αª╛αª¥αª╛αª░αª┐(A-,B)</th>
+                                <th style="background: #f8fafc !important; color: #ea580c !important; border-bottom: 2px solid #cbd5e1 !important; font-weight: 700 !important;">αªªαºüαª░αºìαª¼αª▓(C,D)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1289,13 +1133,23 @@ export async function generateReport() {
                 const examForSubj = relevantExams.find(e => e.subject === subj || e.subjectName === subj);
                 if (!examForSubj || !examForSubj.studentData) return null;
 
-                const cfg = getSubjectCfg(subj);
-                const maxTotal = (cfg && cfg.total !== undefined && cfg.total !== '') ? Number(cfg.total) : 100;
+                const sSubjKey = normalizeText(subj).replace(/\s+/g, '');
+                let cfg = state.subjectConfigs?.[subj] || 
+                    Object.entries(state.subjectConfigs || {}).find(([k]) => 
+                        normalizeText(k).replace(/\s+/g, '') === sSubjKey
+                    )?.[1] || null;
+                if (state.isTutorialReportMode && cfg && cfg.tutorial) {
+                    cfg = cfg.tutorial;
+                }
+
+                if (!cfg) {
+                    cfg = specificConfigs.find(c => normalizeText(c.subjectName) === normalizeText(subj)) || null;
+                }
                 const opts = {
                     writtenPass: (cfg && cfg.writtenPass !== undefined && cfg.writtenPass !== '') ? Number(cfg.writtenPass) : FAILING_THRESHOLD.written,
                     mcqPass: (cfg && cfg.mcqPass !== undefined && cfg.mcqPass !== '') ? Number(cfg.mcqPass) : FAILING_THRESHOLD.mcq,
                     practicalPass: (cfg && cfg.practicalPass !== undefined && cfg.practicalPass !== '') ? Number(cfg.practicalPass) : 0,
-                    totalPass: (cfg && cfg.pass !== undefined && cfg.pass !== '') ? Number(cfg.pass) : (maxTotal * 0.33)
+                    totalPass: (cfg && cfg.total !== undefined && cfg.total !== '') ? Number(cfg.total) * 0.33 : 33
                 };
 
                 let targetData = examForSubj.studentData || [];
@@ -1391,14 +1245,14 @@ export async function generateReport() {
 
             <div class="rpt-footer">
                 ${devFullHtml}
-                <div class="ftr-contact-sub">প্রিন্টের তারিখ: ${todayDate}</div>
+                <div class="ftr-contact-sub">αª¬αºìαª░αª┐αª¿αºìαªƒαºçαª░ αªñαª╛αª░αª┐αªû: ${todayDate}</div>
             </div>
         </div>
     </div>`;
     document.getElementById('reportPreview').innerHTML = reportHtml;
     document.getElementById('rptPreviewHeader').style.display = 'flex';
     document.getElementById('rptPrintBtn').style.display = 'inline-flex';
-    showNotification('রিপোর্ট সফলভাবে তৈরি হয়েছে ✅');
+    showNotification('αª░αª┐αª¬αºïαª░αºìαªƒ αª╕αª½αª▓αª¡αª╛αª¼αºç αªñαºêαª░αª┐ αª╣αºƒαºçαª¢αºç Γ£à');
 }
 
 export function openReportSettings() {
@@ -1423,7 +1277,7 @@ export function openReportSettings() {
             list.innerHTML = `
                 <div style="padding: 20px; text-align: center; color: #64748b;">
                     <i class="fas fa-info-circle" style="font-size: 1.5rem; margin-bottom: 10px; display: block;"></i>
-                    <p>প্রথমে একটি রিপোর্ট তৈরি করুন যাতে বিষয়ের তালিকা পাওয়া যায়।</p>
+                    <p>αª¬αºìαª░αªÑαª«αºç αªÅαªòαªƒαª┐ αª░αª┐αª¬αºïαª░αºìαªƒ αªñαºêαª░αª┐ αªòαª░αºüαª¿ αª»αª╛αªñαºç αª¼αª┐αª╖αºƒαºçαª░ αªñαª╛αª▓αª┐αªòαª╛ αª¬αª╛αªôαºƒαª╛ αª»αª╛αºƒαÑñ</p>
                 </div>`;
         } else {
             list.innerHTML = lastGeneratedSubjects.map(subj => {
@@ -1463,7 +1317,7 @@ export async function saveReportSettings() {
         reportConsiderOptional: considerOptional
     });
 
-    showNotification('রিপোর্ট সেটিংস সংরক্ষিত হয়েছে ✅');
+    showNotification('αª░αª┐αª¬αºïαª░αºìαªƒ αª╕αºçαªƒαª┐αªéαª╕ αª╕αªéαª░αªòαºìαª╖αª┐αªñ αª╣αºƒαºçαª¢αºç Γ£à');
     closeReportSettings();
 
     // Auto-refresh report if we have subjects
@@ -1506,64 +1360,13 @@ export function initReportManager() {
     if (prntBtn) {
         prntBtn.onclick = () => {
             document.body.classList.add('printing-report');
-            
-            // Force Portrait Mode for Report specifically
-            const printStyle = document.createElement('style');
-            printStyle.innerHTML = '@page { size: A4 portrait; margin: 1cm; }';
-            document.head.appendChild(printStyle);
-            
             window.print();
-            
-            // Clean up after print dialog closes
-            setTimeout(() => {
-                if (printStyle.parentNode) {
-                    printStyle.parentNode.removeChild(printStyle);
-                }
-                document.body.classList.remove('printing-report');
-            }, 1000);
+            document.body.classList.remove('printing-report');
         };
     }
 
     // Load dropdowns on init
     populateReportDropdowns();
-
-    // Bind Mode Toggles
-    const regBtn = document.getElementById('rptRegularModeBtn');
-    const tutBtn = document.getElementById('rptTutorialModeBtn');
-    const tutOption = document.getElementById('rptTutorialModeOption');
-
-    const setMode = (mode) => {
-        state.isTutorialReportMode = (mode === 'tutorial');
-        
-        // Update UI buttons
-        if (regBtn && tutBtn) {
-            if (mode === 'tutorial') {
-                tutBtn.classList.add('active');
-                tutBtn.style.background = '#f59e0b';
-                tutBtn.style.color = 'white';
-                regBtn.classList.remove('active');
-                regBtn.style.background = 'transparent';
-                regBtn.style.color = '#059669';
-                if (tutOption) tutOption.style.display = 'block';
-            } else {
-                regBtn.classList.add('active');
-                regBtn.style.background = '#059669';
-                regBtn.style.color = 'white';
-                tutBtn.classList.remove('active');
-                tutBtn.style.background = 'transparent';
-                tutBtn.style.color = '#d97706';
-                if (tutOption) tutOption.style.display = 'none';
-            }
-        }
-        
-        // Reset dropdowns and refresh
-        const examSelect = document.getElementById('rptExamName');
-        if (examSelect) examSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
-        populateReportDropdowns();
-    };
-
-    if (regBtn) regBtn.onclick = () => setMode('regular');
-    if (tutBtn) tutBtn.onclick = () => setMode('tutorial');
 }
 
 window.initReportManager = initReportManager;

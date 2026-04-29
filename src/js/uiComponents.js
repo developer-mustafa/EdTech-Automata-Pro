@@ -437,7 +437,9 @@ export function renderFailedStudents(container, data, options = {}) {
   // Render each student card
   container.innerHTML = paginatedStudents
     .map(student => {
-      const gradeInfo = calculateGrade(student.total);
+      const maxTotal = options.maxTotal || 100;
+      const effectivePct = (options.isTutorial && maxTotal > 0) ? (student.total / maxTotal) * 100 : student.total;
+      const gradeInfo = calculateGrade(effectivePct);
       const failReason = (writtenPass > 0 && student.written !== null && Number(student.written) < writtenPass)
         ? `লিখিত: ${student.written} < ${writtenPass}`
         : (mcqPass > 0 && student.mcq !== null && Number(student.mcq) < mcqPass)
@@ -845,7 +847,9 @@ export function printAllStudents(data, options = {}) {
   }).join('');
 
   const tableRows = sorted.map((s, i) => {
-    const gradeInfo = calculateGrade(s.total);
+    const maxTotal = options.maxTotal || 100;
+    const effectivePct = (options.isTutorial && maxTotal > 0) ? (s.total / maxTotal) * 100 : s.total;
+    const gradeInfo = calculateGrade(effectivePct);
     const status = determineStatus(s, options);
     const isAbs = status === 'অনুপস্থিত';
     const isFailed = status === 'ফেল';
@@ -1092,7 +1096,9 @@ export function renderTable(tbody, data, options = {}) {
   tbody.innerHTML = sortedData
     .map((student) => {
       const rowClass = getGroupClass(student.group);
-      const gradeInfo = calculateGrade(student.total);
+      const maxTotal = options.maxTotal || 100;
+      const effectivePct = (options.isTutorial && maxTotal > 0) ? (student.total / maxTotal) * 100 : student.total;
+      const gradeInfo = calculateGrade(effectivePct);
       const status = determineStatus(student, options);
       const statusClass = status === 'পাস' ? 'status-pass' : status === 'ফেল' ? 'status-fail' : 'status-absent';
       const { writtenPass = FAILING_THRESHOLD.written, mcqPass = FAILING_THRESHOLD.mcq, practicalPass = 0 } = options;
@@ -1271,7 +1277,12 @@ export async function renderSavedExamsList(container, exams, options = {}) {
 
     // Dynamically recalculate stats based on CURRENT config for better sync
     // Filter out disabled/inactive students and apply Subject Mapping from the count
-    const config = (subjectConfigs && subjectConfigs[exam.subject]) || {};
+    let config = (subjectConfigs && subjectConfigs[exam.subject]) || {};
+    const isTutorialExam = exam.examType === 'tutorial';
+    if (isTutorialExam && config.tutorial) {
+      config = config.tutorial;
+    }
+
     let activeStudentData = exam.studentData || [];
 
     // Get mappings to apply
@@ -1305,7 +1316,9 @@ export async function renderSavedExamsList(container, exams, options = {}) {
         writtenPass: (config.writtenPass !== undefined && config.writtenPass !== '') ? Number(config.writtenPass) : undefined,
         mcqPass: (config.mcqPass !== undefined && config.mcqPass !== '') ? Number(config.mcqPass) : undefined,
         practicalPass: (config.practicalPass !== undefined && config.practicalPass !== '') ? Number(config.practicalPass) : 0,
-        totalPass: (config.totalPass !== undefined && config.totalPass !== '') ? Number(config.totalPass) : undefined
+        totalPass: (config.totalPass !== undefined && config.totalPass !== '') ? Number(config.totalPass) : undefined,
+        isTutorial: isTutorialExam,
+        maxTotal: config.total ? Number(config.total) : (isTutorialExam ? 20 : 100)
       })
       : (exam.stats || {});
 

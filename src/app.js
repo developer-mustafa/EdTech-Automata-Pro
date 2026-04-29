@@ -54,16 +54,43 @@ import { initNoticeManager, updateNoticeAcl } from './js/modules/noticeManager.j
  * Recalculate student grades/statuses using CURRENT subject config.
  * Called when loading exam data from Firestore to fix stale old values.
  */
-function recalculateStudentData(studentData, subjectName) {
+function recalculateStudentData(studentData, subjectName, examType = 'regular') {
     if (!studentData || studentData.length === 0) return studentData;
 
-    let subjectConfig = state.subjectConfigs?.[subjectName] || {};
-    if (!subjectConfig || Object.keys(subjectConfig).length === 0) {
-        // Fuzzy match
-        const normalizedName = normalizeText(subjectName);
-        const matchedKey = Object.keys(state.subjectConfigs || {})
-            .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedName);
-        subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
+    let subjectConfig = null;
+    
+    // If it's a tutorial exam, look for tutorial-specific configs first
+    if (examType === 'tutorial') {
+        const suffixes = [' (টিউটোরিয়াল)', ' (Tutorial)', ' ক্লাস টেস্ট', ' Class test', ' Tutorial exam', ' Class test exam', ' ক্লাস টেস্ট পরীক্ষা'];
+        for (const sfx of suffixes) {
+            const targetName = subjectName + sfx;
+            if (state.subjectConfigs?.[targetName]) {
+                subjectConfig = state.subjectConfigs[targetName];
+                break;
+            }
+            const normTarget = normalizeText(targetName).replace(/\s+/g, '');
+            const foundKey = Object.keys(state.subjectConfigs || {}).find(k => k !== 'updatedAt' && normalizeText(k).replace(/\s+/g, '') === normTarget);
+            if (foundKey) {
+                subjectConfig = state.subjectConfigs[foundKey];
+                break;
+            }
+        }
+    }
+
+    if (!subjectConfig) {
+        subjectConfig = state.subjectConfigs?.[subjectName] || {};
+        if (!subjectConfig || Object.keys(subjectConfig).length <= 2) {
+            // Fuzzy match
+            const normalizedName = normalizeText(subjectName);
+            const matchedKey = Object.keys(state.subjectConfigs || {})
+                .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedName);
+            subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
+        }
+        
+        // Fallback to internal .tutorial property if it exists (legacy support)
+        if (examType === 'tutorial' && subjectConfig.tutorial) {
+            subjectConfig = subjectConfig.tutorial;
+        }
     }
 
     const cfgVal = (v) => {
@@ -71,16 +98,14 @@ function recalculateStudentData(studentData, subjectName) {
         return Number(v);
     };
 
-    const writtenPass = cfgVal(subjectConfig.writtenPass);
-    const mcqPass = cfgVal(subjectConfig.mcqPass);
-    const practicalPass = cfgVal(subjectConfig.practicalPass);
-
-    // Build options for determineStatus
+    // Build options for determineStatus using specific config
     const statusOptions = {
         writtenPass: (subjectConfig.writtenPass !== undefined && subjectConfig.writtenPass !== '') ? Number(subjectConfig.writtenPass) : FAILING_THRESHOLD.written,
         mcqPass: (subjectConfig.mcqPass !== undefined && subjectConfig.mcqPass !== '') ? Number(subjectConfig.mcqPass) : FAILING_THRESHOLD.mcq,
         practicalPass: (subjectConfig.practicalPass !== undefined && subjectConfig.practicalPass !== '') ? Number(subjectConfig.practicalPass) : 0,
     };
+
+    const maxTotal = parseInt(subjectConfig.total) || 100;
 
     studentData.forEach(s => {
         const written = (s.written !== null && s.written !== '' && s.written !== undefined) ? Number(s.written) : 0;
@@ -88,9 +113,11 @@ function recalculateStudentData(studentData, subjectName) {
         const practical = (s.practical !== null && s.practical !== '' && s.practical !== undefined) ? Number(s.practical) : 0;
         const total = written + mcq + practical;
 
-        // Recalculate using current formula
+        // Use percentage scaling for grading if it's a tutorial exam
+        const effectivePct = (examType === 'tutorial' && maxTotal > 0) ? (total / maxTotal) * 100 : total;
+
         s.total = total;
-        s.grade = calculateGrade(total).grade;
+        s.grade = calculateGrade(effectivePct).grade;
         s.status = determineStatus(s, statusOptions);
     });
 
@@ -158,8 +185,8 @@ async function filterActiveStudents(studentData, examClass, examSession, examSub
 async function applyExamToState(exam, saveToStorage = false) {
     if (!exam) return;
 
-    // 1. Recalculate grades using current subject configs
-    const raw = recalculateStudentData([...(exam.studentData || [])], exam.subject);
+    // 1. Recalculate grades using current subject configs and exam type (regular/tutorial)
+    const raw = recalculateStudentData([...(exam.studentData || [])], exam.subject, exam.type || 'regular');
 
     // 2. Filter inactive students AND apply subject-mapping eligibility
     const filtered = await filterActiveStudents(raw, exam.class, exam.session, exam.subject);
@@ -591,13 +618,39 @@ async function init() {
 function updateViews() {
     if (state.isLoading) return;
 
-    let subjectConfig = state.subjectConfigs[state.currentSubject]; // Exact match first
+    let subjectConfig = null;
+
+    // Check if the currently loaded exam is a tutorial
+    const loadedExamId = localStorage.getItem('loadedExamId');
+    const currentExam = state.savedExams.find(e => e.docId === loadedExamId);
+    const isTutorialExam = currentExam?.type === 'tutorial' || state.isTutorialMode;
+
+    if (isTutorialExam) {
+        const suffixes = [' (টিউটোরিয়াল)', ' (Tutorial)', ' ক্লাস টেস্ট', ' Class test', ' Tutorial exam', ' Class test exam', ' ক্লাস টেস্ট পরীক্ষা'];
+        for (const sfx of suffixes) {
+            const targetName = state.currentSubject + sfx;
+            if (state.subjectConfigs?.[targetName]) {
+                subjectConfig = state.subjectConfigs[targetName];
+                break;
+            }
+            const normTarget = normalizeText(targetName).replace(/\s+/g, '');
+            const foundKey = Object.keys(state.subjectConfigs || {}).find(k => k !== 'updatedAt' && normalizeText(k).replace(/\s+/g, '') === normTarget);
+            if (foundKey) {
+                subjectConfig = state.subjectConfigs[foundKey];
+                break;
+            }
+        }
+    }
+
     if (!subjectConfig) {
-        // Fuzzy match using centralized normalizeText
-        const normalizedCurrent = normalizeText(state.currentSubject);
-        const matchedKey = Object.keys(state.subjectConfigs)
-            .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
-        subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
+        subjectConfig = state.subjectConfigs[state.currentSubject]; // Exact match first
+        if (!subjectConfig) {
+            // Fuzzy match using centralized normalizeText
+            const normalizedCurrent = normalizeText(state.currentSubject);
+            const matchedKey = Object.keys(state.subjectConfigs)
+                .find(key => key !== 'updatedAt' && normalizeText(key) === normalizedCurrent);
+            subjectConfig = matchedKey ? state.subjectConfigs[matchedKey] : {};
+        }
     }
 
     // SMART THRESHOLD: Determine if we have a real user-defined configuration
@@ -622,7 +675,11 @@ function updateViews() {
         status: state.currentStatusFilter,
         searchTerm: state.currentSearchTerm,
         subject: state.currentSubject
-    }, subjectOptions);
+    }, {
+        ...subjectOptions,
+        isTutorial: isTutorialExam,
+        maxTotal: parseInt(subjectConfig.total) || 100
+    });
 
     renderStats(elements.statsContainer, filteredData, subjectOptions);
     renderGroupStats(elements.groupStatsContainer, state.studentData, {
@@ -1234,17 +1291,27 @@ function initEventListeners() {
     
     const switchRPTMode = (isTutorial) => {
         state.isTutorialReportMode = isTutorial;
+        const rptCalcMode = document.getElementById('rptCalculationMode');
+        const tutOption = document.getElementById('rptTutorialModeOption');
         
         if (isTutorial) {
             rptTutorialBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(245,158,11,0.3);');
             rptRegularBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: transparent; color: #059669; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;');
             rptTutorialBtn?.classList.add('active');
             rptRegularBtn?.classList.remove('active');
+            
+            // Show tutorial option and select it
+            if (tutOption) tutOption.style.display = 'block';
+            if (rptCalcMode) rptCalcMode.value = 'tutorial';
         } else {
             rptRegularBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(5,150,105,0.3);');
             rptTutorialBtn?.setAttribute('style', 'padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: transparent; color: #d97706; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;');
             rptRegularBtn?.classList.add('active');
             rptTutorialBtn?.classList.remove('active');
+            
+            // Hide tutorial option and switch back to auto
+            if (tutOption) tutOption.style.display = 'none';
+            if (rptCalcMode && rptCalcMode.value === 'tutorial') rptCalcMode.value = 'auto';
         }
         
         // Trigger exam name dropdown refresh in report

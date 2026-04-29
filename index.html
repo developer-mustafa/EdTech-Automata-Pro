@@ -2532,7 +2532,7 @@
         </div>
 
         <!-- Tutorial/Regular Mode Toggle for Report -->
-        <div class="rpt-exam-type-toggle" style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-bottom: 1px solid var(--border-color); background: var(--surface);">
+        <div class="rpt-exam-type-toggle no-print" style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-bottom: 1px solid var(--border-color); background: var(--surface);">
           <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-color); opacity: 0.7;"><i class="fas fa-exchange-alt"></i> রিপোর্ট ধরন:</span>
           <div style="display: flex; gap: 6px;">
             <button id="rptRegularModeBtn" class="re-type-btn active" data-type="regular" style="padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: #059669; color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;">
@@ -2555,6 +2555,7 @@
             <label>ফলাফল মোড</label>
             <select id="rptCalculationMode" class="form-control">
               <option value="auto">অটোমেটিক (মার্কশীটের রুলস)</option>
+              <option id="rptTutorialModeOption" value="tutorial" style="display: none;">টিউটোরিয়াল রুলস (অটোমেটিক)</option>
               <option value="combined">কম্বাইন্ড মোড (Paper 1+2)</option>
               <option value="single">সিঙ্গেল পেপার মোড</option>
             </select>
@@ -2593,6 +2594,18 @@
     <!-- ========== PAGE: TABULATION SHEET (টেবুলেশন শীট) ========== -->
     <div id="tabulationPage" class="app-page" style="display: none;">
       <div class="card tab-main-card" style="padding-top: 15px;">
+        <!-- Tutorial/Regular Mode Toggle for Tabulation -->
+        <div class="tab-exam-type-toggle" style="display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-bottom: 1px solid var(--border-color); background: var(--surface);">
+          <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-color); opacity: 0.7;"><i class="fas fa-exchange-alt"></i> পরীক্ষার ধরন:</span>
+          <div style="display: flex; gap: 6px;">
+            <button id="tabRegularModeBtn" class="re-type-btn active" data-type="regular" style="padding: 5px 14px; border-radius: 50px; border: 1.5px solid #059669; background: #059669; color: white; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;">
+              <i class="fas fa-file-alt"></i> সেমেস্টার পরীক্ষা
+            </button>
+            <button id="tabTutorialModeBtn" class="re-type-btn" data-type="tutorial" style="padding: 5px 14px; border-radius: 50px; border: 1.5px solid #f59e0b; background: transparent; color: #d97706; font-weight: 700; font-size: 0.78rem; cursor: pointer; transition: all 0.2s;">
+              <i class="fas fa-clipboard-check"></i> ক্লাস টেস্ট / টিউটোরিয়াল
+            </button>
+          </div>
+        </div>
         <!-- Primary Filter Section (scrolls away) -->
           <!-- Primary Filter Controls (Matches Other Pages) -->
           <div class="result-entry-selectors" style="margin-bottom: 0; border-bottom: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
@@ -4314,6 +4327,18 @@
                     <div
                       style="background: var(--bg-color); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                       <div>
+                        <h4 style="margin: 0; font-size: 1rem; color: var(--primary);">টিউটোরিয়াল ফলাফল সামারি</h4>
+                        <p style="margin: 5px 0 0; font-size: 0.8rem; opacity: 0.7;">টিউটোরিয়াল পরীক্ষার ফলাফল, মার্কস ও অংশগ্রহণের বিবরণ</p>
+                      </div>
+                      <label class="ac-sw">
+                        <input type="checkbox" id="msShowTutorialSummary" checked>
+                        <span class="ac-sw-sl"></span>
+                      </label>
+                    </div>
+
+                    <div
+                      style="background: var(--bg-color); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                      <div>
                         <h4 style="margin: 0; font-size: 1rem; color: var(--primary);">গ্রেডিং স্কেল অংশ</h4>
                         <p style="margin: 5px 0 0; font-size: 0.8rem; opacity: 0.7;">GPA এর গ্রেডিং রেফারেন্স এবং সংখ্যা
                         </p>
@@ -4420,6 +4445,20 @@
                       </div>
                       <label class="ac-sw">
                         <input type="checkbox" id="msIdSearchShowSummary" checked>
+                        <span class="ac-sw-sl"></span>
+                      </label>
+                    </div>
+
+
+
+                    <div
+                      style="background: var(--bg-color); padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                      <div>
+                        <h4 style="margin: 0; font-size: 0.95rem; color: var(--primary);">টিউটোরিয়াল ফলাফল সামারি</h4>
+                        <p style="margin: 3px 0 0; font-size: 0.75rem; opacity: 0.7;">টিউটোরিয়াল পরীক্ষার ফলাফল, মার্কস ও অংশগ্রহণের বিবরণ</p>
+                      </div>
+                      <label class="ac-sw">
+                        <input type="checkbox" id="msIdSearchShowTutorialSummary" checked>
                         <span class="ac-sw-sl"></span>
                       </label>
                     </div>
