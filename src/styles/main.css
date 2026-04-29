@@ -15815,8 +15815,8 @@ body.is-super-admin td.admin-only {
   width: 55px;
   object-fit: contain;
   border-radius: 50%;
-  border: 1px solid #c5a059;
-  padding: 2px;
+  border: 2px solid var(--ms-primary);
+  padding: 3px;
 }
 
 .ms-inst-details {
@@ -15843,14 +15843,11 @@ body.is-super-admin td.admin-only {
   justify-content: center;
   align-items: center;
   gap: 15px !important;
-  border: 1.5px solid #c5a059 !important;
-  /* Elegant Gold/Bronze */
+  border: 2px solid var(--ms-primary) !important;
   border-radius: 50px !important;
-  /* Perfect Pill */
   padding: 6px 30px !important;
   margin: 10px auto 15px !important;
-  background-color: #fffdf8 !important;
-  /* Soft warm tint */
+  background-color: #fff !important;
   max-width: max-content !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
@@ -15859,8 +15856,7 @@ body.is-super-admin td.admin-only {
 .ms-pill-divider {
   width: 5px !important;
   height: 5px !important;
-  background-color: #c5a059 !important;
-  /* Gold Dot */
+  background-color: var(--ms-primary) !important;
   border-radius: 50% !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
