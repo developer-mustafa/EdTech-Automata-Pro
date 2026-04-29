@@ -12830,20 +12830,17 @@ body.is-super-admin td.admin-only {
 }
 
 .ms-table thead tr th {
-  background: #0d5e2e !important;
+  background: var(--ms-primary) !important;
   color: #ffffff !important;
   font-weight: 800 !important;
-  border-bottom: 2px solid #063a1c !important;
-  /* Force a dark line even if bg disappears */
+  border-bottom: 1px solid rgba(0,0,0,0.1) !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
-  /* Add filter to force darkness even in high-contrast mode */
-  filter: brightness(0.85) contrast(1.2);
 }
 
 @media print {
   .ms-table thead tr th {
-    background-color: #0d5e2e !important;
+    background-color: var(--ms-primary) !important;
     color: white !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
