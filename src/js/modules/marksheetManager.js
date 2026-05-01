@@ -20,6 +20,7 @@ import { generateStudentUniqueId } from './studentResultsManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 import { showConfirmModal, showLoading, hideLoading } from './uiManager.js';
 import { APP_VERSION } from '../version.js';
+import { renderTemplateB } from './marksheetTemplateB.js';
 
 let marksheetSettings = {
     institutionName: '',
@@ -1990,6 +1991,98 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
         };
     }
 
+    // Calculate APS Data universally for templates
+    const apsData = calculateAPS({
+        gpa: avgGPA,
+        reScore: totalVisibleCountForAPS > 0 ? (relativeExcellenceSum / totalVisibleCountForAPS) : 0,
+        subjectsCount: totalVisibleCountForAPS,
+        passedSubjects: passedSubjectsCount,
+        weakSubjects: weakSubjectsCount,
+        absentCount: absentCount,
+        failedSubjects: failedSubjectsCount
+    });
+
+    // --- TEMPLATE B RENDERING BRANCH ---
+    const selectedTemplate = document.getElementById('msDesignTemplate')?.value || 'A';
+    if (selectedTemplate === 'B') {
+        // Build subject row data for Template B
+        const templateBSubjectRows = visibleSubjects.map((subjObj, idx) => {
+            const isObj = typeof subjObj === 'object';
+            const subjName = isObj ? subjObj.name : subjObj;
+            const subj = isObj ? (subjObj.paper || subjObj.name) : subjObj;
+            const sSubjKey = normalizeText(subj).replace(/\s+/g, '');
+            const data = student.subjects[sSubjKey] || {};
+            const config = state.subjectConfigs?.[subj] || { total: 100 };
+            const maxTotal = parseInt(config.total) || 100;
+            const total = data.total || 0;
+            const effectivePct = state.isTutorialMode ? (maxTotal > 0 ? (total / maxTotal) * 100 : 0) : total;
+            let grade = getLetterGrade(effectivePct);
+            let gp = getGradePoint(effectivePct);
+            const isCompFail = getMarkClass(data.written, config.writtenPass) === 'ms-mark-fail' ||
+                getMarkClass(data.mcq, config.mcqPass) === 'ms-mark-fail' ||
+                getMarkClass(data.practical, config.practicalPass) === 'ms-mark-fail';
+            if (isCompFail) { grade = 'F'; gp = 0; }
+
+            // Determine isOptional
+            const studentGroup = student.group || '';
+            const optionalSubjectsObj = rules?.optionalSubjects || {};
+            const optKey = getMappedGroupKey(studentGroup, Object.keys(optionalSubjectsObj));
+            const optSubsCheck = (optionalSubjectsObj[optKey] || []).map(s => norm(s));
+            const normSubjName = norm(subjName);
+            const isOptionalCheck = optSubsCheck.some(os => normSubjName === os || normSubjName.includes(os) || os.includes(normSubjName));
+
+            return {
+                name: subjName,
+                mcq: data.mcq || 0,
+                cq: data.written || 0,
+                practical: data.practical || 0,
+                mcqFail: getMarkClass(data.mcq, config.mcqPass) === 'ms-mark-fail',
+                cqFail: getMarkClass(data.written, config.writtenPass) === 'ms-mark-fail',
+                pracFail: getMarkClass(data.practical, config.practicalPass) === 'ms-mark-fail',
+                total: total,
+                grade: grade,
+                gp: gp.toFixed(2),
+                isOptional: isOptionalCheck,
+                optionalBonus: isOptionalCheck ? optionalBonusGP : 0
+            };
+        });
+
+        return renderTemplateB({
+            student,
+            ms,
+            examDisplayName,
+            selectedSession,
+            visibleSubjects,
+            subjectRows: templateBSubjectRows,
+            grandTotal,
+            maxGrand: maxGrand,
+            avgGPA,
+            overallGrade,
+            allPassed,
+            resultText,
+            optionalBonusGP,
+            tutorialExtraGP,
+            tutIntEnabled,
+            tutCount,
+            totalTutorialEarnedPoints,
+            history,
+            studentRemark,
+            uid,
+            signaturesToRender,
+            watermarkHtml,
+            todayDate,
+            isAbsentMark,
+            failedSubjectsCount,
+            exactRanks,
+            apsData: apsData,
+            progressEnabled: marksheetSettings.progressEnabled !== false,
+            highestMarks,
+            isCombinedMode,
+            isIdSearch,
+        });
+    }
+    // --- END TEMPLATE B ---
+
     return `
         <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" 
              id="ms_page_${student.id}_${student.group}" 
@@ -2442,16 +2535,6 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
                 <!-- APS Progress Scale Section -->
                 ${marksheetSettings.progressEnabled !== false ? (() => {
-            const apsData = calculateAPS({
-                gpa: avgGPA,
-                reScore: totalVisibleCountForAPS > 0 ? (relativeExcellenceSum / totalVisibleCountForAPS) : 0,
-                subjectsCount: totalVisibleCountForAPS,
-                passedSubjects: passedSubjectsCount,
-                weakSubjects: weakSubjectsCount,
-                absentCount: absentCount,
-                failedSubjects: failedSubjectsCount
-            });
-
             return `
                     <div class="ms-progress-section" style="margin-top: 10px; width: 100%; page-break-inside: avoid;">
                         <span class="ms-extra-title" style="margin-bottom: 5px;">শিক্ষার্থীর একাডেমিক অগ্রগতি স্কেল (APS) ${apsData.isSerious ? '<span style="color: #059669; font-weight: 800; font-size: 0.6rem; margin-left: 8px; vertical-align: middle; background: #ecfdf5; padding: 1px 6px; border-radius: 4px; border: 1px solid #10b98140;">★ SERIOUS STUDENT</span>' : ''}</span>
