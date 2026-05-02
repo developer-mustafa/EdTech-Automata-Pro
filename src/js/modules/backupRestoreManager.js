@@ -550,6 +550,33 @@ export function initBackupRestoreManager() {
         });
     }
 
+    // Meta Data Backup
+    const backupMetaBtn = document.getElementById('brBackupMetaBtn');
+    if (backupMetaBtn) {
+        backupMetaBtn.addEventListener('click', async () => {
+            backupMetaBtn.disabled = true;
+            
+            // Define collections that represent metadata/structure (NO students, exams, users, or teacher_assignments)
+            const metaCollections = ['examConfigs', 'tutorialExamConfigs', 'academicStructure', 'accessControl', 'notices'];
+            
+            const data = await createBackup({ type: 'metadata', collections: metaCollections }, (pct, msg) => {
+                updateProgress(backupProgress, backupProgressBar, backupProgressText, pct, msg);
+            });
+            
+            if (data) {
+                downloadBackupFile(data);
+                await saveBackupLog({
+                    type: 'backup', mode: 'metadata',
+                    totalDocuments: data.meta.totalDocuments,
+                    timestamp: new Date().toISOString(),
+                    performedBy: state.currentUser?.uid
+                });
+                loadAndRenderHistory();
+            }
+            backupMetaBtn.disabled = false;
+        });
+    }
+
     // Selective Backup
     if (backupSelectiveBtn) {
         backupSelectiveBtn.addEventListener('click', async () => {
