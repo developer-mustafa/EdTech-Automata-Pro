@@ -2052,7 +2052,9 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 isOptional: isOptionalCheck,
                 optionalBonus: isOptionalCheck ? optionalBonusGP : 0,
                 fullMarks: maxTotal,
-                highestMark: highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'
+                highestMark: highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-',
+                tutorialAvg: data.tutorialAvg || 0,
+                tutorialEarnedPoint: data.tutorialEarnedPoint || 0
             };
         });
 

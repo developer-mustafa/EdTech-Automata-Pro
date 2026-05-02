@@ -136,6 +136,18 @@ export function renderTemplateB(data) {
                     </div>
                 </td>
                 <td class="msb-td-num">${row.highestMark}</td>
+                ${tutIntEnabled && tutCount > 0 ? (() => {
+                        const tAvg = row.tutorialAvg || 0;
+                        const point = row.tutorialEarnedPoint || 0;
+                        const pointHtml = point > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; color: #047857; font-size: 0.55rem; font-weight: 800; background: #ecfdf5; padding: 1.5px 4px; border-radius: 6px; border: 0.5px solid #6ee7b7; line-height: 1;">+${point}</span>` : '';
+                        return `<td class="msb-td-num" style="padding: 0;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 24px; color:#6d28d9; font-weight:600; box-sizing: border-box;">
+                                <div style="flex: 1; visibility: hidden;"></div>
+                                <div style="flex: 0 1 auto; text-align: center; padding: 0 2px;">${tAvg > 0 ? tAvg : '-'}</div>
+                                <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 3px;">${pointHtml}</div>
+                            </div>
+                        </td>`;
+                    })() : ''}
                 <td class="msb-td-num">${row.fullMarks}</td>
                 <td class="msb-td-num ${row.mcqFail ? 'msb-mark-fail' : ''}">${row.mcq || '-'}</td>
                 <td class="msb-td-num ${row.cqFail ? 'msb-mark-fail' : ''}">${row.cq || '-'}</td>
@@ -155,6 +167,18 @@ export function renderTemplateB(data) {
             <td class="msb-td-num">${toBnNum(idx + 1)}</td>
             <td class="msb-td-subject">${row.name}</td>
             <td class="msb-td-num">${row.highestMark}</td>
+            ${tutIntEnabled && tutCount > 0 ? (() => {
+                        const tAvg = row.tutorialAvg || 0;
+                        const point = row.tutorialEarnedPoint || 0;
+                        const pointHtml = point > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; color: #047857; font-size: 0.55rem; font-weight: 800; background: #ecfdf5; padding: 1.5px 4px; border-radius: 6px; border: 0.5px solid #6ee7b7; line-height: 1;">+${point}</span>` : '';
+                        return `<td class="msb-td-num" style="padding: 0;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 24px; color:#6d28d9; font-weight:600; box-sizing: border-box;">
+                                <div style="flex: 1; visibility: hidden;"></div>
+                                <div style="flex: 0 1 auto; text-align: center; padding: 0 2px;">${tAvg > 0 ? tAvg : '-'}</div>
+                                <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 3px;">${pointHtml}</div>
+                            </div>
+                        </td>`;
+                    })() : ''}
             <td class="msb-td-num">${row.fullMarks}</td>
             <td class="msb-td-num ${row.mcqFail ? 'msb-mark-fail' : ''}">${row.mcq || '-'}</td>
             <td class="msb-td-num ${row.cqFail ? 'msb-mark-fail' : ''}">${row.cq || '-'}</td>
@@ -381,6 +405,7 @@ export function renderTemplateB(data) {
                             <th class="msb-th-sl">ক্র.</th>
                             <th class="msb-th-subject">বিষয়ের নাম</th>
                             <th class="msb-th-num">সর্বোচ্চ</th>
+                            ${(tutIntEnabled && tutCount > 0) ? '<th class="msb-th-num" style="width: 50px;">টি.গড়</th>' : ''}
                             <th class="msb-th-num">পূর্ণমান</th>
                             <th class="msb-th-num">MCQ</th>
                             <th class="msb-th-num">CQ</th>
