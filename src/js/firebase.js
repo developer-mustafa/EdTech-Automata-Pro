@@ -5,7 +5,6 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getAnalytics } from 'firebase/analytics';
 
 // Firebase configuration (from environment variables or fallbacks for CI/CD)
 export const firebaseConfig = {
@@ -42,11 +41,19 @@ export const db = initializeFirestore(app, {
 // Initialize Auth
 export const auth = getAuth(app);
 
-// Initialize Analytics & Performance Monitoring
-export const analytics = getAnalytics(app);
+// Lazy-load Analytics & Performance Monitoring
+export let analytics = null;
+export let perf = null;
 
-import { getPerformance } from 'firebase/performance';
-export const perf = getPerformance(app);
+if (typeof window !== 'undefined') {
+    Promise.all([
+        import('firebase/analytics'),
+        import('firebase/performance')
+    ]).then(([{ getAnalytics }, { getPerformance }]) => {
+        analytics = getAnalytics(app);
+        perf = getPerformance(app);
+    }).catch(err => console.warn('Non-critical: Firebase Analytics/Performance failed to load', err));
+}
 
 // Export app instance
 export default app;
