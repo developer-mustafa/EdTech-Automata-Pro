@@ -386,10 +386,18 @@ export function renderTemplateB(data) {
                             <span>উপস্থিতি</span>
                             <strong style="color: ${attendanceStatus === 'উপস্থিত' ? '#2563eb' : (attendanceStatus === 'আংশিক উপস্থিত' ? '#d97706' : '#dc2626')} !important; -webkit-text-fill-color: ${attendanceStatus === 'উপস্থিত' ? '#2563eb' : (attendanceStatus === 'আংশিক উপস্থিত' ? '#d97706' : '#dc2626')} !important;">${attendanceStatus || 'উপস্থিত'}</strong>
                         </div>
-                        <div class="msb-sum-detail" style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                            <i class="fas fa-exclamation-circle" style="color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important; -webkit-text-fill-color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important; margin-top: 2px;"></i>
-                            <strong style="color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important; -webkit-text-fill-color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important; line-height: 1;">${failedSubjectsCount > 0 ? `${toBnNum(failedSubjectsCount)} বিষয়ে ফেল` : 'সব বিষয়ে উত্তীর্ণ'}</strong>
-                        </div>
+                        ${(() => {
+                            let detailCount = 1;
+                            if (tutIntEnabled && tutCount > 0 && totalTutorialEarnedPoints > 0) detailCount++;
+                            if (optionalBonusGP > 0) detailCount++;
+                            const isAlone = detailCount % 2 === 0;
+                            const failColor = failedSubjectsCount > 0 ? '#dc2626' : '#16A34A';
+                            const failText = failedSubjectsCount > 0 ? `${toBnNum(failedSubjectsCount)} বিষয়ে ফেল` : 'সব বিষয়ে উত্তীর্ণ';
+                            return `<div class="msb-sum-detail" style="display: flex; align-items: center; justify-content: center; gap: 5px;${isAlone ? ' grid-column: 1 / -1;' : ''}">
+                                <i class="fas fa-exclamation-circle" style="color: ${failColor} !important; -webkit-text-fill-color: ${failColor} !important; margin-top: 2px;"></i>
+                                <strong style="color: ${failColor} !important; -webkit-text-fill-color: ${failColor} !important; line-height: 1;">${failText}</strong>
+                        </div>`;
+                        })()}
                     </div>
                 </div>
             </div>
