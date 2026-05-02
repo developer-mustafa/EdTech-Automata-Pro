@@ -515,17 +515,21 @@ export function renderTemplateB(data) {
                 ${(() => {
             if (!putQrInGrid) return '';
             return `
-                <div class="msb-bottom-card msb-qr-card" style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px 15px;">
-                    <!-- QR and ID Block -->
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
-                        <canvas class="ms-mr-qr-canvas" data-uid="${uid}" data-exam="${examDisplayName}" data-name="${student.name}" style="max-height: 80px; width: 80px;"></canvas>
-                        <div style="font-size: 0.58rem; color: #94a3b8; font-weight: 700; font-family: monospace; letter-spacing: -0.2px;">${uid}</div>
+                <div class="msb-bottom-card msb-qr-card" style="display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; min-height: 110px;">
+                    <!-- Centered QR & ID -->
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; margin-right: 20px;">
+                        <div style="background: #fff; padding: 3px; border-radius: 4px; border: 1px solid #f1f5f9;">
+                            <canvas class="ms-mr-qr-canvas" data-uid="${uid}" data-exam="${examDisplayName}" data-name="${student.name}" style="max-height: 80px; width: 80px;"></canvas>
+                        </div>
+                        <div style="font-size: 0.58rem; color: #475569; font-weight: 700; font-family: monospace; letter-spacing: 0.5px; background: #f8fafc; padding: 1px 6px; border-radius: 3px; border: 1px solid #e2e8f0;">ID: ${uid}</div>
                     </div>
                     
-                    <!-- Vertical Info Block -->
-                    <div style="display: flex; align-items: center; height: 80px; border-left: 1px solid #f1f5f9; padding-left: 10px; writing-mode: vertical-rl; transform: rotate(180deg); gap: 6px;">
-                        <span style="font-size: 0.6rem; font-weight: 800; color: #cbd5e1; white-space: nowrap; letter-spacing: 1px;">SCAN TO VERIFY</span>
-                        <span style="font-size: 0.55rem; font-weight: 700; color: #3b82f6; white-space: nowrap; text-transform: lowercase;">${window.location.hostname}</span>
+                    <!-- Professional Vertical Info Tag (Right Side) -->
+                    <div style="position: absolute; right: 10px; top: 10px; bottom: 10px; width: 25px; border-left: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); padding-left: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.52rem; font-weight: 800; color: #cbd5e1; white-space: nowrap; letter-spacing: 1.5px; text-transform: uppercase;">Verification Info</span>
+                            <span style="font-size: 0.52rem; font-weight: 700; color: #3b82f6; white-space: nowrap; opacity: 0.8;">${window.location.hostname}</span>
+                        </div>
                     </div>
                 </div>`;
         })()}
