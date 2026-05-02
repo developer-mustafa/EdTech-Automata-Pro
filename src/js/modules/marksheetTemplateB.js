@@ -532,7 +532,7 @@ export function renderTemplateB(data) {
                             <div class="msb-qr-link">@ ${window.location.hostname}</div>
                         </div>
                     </div>` : ''}
-                    <div class="msb-footer-signatures">
+                    <div class="msb-footer-signatures" style="display: grid; grid-template-columns: repeat(${(signaturesToRender || []).length || 2}, 1fr); width: 100%; justify-items: center; gap: 20px; padding: 0 15px;">
                         ${sigHtml}
                     </div>
                 </div>
