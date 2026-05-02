@@ -171,15 +171,19 @@ export async function createBackup(options = {}, onProgress = () => {}) {
 /**
  * Download backup data as JSON file
  */
-export function downloadBackupFile(backupData) {
+export function downloadBackupFile(backupData, customPrefix = null) {
     if (!backupData) return;
     const json = JSON.stringify(backupData, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0, 10);
+    const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
     a.href = url;
-    a.download = `EdTechPro_Backup_${backupData.meta.backupType}_${dateStr}.json`;
+    
+    const prefix = customPrefix ? customPrefix : `EdTechPro_Backup_${backupData.meta.backupType}`;
+    a.download = `${prefix}_${dateStr}_${timeStr}.json`;
+    
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -279,7 +283,7 @@ export async function executeRestore(backupData, options = {}, onProgress = () =
         const rollbackBackup = await createBackup({ type: 'full' }, () => {}); // silent progress
         if (rollbackBackup) {
             // Save it to a staging location or download it automatically
-            downloadBackupFile(rollbackBackup);
+            downloadBackupFile(rollbackBackup, 'EdTechPro_Emergency_Rollback');
             showNotification('রোলব্যাক ব্যাকআপ সেভ করা হয়েছে', 'success');
         }
     } catch (e) {
