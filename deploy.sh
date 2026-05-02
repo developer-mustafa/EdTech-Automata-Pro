@@ -13,7 +13,7 @@ echo -e "${BLUE}--- Starting Deployment ---${NC}"
 
 # 1. Pull the latest code from GitHub
 echo -e "${GREEN}Step 1: Pulling latest changes from Git...${NC}"
-git pull origin development
+git pull origin main
 
 # 2. Install Dependencies
 echo -e "${GREEN}Step 2: Installing dependencies...${NC}"
