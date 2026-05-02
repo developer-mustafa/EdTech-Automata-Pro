@@ -517,11 +517,14 @@ export function renderTemplateB(data) {
             return `
                 <div class="msb-bottom-card msb-qr-card" style="display: flex; align-items: center; justify-content: center; padding: 12px; position: relative; min-height: 110px;">
                     <!-- Centered QR & ID -->
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; margin-right: 20px;">
-                        <div style="background: #fff; padding: 3px; border-radius: 4px; border: 1px solid #f1f5f9;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-right: 25px;">
+                        <div style="background: #fff; padding: 5px; border-radius: 6px; border: 1px solid #f1f5f9; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
                             <canvas class="ms-mr-qr-canvas" data-uid="${uid}" data-exam="${examDisplayName}" data-name="${student.name}" style="max-height: 80px; width: 80px;"></canvas>
                         </div>
-                        <div style="font-size: 0.58rem; color: #475569; font-weight: 700; font-family: monospace; letter-spacing: 0.5px; background: #f8fafc; padding: 1px 6px; border-radius: 3px; border: 1px solid #e2e8f0;">ID: ${uid}</div>
+                        <div style="font-size: 0.52rem; color: #64748b; font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.8px; background: #f8fafc; padding: 2px 10px; border-radius: 100px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 4px; text-transform: uppercase;">
+                            <i class="fas fa-fingerprint" style="font-size: 0.5rem; color: #3b82f6;"></i>
+                            ID: ${uid}
+                        </div>
                     </div>
                     
                     <!-- Professional Vertical Info Tag (Right Side) -->
