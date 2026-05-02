@@ -134,6 +134,8 @@ export function renderTemplateB(data) {
                         <div class="msb-opt-subject">${row.name}</div>
                     </div>
                 </td>
+                <td class="msb-td-num">${row.highestMark}</td>
+                <td class="msb-td-num">${row.fullMarks}</td>
                 <td class="msb-td-num ${row.mcqFail ? 'msb-mark-fail' : ''}">${row.mcq || '-'}</td>
                 <td class="msb-td-num ${row.cqFail ? 'msb-mark-fail' : ''}">${row.cq || '-'}</td>
                 <td class="msb-td-num ${row.pracFail ? 'msb-mark-fail' : ''}">${row.practical || '-'}</td>
@@ -149,6 +151,8 @@ export function renderTemplateB(data) {
         return `<tr>
             <td class="msb-td-num">${toBnNum(idx + 1)}</td>
             <td class="msb-td-subject">${row.name}</td>
+            <td class="msb-td-num">${row.highestMark}</td>
+            <td class="msb-td-num">${row.fullMarks}</td>
             <td class="msb-td-num ${row.mcqFail ? 'msb-mark-fail' : ''}">${row.mcq || '-'}</td>
             <td class="msb-td-num ${row.cqFail ? 'msb-mark-fail' : ''}">${row.cq || '-'}</td>
             <td class="msb-td-num ${row.pracFail ? 'msb-mark-fail' : ''}">${row.practical || '-'}</td>
@@ -165,12 +169,12 @@ export function renderTemplateB(data) {
     const getRankText = (rankVal) => {
         if (rankVal === 'মেধাক্রম নেই' || rankVal === '-' || !rankVal) return '-';
         if (typeof rankVal === 'string' && /[মর্থষ্ঠ]/.test(rankVal)) return rankVal;
-        
+
         let engStr = String(rankVal);
-        const bnToEn = {'০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9'};
+        const bnToEn = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
         engStr = engStr.replace(/[০-৯]/g, c => bnToEn[c] || c);
         const eng = parseInt(engStr, 10);
-        
+
         if (isNaN(eng)) return rankVal;
         if (eng === 1) return '১ম';
         if (eng === 2) return '২য়';
@@ -207,7 +211,7 @@ export function renderTemplateB(data) {
     const showPerformance = progressEnabled;
     const showComments = (ms.showComments !== false) && !(isIdSearch && ms.idSearchShowComments === false);
     const showQRCode = (ms.showQRCode !== false) && !(isIdSearch && ms.idSearchShowQRCode === false);
-    
+
     // Note: showClassRank and showGroupRank are already declared above for the history table logic
 
     let activeCards = 0;
@@ -344,7 +348,7 @@ export function renderTemplateB(data) {
                         </div>` : ''}
                         <div class="msb-sum-detail">
                             <i class="fas fa-exclamation-circle" style="color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important; -webkit-text-fill-color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important;"></i>
-                            <span>বিষয়ভিত্তিক অবস্থা</span>
+                            <span>অবস্থা</span>
                             <strong style="color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important; -webkit-text-fill-color: ${failedSubjectsCount > 0 ? '#dc2626' : '#16A34A'} !important;">${failedSubjectsCount > 0 ? `${toBnNum(failedSubjectsCount)} বিষয়ে ফেল` : 'সব বিষয়ে উত্তীর্ণ'}</strong>
                         </div>
                     </div>
@@ -361,6 +365,8 @@ export function renderTemplateB(data) {
                         <tr>
                             <th class="msb-th-sl">ক্র.</th>
                             <th class="msb-th-subject">বিষয়ের নাম</th>
+                            <th class="msb-th-num">সর্বোচ্চ</th>
+                            <th class="msb-th-num">পূর্ণমান</th>
                             <th class="msb-th-num">MCQ</th>
                             <th class="msb-th-num">CQ</th>
                             <th class="msb-th-num">Practical</th>
@@ -402,8 +408,8 @@ export function renderTemplateB(data) {
             <div class="msb-bottom-grid">
                 <!-- History -->
                 ${(() => {
-                    if (!showRanking) return '';
-                    return `
+            if (!showRanking) return '';
+            return `
                 <div class="msb-bottom-card">
                     <div class="msb-bottom-card-title"><i class="fas fa-history"></i> ফলাফলের ইতিহাস ও মেধাক্রম</div>
                     <table class="msb-history-table">
@@ -417,12 +423,12 @@ export function renderTemplateB(data) {
                         </tbody>
                     </table>
                 </div>`;
-                })()}
+        })()}
 
                 <!-- Performance Circle -->
                 ${(() => {
-                    if (!showPerformance) return '';
-                    return `
+            if (!showPerformance) return '';
+            return `
                 <div class="msb-bottom-card msb-perf-card">
                     <div class="msb-bottom-card-title"><i class="fas fa-chart-pie"></i> পারফরমান্স বিশ্লেষণ</div>
                     <div class="msb-perf-circle-wrapper">
@@ -437,12 +443,12 @@ export function renderTemplateB(data) {
                         <div class="msb-perf-badge">${perfLabel} <i class="fas fa-thumbs-up"></i></div>
                     </div>
                 </div>`;
-                })()}
+        })()}
 
                 <!-- Comments -->
                 ${(() => {
-                    if (!showComments) return '';
-                    return `
+            if (!showComments) return '';
+            return `
                 <div class="msb-bottom-card msb-comment-card">
                     <div class="msb-bottom-card-title"><i class="fas fa-comment-dots"></i> মন্তব্য</div>
                     <div class="msb-comment-body">
@@ -450,12 +456,12 @@ export function renderTemplateB(data) {
                         <div class="msb-comment-stars">${starsHtml}</div>
                     </div>
                 </div>`;
-                })()}
+        })()}
 
                 <!-- Ranking Analysis (Class/Group) -->
                 ${(() => {
-                    if (!showClassRank && !showGroupRank) return '';
-                    return `
+            if (!showClassRank && !showGroupRank) return '';
+            return `
                 <div class="msb-bottom-card msb-ranking-card">
                     <div class="msb-bottom-card-title"><i class="fas fa-medal"></i> মেধাক্রম বিশ্লেষণ</div>
                     <div class="msb-ranking-content" style="display: flex; flex-direction: column; gap: 10px; padding: 10px 5px;">
@@ -477,18 +483,18 @@ export function renderTemplateB(data) {
                         </div>` : ''}
                     </div>
                 </div>`;
-                })()}
+        })()}
 
                 <!-- QR Code (if in grid) -->
                 ${(() => {
-                    if (!putQrInGrid) return '';
-                    return `
+            if (!putQrInGrid) return '';
+            return `
                 <div class="msb-bottom-card msb-qr-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
                     <div style="font-size: 0.72rem; font-weight: 700; color: var(--msb-primary);"><i class="fas fa-qrcode"></i> ফলাফল যাচাই করুন</div>
                     <canvas class="ms-mr-qr-canvas" data-uid="${uid}" data-exam="${examDisplayName}" data-name="${student.name}" style="max-height: 80px;"></canvas>
                     <div style="font-size: 0.65rem; color: #64748b; font-weight: 600;">@ ${window.location.hostname}</div>
                 </div>`;
-                })()}
+        })()}
             </div>
 
             <!-- ===== FOOTER ===== -->

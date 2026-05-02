@@ -2043,7 +2043,9 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 grade: grade,
                 gp: gp.toFixed(2),
                 isOptional: isOptionalCheck,
-                optionalBonus: isOptionalCheck ? optionalBonusGP : 0
+                optionalBonus: isOptionalCheck ? optionalBonusGP : 0,
+                fullMarks: maxTotal,
+                highestMark: highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'
             };
         });
 
@@ -3275,13 +3277,13 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
                 align-items: center !important;
                 gap: 30px !important;
             }
-            .ms-page {
+            .ms-page, .msb-page {
                 box-shadow: 0 20px 50px rgba(0,0,0,0.15) !important;
             }
         }
 
         /* CRITICAL: Override the ms-page for perfect A4 fit */
-        html body .ms-page {
+        html body .ms-page, html body .msb-page {
             display: block !important;
             visibility: visible !important;
             width: 210mm !important;
@@ -3300,7 +3302,7 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
             break-inside: avoid !important;
         }
 
-        html body .ms-page:last-child {
+        html body .ms-page:last-child, html body .msb-page:last-child {
             page-break-after: avoid !important;
             break-after: auto !important;
         }
@@ -3325,7 +3327,7 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
                 width: 210mm !important;
             }
 
-            html body .ms-page {
+            html body .ms-page, html body .msb-page {
                 width: 210mm !important;
                 height: 297mm !important;
                 max-height: 297mm !important;
@@ -3339,7 +3341,7 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
                 break-inside: avoid !important;
             }
 
-            html body .ms-page:last-child {
+            html body .ms-page:last-child, html body .msb-page:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
             }
@@ -3412,7 +3414,7 @@ function bulkPrint() {
     const previewArea = document.getElementById('marksheetPreview');
     if (!previewArea) return;
 
-    let allPages = Array.from(previewArea.querySelectorAll('.ms-page'));
+    let allPages = Array.from(previewArea.querySelectorAll('.ms-page, .msb-page'));
 
     if (allPages.length === 0) {
         showNotification('প্রিন্ট করার জন্য কোনো মার্কশীট নেই। অনুগ্রহ করে ক্রাইটেরিয়া পরিবর্তন করে আবার জেনারেট করুন।', 'error');
