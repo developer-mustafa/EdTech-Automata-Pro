@@ -527,7 +527,7 @@ export function renderTemplateB(data) {
                     <!-- Professional Vertical Info Tag (Right Side) -->
                     <div style="position: absolute; right: 10px; top: 10px; bottom: 10px; width: 25px; border-left: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); padding-left: 8px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="font-size: 0.52rem; font-weight: 800; color: #cbd5e1; white-space: nowrap; letter-spacing: 1.5px; text-transform: uppercase;">Verification Info</span>
+                            <span style="font-size: 0.52rem; font-weight: 800; color: #cbd5e1; white-space: nowrap; letter-spacing: 1.5px; text-transform: uppercase;">SCAN & VERIFY</span>
                             <span style="font-size: 0.52rem; font-weight: 700; color: #3b82f6; white-space: nowrap; opacity: 0.8;">${window.location.hostname}</span>
                         </div>
                     </div>
