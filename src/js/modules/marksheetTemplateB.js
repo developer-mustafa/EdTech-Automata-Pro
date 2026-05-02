@@ -142,9 +142,11 @@ export function renderTemplateB(data) {
                 <td class="msb-td-num ${row.pracFail ? 'msb-mark-fail' : ''}">${row.practical || '-'}</td>
                 <td class="msb-td-num msb-td-total-mark">${row.total || 0}</td>
                 <td class="msb-td-num ${gradeClass}">${row.grade}</td>
-                <td class="msb-td-num msb-opt-gp-cell">
-                    ${row.gp}
-                    <div class="msb-opt-bonus-overlay">+${row.optionalBonus > 0 ? row.optionalBonus.toFixed(2) : '0.00'}</div>
+                <td class="msb-td-num" style="vertical-align: middle; text-align: center; padding: 4px;">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2;">
+                        <span style="font-weight: 700; color: inherit;">${row.gp}</span>
+                        <span style="font-size: 0.7rem; font-weight: 800; color: #16a34a !important; margin-top: 2px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">+${row.optionalBonus > 0 ? row.optionalBonus.toFixed(2) : '0.00'}</span>
+                    </div>
                 </td>
             </tr>`;
         }
