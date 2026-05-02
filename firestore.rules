@@ -110,7 +110,9 @@ service cloud.firestore {
     //  Access Requests
     // =======================================
     match /access_requests/{requestId} {
-      allow create: if true;
+      allow create: if request.resource.data.keys().hasAll(['name', 'email'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() < 100;
       allow read, update, delete: if isAdminOrAbove();
     }
 

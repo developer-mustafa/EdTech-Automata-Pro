@@ -152,7 +152,7 @@ export function initPageRouter(callback) {
         const fullHash = window.location.hash.replace('#', '') || 'dashboard';
         const pageId = fullHash.split('?')[0];
         
-        const validPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'report', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control', 'student-results', 'tabulation', 'notices', 'users', 'tutorial-marksheet'];
+        const validPages = ['dashboard', ...Object.keys(NEW_PAGE_IDS)];
         
         if (validPages.includes(pageId)) {
             // Role protection for direct hash entry
@@ -171,16 +171,23 @@ export function initPageRouter(callback) {
     const fullHash = window.location.hash.replace('#', '') || 'dashboard';
     const initialPage = fullHash.split('?')[0];
     
-    const initialPages = ['dashboard', 'teacher-assignment', 'students', 'result-entry', 'marksheet', 'report', 'access-requests', 'exam-config', 'academic-settings', 'admit-card', 'access-control', 'student-results', 'tabulation', 'notices', 'users', 'tutorial-marksheet'];
-    if (initialPages.includes(initialPage) && initialPage !== 'dashboard') {
+    const validPages = ['dashboard', ...Object.keys(NEW_PAGE_IDS)];
+    if (validPages.includes(initialPage) && initialPage !== 'dashboard') {
         navigateTo(initialPage);
     }
 }
 
 
+let _isUpdatingNav = false;
 export function updateNavVisibility() {
+    if (_isUpdatingNav) return;
+    _isUpdatingNav = true;
+
     const navTabs = document.getElementById('pageNavTabs');
-    if (!navTabs) return;
+    if (!navTabs) {
+        _isUpdatingNav = false;
+        return;
+    }
 
     const role = state.userRole;
     // Always show nav tabs if we want public access to results
@@ -269,4 +276,6 @@ export function updateNavVisibility() {
             el.classList.remove('page-hidden');
         }
     });
+
+    _isUpdatingNav = false;
 }

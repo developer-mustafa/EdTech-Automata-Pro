@@ -56,16 +56,7 @@ export async function deleteExam(docId) {
 
 export async function updateExamDetails(docId, updates) {
     setLoading(true);
-    // Role restriction for Admin
-    if (state.userRole === 'admin') {
-        const exams = await getSavedExams();
-        const exam = exams.find(e => e.docId === docId);
-        if (exam && exam.createdBy !== state.currentUser?.uid) {
-            showNotification('আপনি শুধুমাত্র আপনার নিজের আপলোড করা রেজাল্ট এডিট করতে পারবেন', 'error');
-            setLoading(false);
-            return false;
-        }
-    } else if (state.userRole === 'teacher') {
+    if (['admin', 'teacher'].includes(state.userRole)) {
         const exams = await getSavedExams();
         const exam = exams.find(e => e.docId === docId);
         if (exam && exam.createdBy !== state.currentUser?.uid) {

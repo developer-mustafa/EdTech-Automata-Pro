@@ -67,7 +67,9 @@ export default defineConfig({
                     'firebase-db': ['firebase/firestore'],
                     'chart-libs': ['chart.js'],
                     'xlsx-lib': ['xlsx'],
-                    'pdf-lib': ['jspdf']
+                    'pdf-lib': ['jspdf'],
+                    'canvas-lib': ['html2canvas'],
+                    'storage-lib': ['localforage']
                 }
             }
         },
