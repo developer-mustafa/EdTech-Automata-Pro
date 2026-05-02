@@ -330,7 +330,9 @@ export function filterStudentData(data, filters, options = {}) {
                 return determineStatus(student, options) === 'ফেল';
             }
 
-            const gradeInfo = calculateGrade(student.total);
+            const maxTotal = options.maxTotal || 100;
+            const effectivePct = (options.isTutorial && maxTotal > 0) ? (student.total / maxTotal) * 100 : student.total;
+            const gradeInfo = calculateGrade(effectivePct);
             return gradeInfo.grade === grade;
         });
     }
@@ -401,7 +403,10 @@ export function calculateStatistics(data, options = {}) {
             if (status === 'ফেল') {
                 gradeDistribution['F']++;
             } else {
-                const gradeInfo = calculateGrade(student.total);
+                const maxTotal = options.maxTotal || 100;
+                const effectivePct = (options.isTutorial && maxTotal > 0) ? (student.total / maxTotal) * 100 : student.total;
+                const gradeInfo = calculateGrade(effectivePct);
+                
                 if (gradeDistribution[gradeInfo.grade] !== undefined) {
                     gradeDistribution[gradeInfo.grade]++;
                 } else {

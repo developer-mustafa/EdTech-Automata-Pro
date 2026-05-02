@@ -10,7 +10,8 @@ import {
     getExamsByCriteria,
     getSubjectConfigs,
     getStudentLookupMap,
-    generateStudentDocId
+    generateStudentDocId,
+    getSavedExamsByType
 } from '../firestoreService.js';
 import { state } from './state.js';
 import { showNotification, convertToEnglishDigits, convertToBengaliDigits, normalizeText } from '../utils.js';
@@ -58,10 +59,36 @@ function setupEventListeners() {
             toggleNameBtn.classList.toggle('active', hideNames);
         };
     }
-
     const searchInput = document.getElementById('tabSearchInput');
     if (searchInput) {
         searchInput.oninput = filterTabulationTable;
+    }
+
+    const regularModeBtn = document.getElementById('tabRegularModeBtn');
+    const tutorialModeBtn = document.getElementById('tabTutorialModeBtn');
+
+    if (regularModeBtn && tutorialModeBtn) {
+        regularModeBtn.onclick = async () => {
+            state.isTutorialTabulationMode = false;
+            regularModeBtn.classList.add('active');
+            regularModeBtn.style.background = '#059669';
+            regularModeBtn.style.color = 'white';
+            tutorialModeBtn.classList.remove('active');
+            tutorialModeBtn.style.background = 'transparent';
+            tutorialModeBtn.style.color = '#d97706';
+            await populateTabulationDropdowns();
+        };
+
+        tutorialModeBtn.onclick = async () => {
+            state.isTutorialTabulationMode = true;
+            tutorialModeBtn.classList.add('active');
+            tutorialModeBtn.style.background = '#f59e0b';
+            tutorialModeBtn.style.color = 'white';
+            regularModeBtn.classList.remove('active');
+            regularModeBtn.style.background = 'transparent';
+            regularModeBtn.style.color = '#059669';
+            await populateTabulationDropdowns();
+        };
     }
 
     const advType = document.getElementById('tabAdvFilterType');
@@ -142,7 +169,11 @@ export async function populateTabulationDropdowns() {
     if (!classSelect || !sessionSelect) return;
 
     try {
-        allExamsCache = await getSavedExams();
+        if (state.isTutorialTabulationMode) {
+            allExamsCache = await getSavedExamsByType('tutorial');
+        } else {
+            allExamsCache = await getSavedExams();
+        }
         const classes = [...new Set(allExamsCache.map(e => e.class).filter(Boolean))].sort();
         const sessions = [...new Set(allExamsCache.map(e => e.session).filter(Boolean))].sort().reverse();
 
@@ -170,7 +201,8 @@ async function updateGroupDropdown() {
     }
 
     try {
-        const exams = (allExamsCache || await getSavedExams()).filter(e => e.class === cls && e.session === session);
+        const examsSource = state.isTutorialTabulationMode ? await getSavedExamsByType('tutorial') : (allExamsCache || await getSavedExams());
+        const exams = examsSource.filter(e => e.class === cls && e.session === session);
         const groupSet = new Set();
         exams.forEach(ex => {
             (ex.studentData || []).forEach(s => {
@@ -203,8 +235,8 @@ async function updateExamDropdown() {
     }
 
     examSelect.disabled = false;
-    const exams = (allExamsCache || await getSavedExams())
-        .filter(e => e.class === cls && e.session === session);
+    const examsSource = state.isTutorialTabulationMode ? await getSavedExamsByType('tutorial') : (allExamsCache || await getSavedExams());
+    const exams = examsSource.filter(e => e.class === cls && e.session === session);
     const examNames = [...new Set(exams.map(e => e.name).filter(Boolean))].sort();
 
     examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন করুন</option>';
@@ -242,8 +274,8 @@ async function handleViewTabulation() {
         const lookupMap = await getStudentLookupMap();
 
         // Fetch all exams for this class/session/examName
-        const allExams = allExamsCache || await getSavedExams();
-        const relevantExams = allExams.filter(e =>
+        const examsSource = state.isTutorialTabulationMode ? await getSavedExamsByType('tutorial') : (allExamsCache || await getSavedExams());
+        const relevantExams = examsSource.filter(e =>
             e.class === cls && e.session === session && e.name === examName
         );
 
@@ -251,6 +283,9 @@ async function handleViewTabulation() {
             container.innerHTML = '<div class="tab-empty-msg"><i class="fas fa-inbox"></i> কোনো ডেটা পাওয়া যায়নি।</div>';
             return;
         }
+
+        const tutorialExams = await getSavedExamsByType('tutorial');
+        const relevantTutorialExams = tutorialExams.filter(e => e.class === cls && e.session === session);
 
         // Aggregate students
         const studentMap = new Map();
@@ -334,6 +369,33 @@ async function handleViewTabulation() {
                 }
             });
         });
+
+        // Calculate and integrate tutorial marks
+        relevantTutorialExams.forEach(exam => {
+            if (exam.studentData) {
+                exam.studentData.forEach(s => {
+                    const sGroup = normalizeText(s.group || '');
+                    const sRoll = convertToEnglishDigits(String(s.id || '').trim().replace(/^0+/, '')) || '0';
+                    const key = `${sRoll}_${sGroup}`;
+                    
+                    if (studentMap.has(key)) {
+                        const subjKey = exam.subject || '';
+                        // Only integrate if the main exam has this subject
+                        if (studentMap.get(key).subjects[subjKey]) {
+                            const targetSubjData = studentMap.get(key).subjects[subjKey];
+                            if (!targetSubjData.tutorialMarksArr) {
+                                targetSubjData.tutorialMarksArr = [];
+                            }
+                            if (s.total > 0 || String(s.status) === 'Absent') {
+                                targetSubjData.tutorialMarksArr.push(Number(s.total) || 0);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+
 
         // After filtering students, build subjectsSet dynamically ONLY based on what these students took
         const rawSubjectsSet = new Set();
@@ -503,9 +565,14 @@ async function handleViewTabulation() {
 
                 const cfg = getSubjectCfg(subjectConfigs, subj);
                 const maxTotal = parseInt(cfg.total) || 100;
-                const pct = maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0;
-                const gp = getGradePoint(pct);
-                const grade = pct >= 80 ? 'A+' : pct >= 70 ? 'A' : pct >= 60 ? 'A-' : pct >= 50 ? 'B' : pct >= 40 ? 'C' : pct >= 33 ? 'D' : 'F';
+                
+                // Use absolute marks for Main Exams (fixed board scale), 
+                // but use percentage scaling for Tutorial exams.
+                const isTutorialTab = state.isTutorialTabulationMode;
+                const effectivePct = isTutorialTab ? (maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0) : sTotal;
+                
+                const gp = getGradePoint(effectivePct);
+                const grade = effectivePct >= 80 ? 'A+' : effectivePct >= 70 ? 'A' : effectivePct >= 60 ? 'A-' : effectivePct >= 50 ? 'B' : effectivePct >= 40 ? 'C' : effectivePct >= 33 ? 'D' : 'F';
 
                 let isFail = (grade === 'F');
                 
@@ -514,9 +581,25 @@ async function handleViewTabulation() {
                 const wMark = d.written;
                 const mMark = d.mcq;
                 const pMark = d.practical;
-                if (wMark && wMark !== '-' && cfg.writtenPass !== undefined && parseFloat(wMark) < parseFloat(cfg.writtenPass)) isFail = true;
-                if (mMark && mMark !== '-' && cfg.mcqPass !== undefined && parseFloat(mMark) < parseFloat(cfg.mcqPass)) isFail = true;
-                if (pMark && pMark !== '-' && cfg.practicalPass !== undefined && parseFloat(pMark) < parseFloat(cfg.practicalPass)) isFail = true;
+                
+                // --- Tutorial Fallback Logic ---
+                let effectiveWPass = parseFloat(cfg.writtenPass);
+                let effectiveMPass = parseFloat(cfg.mcqPass);
+                let effectivePPass = parseFloat(cfg.practicalPass);
+
+                if (isTutorialTab) {
+                    const maxW = parseFloat(cfg.written) || 0;
+                    const maxM = parseFloat(cfg.mcq) || 0;
+                    const maxP = parseFloat(cfg.practical) || 0;
+                    
+                    if ((isNaN(effectiveWPass) || effectiveWPass <= 0) && maxW > 0) effectiveWPass = Math.ceil(maxW * 0.33);
+                    if ((isNaN(effectiveMPass) || effectiveMPass <= 0) && maxM > 0) effectiveMPass = Math.ceil(maxM * 0.33);
+                    if ((isNaN(effectivePPass) || effectivePPass <= 0) && maxP > 0) effectivePPass = Math.ceil(maxP * 0.33);
+                }
+
+                if (wMark && wMark !== '-' && !isNaN(effectiveWPass) && parseFloat(wMark) < effectiveWPass) isFail = true;
+                if (mMark && mMark !== '-' && !isNaN(effectiveMPass) && parseFloat(mMark) < effectiveMPass) isFail = true;
+                if (pMark && pMark !== '-' && !isNaN(effectivePPass) && parseFloat(pMark) < effectivePPass) isFail = true;
                 if (status === 'ফেল' || status === 'fail') isFail = true;
 
                 const isOptional = optSubs.some(os => {
@@ -646,7 +729,7 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
             <div class="tab-header-text">
                 <h2 class="tab-college-name">${collegeName}</h2>
                 <p class="tab-college-address">${collegeAddress}</p>
-                <h3 class="tab-exam-title">টেবুলেশন শীট — ${examName}</h3>
+                <h3 class="tab-exam-title">${state.isTutorialTabulationMode ? 'টিউটোরিয়াল ' : ''}টেবুলেশন শীট — ${examName}</h3>
                 <p class="tab-meta">শ্রেণি: ${cls} | সেশন: ${session} | বিভাগ: ${selGroupName}</p>
             </div>
         </div>
@@ -795,7 +878,10 @@ function renderTabulationSheet(students, subjects, cls, session, examName, subje
                                     <td class="${wCls}">${hasData && d.written !== undefined && d.written !== '' ? w : '—'}</td>
                                     <td class="${mCls}">${hasData && d.mcq !== undefined && d.mcq !== '' ? m : '—'}</td>
                                     <td class="${pCls}">${hasData && d.practical !== undefined && d.practical !== '' ? p : '—'}</td>
-                                    <td class="${tCls}" style="font-weight:700;">${hasData && t > 0 ? t : '—'}</td>
+                                    <td class="${tCls}" style="font-weight:700;">
+                                        ${hasData && t > 0 ? t : '—'}
+                                        ${d.tutorialIntegratedMark ? `<div style="font-size:0.65rem; color:#d97706; margin-top:-2px; font-weight:normal;" title="টিউটোরিয়াল মার্কস যুক্ত হয়েছে">T: +${d.tutorialIntegratedMark}</div>` : ''}
+                                    </td>
                                 `;
         }).join('')}
                             <td style="font-weight:800;">${convertToBengaliDigits(st._totalObtained)}</td>
@@ -948,7 +1034,10 @@ function showStudentDetail(idx) {
             <td class="${wFail ? 'tab-detail-fail' : ''}">${hasData ? `${d.written}/${wMax}` : '—'}</td>
             <td class="${mFail ? 'tab-detail-fail' : ''}">${hasData ? (mMax > 0 ? `${d.mcq}/${mMax}` : '—') : '—'}</td>
             <td class="${pFail ? 'tab-detail-fail' : ''}">${hasData ? (pMax > 0 ? `${d.practical}/${pMax}` : '—') : '—'}</td>
-            <td class="tab-detail-total">${hasData ? `${d.total}/${tMax}` : '—'}</td>
+            <td class="tab-detail-total">
+                ${hasData ? `${d.total}/${tMax}` : '—'}
+                ${d.tutorialIntegratedMark ? `<div style="font-size:0.75rem; color:#d97706; line-height: 1;" title="টিউটোরিয়াল মার্কস যুক্ত হয়েছে">T: +${d.tutorialIntegratedMark}</div>` : ''}
+            </td>
             <td>${d.grade || '—'}</td>
         </tr>`;
     }).join('');
@@ -1129,13 +1218,31 @@ function num(val) {
 }
 
 function getSubjectCfg(configs, subjectName) {
-    let found = configs?.[subjectName];
+    if (!configs) return { total: 100, written: 100, writtenPass: 33, mcq: 0, mcqPass: 0, practical: 0, practicalPass: 0 };
+
+    // When in Tutorial mode, prioritize tutorial-specific suffixes
+    if (state.isTutorialTabulationMode) {
+        const suffixes = [' (টিউটোরিয়াল)', ' (Tutorial)', ' ক্লাস টেস্ট', ' Class test', ' Tutorial exam', ' Class test exam', ' ক্লাস টেস্ট পরীক্ষা'];
+        for (const sfx of suffixes) {
+            const targetName = subjectName + sfx;
+            if (configs[targetName]) return configs[targetName];
+            
+            const normTarget = normalizeText(targetName);
+            const foundKey = Object.keys(configs).find(k => k !== 'updatedAt' && normalizeText(k) === normTarget);
+            if (foundKey) return configs[foundKey];
+        }
+    }
+
+    let found = configs[subjectName];
     if (!found) {
         const normalized = normalizeText(subjectName);
-        const key = Object.keys(configs || {}).find(k => k !== 'updatedAt' && normalizeText(k) === normalized);
+        const key = Object.keys(configs).find(k => k !== 'updatedAt' && normalizeText(k) === normalized);
         found = key ? configs[key] : null;
     }
-    return found || { total: 100, written: 100, writtenPass: 33, mcq: 0, mcqPass: 0, practical: 0, practicalPass: 0 };
+    
+    if (found) return found;
+    
+    return { total: 100, written: 100, writtenPass: 33, mcq: 0, mcqPass: 0, practical: 0, practicalPass: 0 };
 }
 
 function getGradePoint(pct) {

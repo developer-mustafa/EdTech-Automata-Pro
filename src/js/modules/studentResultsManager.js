@@ -330,6 +330,7 @@ async function displayStudentMarksheet(studentResult) {
     const exams = studentResult.exams;
 
     await loadMarksheetSettings();
+    const ms = getMarksheetSettings();
 
     // 1. Determine which exams are being looked at (Single or Combined)
     const searchExamName = document.getElementById('srSearchExam')?.value;
@@ -356,10 +357,13 @@ async function displayStudentMarksheet(studentResult) {
     // 3. Aggregate ALL students for this specific exam context
     const studentAggMap = new Map();
     const lookupMap = await getStudentLookupMap();
-    const subjectsSet = new Set(relevantExams.map(e => e.subject).filter(Boolean));
+    
+    // Filter out tutorial exams from main relevant exams
+    const mainRelevantExams = relevantExams.filter(e => e.examType !== 'tutorial');
+    const subjectsSet = new Set(mainRelevantExams.map(e => e.subject).filter(Boolean));
     const subjects = [...subjectsSet];
 
-    relevantExams.forEach(exam => {
+    mainRelevantExams.forEach(exam => {
         if (!exam.studentData) return;
         exam.studentData.forEach(s => {
             const sGroup = normalizeText(s.group || '');
@@ -400,6 +404,68 @@ async function displayStudentMarksheet(studentResult) {
             }
         });
     });
+
+    // --- TUTORIAL MARKS INTEGRATION ---
+    const tutorialIntegrationEnabled = ms.tutorialIntegrationEnabled !== false;
+    const selectedTutorialExams = ms.tutorialExams || [];
+
+    if (tutorialIntegrationEnabled && selectedTutorialExams.length > 0) {
+        // Fetch all tutorial exams
+        const allTutorialExams = allExams.filter(e =>
+            e.examType === 'tutorial' &&
+            e.class === cls &&
+            e.session === session &&
+            selectedTutorialExams.includes(e.name)
+        );
+
+        // Collect tutorial marks per student per subject
+        allTutorialExams.forEach(exam => {
+            if (!exam.studentData) return;
+            exam.studentData.forEach(s => {
+                const sGroup = normalizeText(s.group || '');
+                const sRoll = convertToEnglishDigits(String(s.id || '').trim().replace(/^0+/, '')) || '0';
+                const key = `${sRoll}_${sGroup}`;
+
+                if (!studentAggMap.has(key)) return;
+
+                const studentData = studentAggMap.get(key);
+                const subjKey = normalizeText(exam.subject).replace(/\s+/g, '') || exam.subject;
+
+                if (!studentData.subjects[subjKey]) {
+                    studentData.subjects[subjKey] = { written: 0, mcq: 0, practical: 0, total: 0, grade: '', gpa: '', status: '' };
+                }
+
+                if (!studentData.subjects[subjKey].tutorialMarksArr) {
+                    studentData.subjects[subjKey].tutorialMarksArr = [];
+                }
+
+                const tutMark = Number(s.total || 0);
+                if (tutMark > 0) {
+                    studentData.subjects[subjKey].tutorialMarksArr.push(tutMark);
+                }
+
+                // Store per-exam marks for tutorial summary table
+                if (!studentData.tutorialExamMarks) {
+                    studentData.tutorialExamMarks = {};
+                }
+                if (!studentData.tutorialExamMarks[exam.name]) {
+                    studentData.tutorialExamMarks[exam.name] = {};
+                }
+                studentData.tutorialExamMarks[exam.name][subjKey] = tutMark;
+            });
+        });
+
+        // Calculate per-subject tutorial averages
+        for (const [key, student] of studentAggMap.entries()) {
+            for (const [subjKey, subjData] of Object.entries(student.subjects)) {
+                if (subjData.tutorialMarksArr && subjData.tutorialMarksArr.length > 0) {
+                    const sum = subjData.tutorialMarksArr.reduce((a, b) => a + Number(b), 0);
+                    subjData.tutorialAvg = Math.round(sum / subjData.tutorialMarksArr.length);
+                }
+            }
+        }
+    }
+    // --- END TUTORIAL MARKS INTEGRATION ---
 
     const allStudents = [...studentAggMap.values()]
         .filter(s => String(s.status) !== 'false')
@@ -444,7 +510,7 @@ async function displayStudentMarksheet(studentResult) {
     const allRendered = [];
     let loop1Idx = 0;
     for (const st of allStudents) {
-        const stats = await renderSingleMarksheet(st, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, true, highestMarks);
+        const stats = await renderSingleMarksheet(st, displaySubjects, examDisplayName, session, ms, rules, allOptSubs, allExams, subjectConfigs, null, true, highestMarks);
         allRendered.push({ key: `${st.id}_${st.group}`, group: st.group, html: stats, id: st.id, subjects: st.subjects });
         
         // Yield to main thread every 5 students to prevent UI freeze during search
@@ -550,8 +616,7 @@ async function displayStudentMarksheet(studentResult) {
         return;
     }
 
-    const ms = getMarksheetSettings();
-    let finalHtml = await renderSingleMarksheet(targetAgg, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, false, highestMarks, exactRanksMap.get(targetKey), true);
+    let finalHtml = await renderSingleMarksheet(targetAgg, displaySubjects, examDisplayName, session, ms, rules, allOptSubs, allExams, subjectConfigs, null, false, highestMarks, exactRanksMap.get(targetKey), true);
 
     // Handle Summary Section (respecting settings)
     const showSum = ms.idSearchShowSummary !== false;

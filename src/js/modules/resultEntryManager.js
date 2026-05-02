@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Result Entry Manager Module
  * Handles individual and bulk mark entry for exams.
  * Supports creating new exams on the fly and local storage caching.
@@ -7,11 +7,13 @@
 
 import {
     getSavedExams,
+    getSavedExamsByType,
     updateExam,
     saveExam,
     getAllStudents,
     getUnifiedStudents,
     getExamConfigs,
+    getTutorialExamConfigs,
     getStudentLookupMap,
     generateStudentDocId
 } from '../firestoreService.js';
@@ -86,7 +88,7 @@ function clearDraft(cls, session, subject, examName) {
  * Populate cascading dropdowns from saved exams & teacher assignments
  */
 export async function populateREDropdowns() {
-    const exams = await getSavedExams();
+    const exams = await getSavedExamsByType(state.isTutorialEntryMode ? 'tutorial' : 'regular');
 
     // Handle Teacher Restrictions
     let assignedExams = exams;
@@ -190,7 +192,7 @@ export async function populateREDropdowns() {
             subjectGroups.optional = subjectGroups.optional.filter(s => assignedSet.has(s));
         }
 
-        const exams = await getSavedExams();
+        const exams = await getSavedExamsByType(state.isTutorialEntryMode ? 'tutorial' : 'regular');
 
         // Function to check submission status and return tick icon
         const getTick = (subjectName) => {
@@ -261,7 +263,7 @@ export async function populateREDropdowns() {
             subjectSelect.innerHTML = subOptions;
         }
 
-        // --- Exam Names from Global Exam Configs ---
+        // --- Exam Names from Global Exam Configs (Regular or Tutorial) ---
         const updateExamList = async () => {
             const examSelect = document.getElementById('reExam');
             if (!examSelect) return;
@@ -272,15 +274,25 @@ export async function populateREDropdowns() {
             }
 
             examSelect.innerHTML = '<option value="">লোড হচ্ছে...</option>';
-            const configs = await getExamConfigs(selClass, selSession);
-            const examNames = configs.map(c => c.examName);
 
-            if (examNames.length === 0) {
-                examSelect.innerHTML = '<option value="">কোনো পরীক্ষা তৈরি করা নেই</option>';
+            let configs;
+            if (state.isTutorialEntryMode) {
+                // Tutorial mode: load from tutorialExamConfigs
+                configs = await getTutorialExamConfigs(selClass, selSession);
             } else {
-                examSelect.innerHTML = '<option value="">পরীক্ষা নির্বাচন করুন</option>';
-                examNames.forEach(name => {
-                    examSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                // Regular mode
+                configs = await getExamConfigs(selClass, selSession);
+            }
+
+            if (!configs || configs.length === 0) {
+                const modeLabel = state.isTutorialEntryMode ? 'টিউটোরিয়াল' : '';
+                examSelect.innerHTML = `<option value="">কোনো ${modeLabel} পরীক্ষা তৈরি করা নেই</option>`;
+            } else {
+                const modeLabel = state.isTutorialEntryMode ? 'টিউটোরিয়াল পরীক্ষা' : 'পরীক্ষা';
+                examSelect.innerHTML = `<option value="">${modeLabel} নির্বাচন করুন</option>`;
+                configs.forEach(cfg => {
+                    const marksTag = (state.isTutorialEntryMode && cfg.customMarks) ? ` (${cfg.customMarks} মার্কস)` : '';
+                    examSelect.innerHTML += `<option value="${cfg.examName}" data-marks="${cfg.customMarks || ''}">${cfg.examName}${marksTag}</option>`;
                 });
             }
         };
@@ -432,7 +444,7 @@ async function loadExamForEntry() {
     const normSession = normalizeSession(session);
     const normGroup = group !== 'all' ? normalizeText(group) : 'all';
 
-    const exams = await getSavedExams();
+    const exams = await getSavedExamsByType(state.isTutorialEntryMode ? 'tutorial' : 'regular');
     const matchingExams = exams.filter(e => {
         const eCls = normalizeText(e.class || '');
         const eSess = normalizeSession(e.session || '');
@@ -769,8 +781,14 @@ function getSubjectConfig(subjectName) {
     }
 
     if (found) {
-        console.log(`[RE Config] ✅ Found config for "${subjectName}":`, JSON.stringify(found));
-        return found;
+        let finalConfig = found;
+        if (state.isTutorialEntryMode && found.tutorial) {
+            finalConfig = found.tutorial;
+            console.log(`[RE Config] ✅ Found TUTORIAL config for "${subjectName}":`, finalConfig);
+        } else {
+            console.log(`[RE Config] ✅ Found MAIN config for "${subjectName}":`, finalConfig);
+        }
+        return finalConfig;
     }
 
     console.warn(`[RE Config] ⚠️ No config found for "${subjectName}". Available keys:`, Object.keys(state.subjectConfigs || {}));
@@ -849,9 +867,27 @@ function recalculateStudentStatuses(studentData, subjectName) {
             status = 'অনুপস্থিত';
         } else {
             let failed = false;
-            if (writtenPass > 0 && s.written !== null && s.written !== '' && s.written !== undefined && written < writtenPass) failed = true;
-            if (mcqPass > 0 && s.mcq !== null && s.mcq !== '' && s.mcq !== undefined && mcq < mcqPass) failed = true;
-            if (practicalPass > 0 && s.practical !== null && s.practical !== '' && s.practical !== undefined && practical < practicalPass) failed = true;
+            
+            // --- Tutorial Fallback Logic ---
+            // If in Tutorial mode and no custom pass mark is set, use 33% as fallback
+            let effectiveWPass = writtenPass;
+            let effectiveMPass = mcqPass;
+            let effectivePPass = practicalPass;
+            
+            if (state.isTutorialEntryMode) {
+                const maxW = cfgNum(config.written);
+                const maxM = cfgNum(config.mcq);
+                const maxP = cfgNum(config.practical);
+                
+                if (writtenPass <= 0 && maxW > 0) effectiveWPass = Math.ceil(maxW * 0.33);
+                if (mcqPass <= 0 && maxM > 0) effectiveMPass = Math.ceil(maxM * 0.33);
+                if (practicalPass <= 0 && maxP > 0) effectivePPass = Math.ceil(maxP * 0.33);
+            }
+            
+            if (effectiveWPass > 0 && s.written !== null && s.written !== '' && s.written !== undefined && written < effectiveWPass) failed = true;
+            if (effectiveMPass > 0 && s.mcq !== null && s.mcq !== '' && s.mcq !== undefined && mcq < effectiveMPass) failed = true;
+            if (effectivePPass > 0 && s.practical !== null && s.practical !== '' && s.practical !== undefined && practical < effectivePPass) failed = true;
+            
             if (failed) status = 'ফেল';
         }
 
@@ -1186,7 +1222,8 @@ async function saveMarks() {
                 studentData: currentExamDoc.studentData,
                 studentCount: currentExamDoc.studentData.length,
                 createdBy: state.currentUser?.uid || null,
-                creatorName: state.currentUser?.displayName || state.currentUser?.email || null
+                creatorName: state.currentUser?.displayName || state.currentUser?.email || null,
+                ...(state.isTutorialEntryMode ? { examType: 'tutorial' } : {})
             };
 
             const success = await saveExam(examData);
@@ -1201,7 +1238,7 @@ async function saveMarks() {
                 clearDraft(currentExamDoc.class, currentExamDoc.session, currentExamDoc.subject, currentExamDoc.name);
 
                 // Refresh the exam in memory to get the docId
-                const freshExams = await getSavedExams();
+                const freshExams = await getSavedExamsByType(state.isTutorialEntryMode ? 'tutorial' : 'regular');
                 const newDoc = freshExams.find(e =>
                     e.name === currentExamDoc.name &&
                     e.subject === currentExamDoc.subject &&
@@ -1283,17 +1320,33 @@ function discardChanges() {
 
 /**
  * Calculate grade from total marks — Bangladesh HSC Standard
- * Always based on raw marks (out of 100 scale)
  * @param {number} total - Total obtained marks
  */
 function calculateGrade(total) {
-    if (total >= 80) return 'A+';
-    if (total >= 70) return 'A';
-    if (total >= 60) return 'A-';
-    if (total >= 50) return 'B';
-    if (total >= 40) return 'C';
-    if (total >= 33) return 'D';
-    return 'F';
+    if (state.isTutorialEntryMode) {
+        // Percentage-Based Grade Calculation for Tutorials (e.g. out of 20, 50)
+        const config = getSubjectConfig(currentExamDoc?.subject);
+        const totalMax = cfgNum(config.total) || 100;
+        const percentage = totalMax > 0 ? (total / totalMax) * 100 : 0;
+
+        if (percentage >= 80) return 'A+';
+        if (percentage >= 70) return 'A';
+        if (percentage >= 60) return 'A-';
+        if (percentage >= 50) return 'B';
+        if (percentage >= 40) return 'C';
+        if (percentage >= 33) return 'D';
+        return 'F';
+    } else {
+        // Fixed Board prescribed scale for Main Exam (Fixed 100 Scale)
+        // This assumes Main Exam inputs are already scaled or standardized to 100
+        if (total >= 80) return 'A+';
+        if (total >= 70) return 'A';
+        if (total >= 60) return 'A-';
+        if (total >= 50) return 'B';
+        if (total >= 40) return 'C';
+        if (total >= 33) return 'D';
+        return 'F';
+    }
 }
 
 

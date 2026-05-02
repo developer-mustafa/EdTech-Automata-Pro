@@ -20,6 +20,7 @@ import { generateStudentUniqueId } from './studentResultsManager.js';
 import { loadMarksheetRules, currentMarksheetRules } from './marksheetRulesManager.js';
 import { showConfirmModal, showLoading, hideLoading } from './uiManager.js';
 import { APP_VERSION } from '../version.js';
+import { renderTemplateB } from './marksheetTemplateB.js';
 
 let marksheetSettings = {
     institutionName: '',
@@ -37,9 +38,11 @@ let marksheetSettings = {
     historyExams: [],
     showSummary: true,
     showGradeScale: true,
+    showTutorialSummary: true,
     idSearchShowTable: true,
     idSearchShowGradeScale: true,
     idSearchShowSummary: true,
+    idSearchShowTutorialSummary: true,
     idSearchShowRanking: true,
     idSearchShowQRCode: true,
     idSearchShowComments: true,
@@ -409,6 +412,68 @@ async function generateMarksheets() {
         }
     });
 
+    // --- TUTORIAL MARKS INTEGRATION ---
+    const tutorialIntegrationEnabled = marksheetSettings.tutorialIntegrationEnabled !== false;
+    const selectedTutorialExams = marksheetSettings.tutorialExams || [];
+
+    if (tutorialIntegrationEnabled && selectedTutorialExams.length > 0) {
+        // Fetch all tutorial exams
+        const allTutorialExams = allExams.filter(e =>
+            e.examType === 'tutorial' &&
+            e.class === cls &&
+            e.session === session &&
+            selectedTutorialExams.includes(e.name)
+        );
+
+        // Collect tutorial marks per student per subject
+        allTutorialExams.forEach(exam => {
+            if (!exam.studentData) return;
+            exam.studentData.forEach(s => {
+                const sGroup = normalizeText(s.group || '');
+                const sRoll = convertToEnglishDigits(String(s.id || '').trim().replace(/^0+/, '')) || '0';
+                const key = `${sRoll}_${sGroup}`;
+
+                if (!studentAgg.has(key)) return;
+
+                const studentData = studentAgg.get(key);
+                const subjKey = normalizeText(exam.subject).replace(/\s+/g, '') || exam.subject;
+
+                if (!studentData.subjects[subjKey]) {
+                    studentData.subjects[subjKey] = { written: 0, mcq: 0, practical: 0, total: 0, grade: '', gpa: '', status: '' };
+                }
+
+                if (!studentData.subjects[subjKey].tutorialMarksArr) {
+                    studentData.subjects[subjKey].tutorialMarksArr = [];
+                }
+
+                const tutMark = Number(s.total || 0);
+                if (tutMark > 0) {
+                    studentData.subjects[subjKey].tutorialMarksArr.push(tutMark);
+                }
+
+                // Store per-exam marks for tutorial summary table
+                if (!studentData.tutorialExamMarks) {
+                    studentData.tutorialExamMarks = {};
+                }
+                if (!studentData.tutorialExamMarks[exam.name]) {
+                    studentData.tutorialExamMarks[exam.name] = {};
+                }
+                studentData.tutorialExamMarks[exam.name][subjKey] = tutMark;
+            });
+        });
+
+        // Calculate per-subject tutorial averages
+        for (const [key, student] of studentAgg.entries()) {
+            for (const [subjKey, subjData] of Object.entries(student.subjects)) {
+                if (subjData.tutorialMarksArr && subjData.tutorialMarksArr.length > 0) {
+                    const sum = subjData.tutorialMarksArr.reduce((a, b) => a + Number(b), 0);
+                    subjData.tutorialAvg = Math.round(sum / subjData.tutorialMarksArr.length);
+                }
+            }
+        }
+    }
+    // --- END TUTORIAL MARKS INTEGRATION ---
+
     // ALL active students for the exam summary (unfiltered by group/student)
     const allStudentsForSummary = [...studentAgg.values()]
         .filter(s => String(s.status) !== 'false')
@@ -483,7 +548,7 @@ async function generateMarksheets() {
     let loop1Idx = 0;
     for (const student of allStudentsForSummary) {
         // FAST RENDER: Extract pure statistics without generating HTML!
-        const stats = await renderSingleMarksheet(student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, true, highestMarks);
+        const stats = await renderSingleMarksheet(student, displaySubjects, examDisplayName, session, marksheetSettings, rules, allOptSubs, allExams, subjectConfigs, null, true, highestMarks);
         allRenderedData.push({
             student,
             stats,
@@ -491,7 +556,7 @@ async function generateMarksheets() {
             group: student.group,
             subjects: student.subjects
         });
-        
+
         // Yield to main thread every 5 students to prevent UI freeze
         if (++loop1Idx % 5 === 0) await new Promise(r => setTimeout(r, 0));
     }
@@ -504,15 +569,15 @@ async function generateMarksheets() {
         };
         const numId = parseInt(toEng(item.student.id)) || 0;
 
-        return { 
-            key: item.key, 
-            group: item.group || 'general', 
-            id: numId, 
-            isPass: item.stats.isPass, 
-            gpa: item.stats.gpa, 
-            totalMarks: item.stats.totalMarks, 
-            failedCount: item.stats.failedCount, 
-            isAbsent: item.stats.isAbsent 
+        return {
+            key: item.key,
+            group: item.group || 'general',
+            id: numId,
+            isPass: item.stats.isPass,
+            gpa: item.stats.gpa,
+            totalMarks: item.stats.totalMarks,
+            failedCount: item.stats.failedCount,
+            isAbsent: item.stats.isAbsent
         };
     });
 
@@ -559,8 +624,8 @@ async function generateMarksheets() {
     let loop2Idx = 0;
     for (const item of allRenderedData) {
         const exactRanks = exactRanksMap.get(item.key);
-        item.html = await renderSingleMarksheet(item.student, displaySubjects, examDisplayName, session, null, rules, allOptSubs, allExams, subjectConfigs, null, false, highestMarks, exactRanks);
-        
+        item.html = await renderSingleMarksheet(item.student, displaySubjects, examDisplayName, session, marksheetSettings, rules, allOptSubs, allExams, subjectConfigs, null, false, highestMarks, exactRanks);
+
         // Yield to main thread every 5 students to prevent UI freeze
         if (++loop2Idx % 5 === 0) await new Promise(r => setTimeout(r, 0));
     }
@@ -850,8 +915,14 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
     const cacheKeyBase = `${cls}_${session}_h${hiddenKey}`;
 
     let examSessions = [...new Set(allExams.filter(e => e.class === cls && e.session === session).map(e => e.name))];
-    if (marksheetSettings.historyExams && marksheetSettings.historyExams.length > 0) {
-        examSessions = examSessions.filter(name => marksheetSettings.historyExams.includes(name));
+
+    // Merge main history and tutorial history settings
+    const allowedMain = marksheetSettings.historyExams || [];
+    const allowedTutorial = marksheetSettings.tutorialHistoryExams || [];
+    const allAllowed = [...allowedMain, ...allowedTutorial];
+
+    if (allAllowed.length > 0) {
+        examSessions = examSessions.filter(name => allAllowed.includes(name));
     }
 
     for (const examName of examSessions) {
@@ -924,9 +995,13 @@ async function getStudentExamsHistory(student, allExams, cls, session, rules, su
 
                     const config = subjectConfigs?.[subj] || { total: 100 };
                     const maxTotal = parseInt(config.total) || 100;
-                    const pct = maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0;
-                    const gp = getGradePoint(pct);
-                    const grade = getLetterGrade(pct);
+                    
+                    // Use absolute marks for Main Exams (fixed board scale),
+                    // but use percentage scaling for Tutorial exams.
+                    const effectivePct = state.isTutorialMode ? (maxTotal > 0 ? (sTotal / maxTotal) * 100 : 0) : sTotal;
+                    
+                    const gp = getGradePoint(effectivePct);
+                    const grade = getLetterGrade(effectivePct);
 
                     let isFail = (grade === 'F');
                     if (data.written !== undefined && config.writtenPass !== undefined && parseFloat(data.written) < parseFloat(config.writtenPass)) isFail = true;
@@ -1338,6 +1413,85 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     // Track Relative Excellence Sum
     let relativeExcellenceSum = 0;
+    let totalTutorialAvgSum = 0;
+
+    const tutIntEnabled = ms.tutorialIntegrationEnabled !== false;
+    const selectedTutorialExams = ms.tutorialExams || [];
+    const tutCount = selectedTutorialExams.length;
+    const tutorialHeader = tutIntEnabled && tutCount > 0 ? `<th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important; width:85px; font-size:0.6rem;">টিউটোরিয়াল<br>গড় - ${tutCount}টি</th>` : '';
+
+    // --- TUTORIAL GPA BONUS CALCULATION ---
+    let tutorialExtraGP = 0;
+    let totalTutorialEarnedPoints = 0;
+    if (tutIntEnabled && tutCount > 0) {
+        visibleSubjects.forEach(subjObj => {
+            const isObj = typeof subjObj === 'object';
+            const subjName = isObj ? subjObj.name : subjObj;
+
+            const checkSubject = (name) => {
+                const key = normalizeText(name).replace(/\s+/g, '');
+                const data = (student.subjects && student.subjects[key]) ? student.subjects[key] : {};
+                const tutAvg = data.tutorialAvg || 0;
+                if (tutAvg > 0) {
+                    let config = null;
+                    
+                    // First check if subject has a specific .tutorial config
+                    if (state.subjectConfigs?.[name] && state.subjectConfigs[name].tutorial) {
+                        config = state.subjectConfigs[name].tutorial;
+                    } else {
+                        // Look for tutorial-specific config with various possible suffixes
+                        const suffixes = [' (টিউটোরিয়াল)', ' (Tutorial)', ' ক্লাস টেস্ট', ' Class test', ' Tutorial exam', ' Class test exam', ' ক্লাস টেস্ট পরীক্ষা'];
+                        for (const sfx of suffixes) {
+                            const targetName = name + sfx;
+                            if (state.subjectConfigs?.[targetName]) {
+                                config = state.subjectConfigs[targetName];
+                                break;
+                            }
+                            // Fuzzy check for each suffix
+                            const normTarget = normalizeText(targetName);
+                            const foundKey = Object.keys(state.subjectConfigs || {}).find(k => k !== 'updatedAt' && normalizeText(k) === normTarget);
+                            if (foundKey) {
+                                config = state.subjectConfigs[foundKey];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!config) config = state.subjectConfigs?.[name] || { total: 100 };
+                                   
+                    const max = parseInt(config.customMarks) || parseInt(config.total) || 100;
+                    const pct = (tutAvg / max) * 100;
+                    
+                    let earnedPoint = 0.0;
+                    if (pct >= 80) earnedPoint = 1.0;
+                    else if (pct >= 70) earnedPoint = 0.7;
+                    else if (pct >= 60) earnedPoint = 0.5;
+                    else if (pct >= 33) earnedPoint = 0.3;
+                    
+                    data.tutorialEarnedPoint = earnedPoint;
+                    return earnedPoint;
+                }
+                data.tutorialEarnedPoint = 0.0;
+                return 0.0;
+            };
+
+            if (isCombinedMode && isObj && subjObj.isCombined) {
+                (subjObj.papers || []).forEach(p => {
+                    totalTutorialEarnedPoints += checkSubject(p);
+                });
+            } else {
+                totalTutorialEarnedPoints += checkSubject(subjName);
+            }
+        });
+        
+        // Apply custom percentage to the extra points generated
+        const tutPct = ms.tutorialGlobalPercentage !== undefined ? ms.tutorialGlobalPercentage : 100;
+        tutorialExtraGP = totalTutorialEarnedPoints * (tutPct / 100);
+    }
+    student.tutorialExtraGPA = tutorialExtraGP;
+    // --- END TUTORIAL GPA BONUS ---
+
+    const dynamicColspan = (isCombinedMode ? 3 : 2);
 
     const subjectRows = visibleSubjects.flatMap((subjObj, idx) => {
         const isObj = typeof subjObj === 'object';
@@ -1385,6 +1539,19 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 }
 
                 cells += `<td class="ms-td-subject">${paperName}</td>`;
+                if (tutIntEnabled && tutCount > 0) {
+                    const tAvg = data.tutorialAvg || 0;
+                    totalTutorialAvgSum += tAvg;
+                    const point = data.tutorialEarnedPoint || 0;
+                    const pointHtml = point > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; color: #047857; font-size: 0.55rem; font-weight: 800; background: #ecfdf5; padding: 1.5px 4px; border-radius: 6px; border: 0.5px solid #6ee7b7; line-height: 1;">+${point}</span>` : '';
+                    cells += `<td class="ms-td-num" style="padding: 0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 24px; color:#6d28d9; font-weight:600; box-sizing: border-box;">
+                            <div style="flex: 1; visibility: hidden;"></div>
+                            <div style="flex: 0 1 auto; text-align: center; padding: 0 2px;">${tAvg > 0 ? tAvg : '-'}</div>
+                            <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 3px;">${pointHtml}</div>
+                        </div>
+                    </td>`;
+                }
                 const highMarkObj = highestMarks[pSubjKey] !== undefined ? highestMarks[pSubjKey] : '-';
                 cells += `<td class="ms-td-num" style="font-weight: 600;">${highMarkObj}</td>`;
                 cells += `<td class="ms-td-num">${maxTotal}</td>`;
@@ -1479,9 +1646,12 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             grandTotal += total;
             maxGrand += maxTotal;
 
-            const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-            let grade = getLetterGrade(pct);
-            let gp = getGradePoint(pct);
+            // Use absolute marks for Main Exams (fixed board scale),
+            // but use percentage scaling for Tutorial exams.
+            const effectivePct = state.isTutorialMode ? (maxTotal > 0 ? (total / maxTotal) * 100 : 0) : total;
+            
+            let grade = getLetterGrade(effectivePct);
+            let gp = getGradePoint(effectivePct);
 
             // Strict Component Pass/Fail check
             const isCompFail = getMarkClass(data.written, config.writtenPass) === 'ms-mark-fail' ||
@@ -1587,6 +1757,19 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                             </div>
                         </td>
                         <td class="ms-td-subject">${subj}</td>
+                        ${tutIntEnabled && tutCount > 0 ? (() => {
+                        const tAvg = data.tutorialAvg || 0;
+                        totalTutorialAvgSum += tAvg;
+                        const point = data.tutorialEarnedPoint || 0;
+                        const pointHtml = point > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; color: #047857; font-size: 0.55rem; font-weight: 800; background: #ecfdf5; padding: 1.5px 4px; border-radius: 6px; border: 0.5px solid #6ee7b7; line-height: 1;">+${point}</span>` : '';
+                        return `<td class="ms-td-num" style="padding: 0;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 24px; color:#6d28d9; font-weight:600; box-sizing: border-box;">
+                                <div style="flex: 1; visibility: hidden;"></div>
+                                <div style="flex: 0 1 auto; text-align: center; padding: 0 2px;">${tAvg > 0 ? tAvg : '-'}</div>
+                                <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 3px;">${pointHtml}</div>
+                            </div>
+                        </td>`;
+                    })() : ''}
                         <td class="ms-td-num" style="font-weight: 600;">${highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'}</td>
                         <td class="ms-td-num">${maxTotal}</td>
                         <td class="ms-td-num ${getMarkClass(data.written, config.writtenPass)}">${data.written || '-'}</td>
@@ -1617,6 +1800,19 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                                 ${isOptional ? `<div class="ms-optional-tag">(ঐচ্ছিক বিষয়) - ${ms.boardStandardOptional ? 'বোর্ড স্ট্যন্ডার্ড' : 'সাধারণ বিষয় নীতি'}</div>` : ''}
                             </div>
                         </td>
+                        ${tutIntEnabled && tutCount > 0 ? (() => {
+                        const tAvg = data.tutorialAvg || 0;
+                        totalTutorialAvgSum += tAvg;
+                        const point = data.tutorialEarnedPoint || 0;
+                        const pointHtml = point > 0 ? `<span style="display: inline-flex; align-items: center; justify-content: center; color: #047857; font-size: 0.55rem; font-weight: 800; background: #ecfdf5; padding: 1.5px 4px; border-radius: 6px; border: 0.5px solid #6ee7b7; line-height: 1;">+${point}</span>` : '';
+                        return `<td class="ms-td-num" style="padding: 0;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 24px; color:#6d28d9; font-weight:600; box-sizing: border-box;">
+                                <div style="flex: 1; visibility: hidden;"></div>
+                                <div style="flex: 0 1 auto; text-align: center; padding: 0 2px;">${tAvg > 0 ? tAvg : '-'}</div>
+                                <div style="flex: 1; display: flex; justify-content: flex-end; padding-right: 3px;">${pointHtml}</div>
+                            </div>
+                        </td>`;
+                    })() : ''}
                         <td class="ms-td-num" style="font-weight: 600;">${highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-'}</td>
                         <td class="ms-td-num">${maxTotal}</td>
                         <td class="ms-td-num ${getMarkClass(data.written, config.writtenPass)}">${data.written || '-'}</td>
@@ -1636,13 +1832,13 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
     let avgGPA = '0.00';
     if (isCombinedMode) {
-        const totalGP = compulsoryGP + optionalBonusGP;
+        const totalGP = compulsoryGP + optionalBonusGP + tutorialExtraGP;
         const finalGP = compulsoryCount > 0 ? Math.min(5.00, totalGP / compulsoryCount) : 0;
         avgGPA = allPassed ? finalGP.toFixed(2) : '0.00';
     } else {
         // Single Paper Mode (both ON/OFF): GPA = (Compulsory GP + Bonus) / Compulsory Count
         if (allPassed && compulsoryCount > 0) {
-            const totalGP = compulsoryGP + optionalBonusGP;
+            const totalGP = compulsoryGP + optionalBonusGP + tutorialExtraGP;
             const finalGP = Math.min(5.00, totalGP / compulsoryCount);
             avgGPA = finalGP.toFixed(2);
         } else {
@@ -1714,6 +1910,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
             <th class="ms-th-sl" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ক্রঃ</th>
             <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">বিষয়ের নাম</th>
             <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পত্র সমূহ</th>
+            ${tutorialHeader}
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">সর্বোচ্চ নম্বর</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পূর্ণমান</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">CQ</th>
@@ -1727,6 +1924,7 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
         <tr>
             <th class="ms-th-sl" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">ক্রঃ</th>
             <th class="ms-th-subject" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">বিষয়ের নাম</th>
+            ${tutorialHeader}
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">সর্বোচ্চ নম্বর</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">পূর্ণমান</th>
             <th class="ms-th-num" style="background:#0d5e2e !important; color:#ffffff !important; -webkit-print-color-adjust:exact !important;">লিখিত</th>
@@ -1793,13 +1991,121 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
         };
     }
 
+    // Calculate APS Data universally for templates
+    const apsData = calculateAPS({
+        gpa: avgGPA,
+        reScore: totalVisibleCountForAPS > 0 ? (relativeExcellenceSum / totalVisibleCountForAPS) : 0,
+        subjectsCount: totalVisibleCountForAPS,
+        passedSubjects: passedSubjectsCount,
+        weakSubjects: weakSubjectsCount,
+        absentCount: absentCount,
+        failedSubjects: failedSubjectsCount
+    });
+
+    let attendanceStatus = 'উপস্থিত';
+    if (attendedSubjectsCount === 0) {
+        attendanceStatus = 'অনুপস্থিত';
+    } else if (attendedSubjectsCount < totalVisibleCount) {
+        attendanceStatus = 'আংশিক উপস্থিত';
+    }
+
+    // --- TEMPLATE B RENDERING BRANCH ---
+    const selectedTemplate = document.getElementById('msDesignTemplate')?.value || 'A';
+    if (selectedTemplate === 'B') {
+        // Build subject row data for Template B
+        const templateBSubjectRows = visibleSubjects.map((subjObj, idx) => {
+            const isObj = typeof subjObj === 'object';
+            const subjName = isObj ? subjObj.name : subjObj;
+            const subj = isObj ? (subjObj.paper || subjObj.name) : subjObj;
+            const sSubjKey = normalizeText(subj).replace(/\s+/g, '');
+            const data = student.subjects[sSubjKey] || {};
+            const config = state.subjectConfigs?.[subj] || { total: 100 };
+            const maxTotal = parseInt(config.total) || 100;
+            const total = data.total || 0;
+            const effectivePct = state.isTutorialMode ? (maxTotal > 0 ? (total / maxTotal) * 100 : 0) : total;
+            let grade = getLetterGrade(effectivePct);
+            let gp = getGradePoint(effectivePct);
+            const isCompFail = getMarkClass(data.written, config.writtenPass) === 'ms-mark-fail' ||
+                getMarkClass(data.mcq, config.mcqPass) === 'ms-mark-fail' ||
+                getMarkClass(data.practical, config.practicalPass) === 'ms-mark-fail';
+            if (isCompFail) { grade = 'F'; gp = 0; }
+
+            // Determine isOptional
+            const studentGroup = student.group || '';
+            const optionalSubjectsObj = rules?.optionalSubjects || {};
+            const optKey = getMappedGroupKey(studentGroup, Object.keys(optionalSubjectsObj));
+            const optSubsCheck = (optionalSubjectsObj[optKey] || []).map(s => norm(s));
+            const normSubjName = norm(subjName);
+            const isOptionalCheck = optSubsCheck.some(os => normSubjName === os || normSubjName.includes(os) || os.includes(normSubjName));
+
+            return {
+                name: subjName,
+                mcq: data.mcq || 0,
+                cq: data.written || 0,
+                practical: data.practical || 0,
+                mcqFail: getMarkClass(data.mcq, config.mcqPass) === 'ms-mark-fail',
+                cqFail: getMarkClass(data.written, config.writtenPass) === 'ms-mark-fail',
+                pracFail: getMarkClass(data.practical, config.practicalPass) === 'ms-mark-fail',
+                total: total,
+                grade: grade,
+                gp: gp.toFixed(2),
+                isOptional: isOptionalCheck,
+                optionalBonus: isOptionalCheck ? optionalBonusGP : 0,
+                fullMarks: maxTotal,
+                highestMark: highestMarks[sSubjKey] !== undefined ? highestMarks[sSubjKey] : '-',
+                tutorialAvg: data.tutorialAvg || 0,
+                tutorialEarnedPoint: data.tutorialEarnedPoint || 0
+            };
+        });
+
+        return renderTemplateB({
+            student,
+            ms,
+            examDisplayName,
+            selectedSession,
+            visibleSubjects,
+            subjectRows: templateBSubjectRows,
+            grandTotal,
+            maxGrand: maxGrand,
+            avgGPA,
+            overallGrade,
+            allPassed,
+            resultText,
+            optionalBonusGP,
+            tutorialExtraGP,
+            tutIntEnabled,
+            tutCount,
+            totalTutorialEarnedPoints,
+            history,
+            studentRemark,
+            uid,
+            signaturesToRender,
+            watermarkHtml,
+            todayDate,
+            isAbsentMark,
+            attendanceStatus,
+            failedSubjectsCount,
+            exactRanks,
+            apsData: apsData,
+            progressEnabled: marksheetSettings.progressEnabled !== false,
+            highestMarks,
+            isCombinedMode,
+            isIdSearch,
+        });
+    }
+    // --- END TEMPLATE B ---
+
     return `
         <div class="ms-page font-${ms.fontSize || 'medium'} theme-${ms.theme || 'classic'} border-${ms.borderStyle || 'double'} typography-${ms.typography || 'default'} density-${ms.rowDensity || 'normal'}" 
              id="ms_page_${student.id}_${student.group}" 
              data-student-id="${student.id}"
              data-student-group="${student.group}"
              data-is-absent="${isAbsentMark}"
-             style="--ms-primary: ${ms.primaryColor || '#4361ee'};">
+             style="--ms-primary: ${(() => {
+                 const g = (student.group || '').trim();
+                 const baseG = g.replace(/[\s\-_]*(গ্রুপ|Group)$/i, '').trim();
+                 return (ms.groupColorsEnabled && ms.groupColors) ? (ms.groupColors[g] || ms.groupColors[baseG] || ms.primaryColor || '#4361ee') : (ms.primaryColor || '#4361ee');
+             })()};">
             
             <div class="ms-actions-float no-print">
                 <button class="ms-btn-action ms-btn-print-single" onclick="window.printSingleMarksheet('ms_page_${student.id}_${student.group}')">
@@ -1873,7 +2179,14 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         </tbody>
                         <tfoot>
                             <tr class="ms-row-total">
-                                <td colspan="${isCombinedMode ? 4 : 3}" class="ms-td-total-label">সর্বমোট</td>
+                                <td colspan="${dynamicColspan}" class="ms-td-total-label">সর্বমোট</td>
+                                ${tutIntEnabled && tutCount > 0 ? `<td class="ms-td-num" style="padding: 4px 0;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; color:#6d28d9; font-weight:700; line-height: 1.2;">
+                                        <span>${totalTutorialAvgSum}</span>
+                                        ${totalTutorialEarnedPoints > 0 ? `<span style="color: #059669; font-size: 0.65rem; font-weight: 700; margin-top: 2px;">+${Number.isInteger(totalTutorialEarnedPoints) ? totalTutorialEarnedPoints : totalTutorialEarnedPoints.toFixed(1)} পয়েন্ট</span>` : ''}
+                                    </div>
+                                </td>` : ''}
+                                <td class="ms-td-num"></td>
                                 <td class="ms-td-num">${maxGrand}</td>
                                 <td colspan="3"></td>
                                 <td class="ms-td-num ms-td-total">${grandTotal}</td>
@@ -1891,6 +2204,13 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                     <div class="ms-result-box" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border: 1px solid #a5d6a7; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
                         <span class="ms-result-label" style="color: #2e7d32; font-size: 0.55rem;">ঐচ্ছিক পয়েন্ট</span>
                         <span class="ms-result-value" style="color: #1b5e20; font-size: 1.1rem;">+${optionalBonusGP.toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    ${(tutIntEnabled && tutCount > 0 && tutorialExtraGP > 0) ? `
+                    <div class="ms-result-box" style="background: linear-gradient(135deg, #f5f3ff, #ede9fe); border: 1px solid #ddd6fe; padding-bottom: 4px; gap: 2px; ${isIdSearch && ms.idSearchStatusMode === 'status_only' ? 'display: none !important;' : ''}">
+                        <span class="ms-result-label" style="color: #5b21b6; font-size: 0.55rem;">টিউটোরিয়াল পয়েন্ট</span>
+                        <span class="ms-result-value" style="color: #6d28d9; font-size: 1.1rem; line-height: 1;">+${tutorialExtraGP.toFixed(2)}</span>
+                        <span style="font-size: 0.5rem; font-weight: 600; color: #7c3aed; line-height: 1; opacity: 0.9;">(${ms.tutorialGlobalPercentage !== undefined ? ms.tutorialGlobalPercentage : 100}% যুক্ত)</span>
                     </div>
                     ` : ''}
                     ${grandTotal === 0 ? `
@@ -1916,32 +2236,184 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                         <span class="ms-result-value">${grandTotal} / ${maxGrand}</span>
                     </div>
                     ${(() => {
-            if (grandTotal === 0 && !allPassed) return ''; // Absent: Do nothing
+                        if (grandTotal === 0 && !allPassed) return ''; 
+                        const failedCount = (subjectRows.match(/ms-grade-fail/g) || []).length;
+                        const finalCount = (!allPassed && failedCount === 0) ? 1 : failedCount;
 
-            // subjectRows is already a string at this point (joined at line 1411)
-            const failedCount = (subjectRows.match(/ms-grade-fail/g) || []).length;
+                        const bgStyle = (!allPassed || finalCount > 0) ? 'background: #fef2f2; border: 1px solid #fecaca;' : 'background: #f0fdf4; border: 1px solid #bbf7d0;';
+                        const labelStyle = (!allPassed || finalCount > 0) ? 'color: #991b1b; font-size: 0.55rem;' : 'color: #166534; font-size: 0.55rem;';
+                        const valStyle = (!allPassed || finalCount > 0) ? 'color: #dc2626; font-size: 0.85rem; font-weight: 700;' : 'color: #15803d; font-size: 0.85rem; font-weight: 700;';
 
-            // Fallback logic incase manual status failure triggered but no F grade printed
-            const finalCount = (!allPassed && failedCount === 0) ? 1 : failedCount;
+                        let text = 'সকল বিষয়ে উত্তীর্ণ';
+                        if (!allPassed || finalCount > 0) {
+                            const banglaNum = Number(finalCount).toLocaleString('bn-BD');
+                            text = `${banglaNum} বিষয় ফেল`;
+                        }
 
-            const bgStyle = (!allPassed || finalCount > 0) ? 'background: #fef2f2; border: 1px solid #fecaca;' : 'background: #f0fdf4; border: 1px solid #bbf7d0;';
-            const labelStyle = (!allPassed || finalCount > 0) ? 'color: #991b1b; font-size: 0.55rem;' : 'color: #166534; font-size: 0.55rem;';
-            const valStyle = (!allPassed || finalCount > 0) ? 'color: #dc2626; font-size: 0.85rem; font-weight: 700;' : 'color: #15803d; font-size: 0.85rem; font-weight: 700;';
-
-            let text = 'সকল বিষয়ে উত্তীর্ণ';
-            if (!allPassed || finalCount > 0) {
-                const banglaNum = Number(finalCount).toLocaleString('bn-BD');
-                text = `${banglaNum} বিষয় ফেল`;
-            }
-
-            return `
+                        return `
                         <div class="ms-result-box" style="${bgStyle}">
                             <span class="ms-result-label" style="${labelStyle}">বিষয়ভিত্তিক অবস্থা:</span>
                             <span class="ms-result-value" style="${valStyle}">${text}</span>
                         </div>`;
-        })()}
-                    </div>
+                    })()}
+                </div>
                     <!--EXAM_SUMMARY_PLACEHOLDER-->
+
+                ${(() => {
+                    // --- Tutorial Exam Summary Table ---
+                    const showTutSummary = (ms.showTutorialSummary !== false) && !(isIdSearch && ms.idSearchShowTutorialSummary === false);
+                    const tutExamMarks = student.tutorialExamMarks || {};
+                    const tutExamNames = Object.keys(tutExamMarks);
+                    if (!showTutSummary || !tutIntEnabled || tutExamNames.length === 0) return '';
+
+                    const numExams = tutExamNames.length;
+                    let numCols = 1;
+                    if (numExams > 4 && numExams <= 6) {
+                        numCols = 2;
+                    } else if (numExams > 6) {
+                        numCols = 3;
+                    }
+
+                    // Generate data cells for all exams
+                    const examCellsData = tutExamNames.map((examName, idx) => {
+                        const examSubjectMarks = tutExamMarks[examName];
+                        
+                        let totalMarks = 0;
+                        let totalMaxMarks = 0;
+                        let totalEarnedPoints = 0;
+                        let subjectsWithMarks = 0;
+                        
+                        visibleSubjects.forEach(subjObj => {
+                            const isObj = typeof subjObj === 'object';
+                            const subjName = isObj ? subjObj.name : subjObj;
+                            const key = normalizeText(subjName).replace(/\s+/g, '');
+                            
+                            const mark = examSubjectMarks[key];
+                            
+                            // Find tutorial max marks for this subject
+                            let config = null;
+                            if (state.subjectConfigs?.[subjName] && state.subjectConfigs[subjName].tutorial) {
+                                config = state.subjectConfigs[subjName].tutorial;
+                            } else {
+                                const suffixes = [' (টিউটোরিয়াল)', ' (Tutorial)', ' ক্লাস টেস্ট', ' Class test', ' Tutorial exam', ' Class test exam', ' ক্লাস টেস্ট পরীক্ষা'];
+                                for (const sfx of suffixes) {
+                                    const targetName = subjName + sfx;
+                                    if (state.subjectConfigs?.[targetName]) {
+                                        config = state.subjectConfigs[targetName];
+                                        break;
+                                    }
+                                    const normTarget = normalizeText(targetName);
+                                    const foundKey = Object.keys(state.subjectConfigs || {}).find(k => k !== 'updatedAt' && normalizeText(k) === normTarget);
+                                    if (foundKey) {
+                                        config = state.subjectConfigs[foundKey];
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!config) config = state.subjectConfigs?.[subjName] || { total: 100 };
+                            const max = parseInt(config.customMarks) || parseInt(config.total) || 100;
+                            
+                            totalMaxMarks += max;
+                            
+                            if (mark !== undefined && mark !== null && mark !== '') {
+                                const numMark = parseFloat(mark) || 0;
+                                if (numMark > 0 || String(mark) === '0') {
+                                    subjectsWithMarks++;
+                                }
+                                totalMarks += numMark;
+                                
+                                const pct = (numMark / max) * 100;
+                                let earnedPoint = 0.0;
+                                if (pct >= 80) earnedPoint = 1.0;
+                                else if (pct >= 70) earnedPoint = 0.7;
+                                else if (pct >= 60) earnedPoint = 0.5;
+                                else if (pct >= 33) earnedPoint = 0.3;
+                                
+                                totalEarnedPoints += earnedPoint;
+                            }
+                        });
+                        
+                        const totalPossiblePoints = visibleSubjects.length;
+                        
+                        // Participation logic
+                        let participation = '';
+                        let participationStyle = '';
+                        if (subjectsWithMarks === visibleSubjects.length && subjectsWithMarks > 0) {
+                            participation = 'উপস্থিত';
+                            participationStyle = 'color: #15803d; font-weight: 700;';
+                        } else if (subjectsWithMarks === 0) {
+                            participation = 'অনুপস্থিত';
+                            participationStyle = 'color: #dc2626; font-weight: 700;';
+                        } else {
+                            participation = 'আংশিক উপস্থিত';
+                            participationStyle = 'color: #d97706; font-weight: 700;';
+                        }
+                        
+                        const banglaSerial = (idx + 1).toLocaleString('bn-BD');
+                        // Format points nicely to avoid trailing zeros if whole number
+                        const formattedPoints = Number.isInteger(totalEarnedPoints) ? totalEarnedPoints : totalEarnedPoints.toFixed(1);
+                        
+                        return `
+                            <td style="text-align:center; font-weight:600; color: #1f2937;">${banglaSerial}</td>
+                            <td style="text-align:left; padding-left:8px; font-weight:700; color: #1f2937;">${examName}</td>
+                            <td style="text-align:center; font-weight:800; color: #6d28d9;">${formattedPoints} <span style="font-weight: 600; color: #9ca3af;">/ ${totalPossiblePoints}</span></td>
+                            <td style="text-align:center; font-weight:700; color: #4b5563;">${totalMarks > 0 ? `${totalMarks} <span style="color:#9ca3af;">/ ${totalMaxMarks}</span>` : '-'}</td>
+                            <td style="text-align:center; ${participationStyle}">${participation}</td>
+                        `;
+                    });
+
+                    // Pad with empty cells if necessary to fill the last row
+                    while (examCellsData.length % numCols !== 0) {
+                        examCellsData.push(`
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        `);
+                    }
+
+                    // Build rows
+                    let tbodyHtml = '';
+                    for (let i = 0; i < examCellsData.length; i += numCols) {
+                        tbodyHtml += `<tr>${examCellsData.slice(i, i + numCols).join('')}</tr>`;
+                    }
+
+                    // Build header row
+                    let theadHtml = '<tr>';
+                    for (let i = 0; i < numCols; i++) {
+                        theadHtml += `
+                            <th class="tut-sum-th" style="width: 30px; text-align:center; background: #f5f3ff !important; border: 1px solid #ddd6fe !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+                                <span style="color: #5b21b6 !important; -webkit-text-fill-color: #5b21b6 !important; display: block;">ক্রম</span>
+                            </th>
+                            <th class="tut-sum-th" style="text-align:left; padding-left:8px; background: #f5f3ff !important; border: 1px solid #ddd6fe !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+                                <span style="color: #5b21b6 !important; -webkit-text-fill-color: #5b21b6 !important; display: block;">পরীক্ষার নাম</span>
+                            </th>
+                            <th class="tut-sum-th" style="width: 80px; text-align:center; background: #f5f3ff !important; border: 1px solid #ddd6fe !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+                                <span style="color: #5b21b6 !important; -webkit-text-fill-color: #5b21b6 !important; display: block;">অর্জিত পয়েন্ট</span>
+                            </th>
+                            <th class="tut-sum-th" style="width: 80px; text-align:center; background: #f5f3ff !important; border: 1px solid #ddd6fe !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+                                <span style="color: #5b21b6 !important; -webkit-text-fill-color: #5b21b6 !important; display: block;">মোট নম্বর</span>
+                            </th>
+                            <th class="tut-sum-th" style="width: 80px; text-align:center; background: #f5f3ff !important; border: 1px solid #ddd6fe !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
+                                <span style="color: #5b21b6 !important; -webkit-text-fill-color: #5b21b6 !important; display: block;">অংশগ্রহণ</span>
+                            </th>
+                        `;
+                    }
+                    theadHtml += '</tr>';
+
+                    return `
+                    <div class="ms-tutorial-summary-section" style="margin-top: 6px; margin-bottom: 4px;">
+                        <table class="ms-table tut-sum-table" style="width: 100%; border-collapse: collapse; font-size: 0.65rem;">
+                            <thead>
+                                ${theadHtml}
+                            </thead>
+                            <tbody>
+                                ${tbodyHtml}
+                            </tbody>
+                        </table>
+                    </div>`;
+                })()}
 
                 <!-- Grade Scale Reference -->
                 <div class="ms-grade-scale" style="${(ms.showGradeScale === false || (isIdSearch && ms.idSearchShowGradeScale === false)) ? 'display: none !important;' : ''}">
@@ -1981,70 +2453,75 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
                 </div>
 
                 <!-- Extra Sections: History, Comments, QR -->
-                <div class="ms-extra-grid">
-                    <div class="ms-extra-box ms-history-column" style="display: ${isIdSearch && ms.idSearchShowRanking === false ? 'none !important' : 'flex'}; flex-direction: column; min-width: 0; overflow: hidden;">
-                        <span class="ms-extra-title">ফলাফলের ইতিহাস ও মেধাক্রম</span>
+                <div class="ms-extra-grid ${!(ms.showRanking !== false && !(isIdSearch && ms.idSearchShowRanking === false)) ? 'ms-no-history' : ''}">
+                    ${(() => {
+                        const showRanking = (ms.showRanking !== false) && !(isIdSearch && ms.idSearchShowRanking === false);
+                        const showClassRank = (ms.showClassRank !== false);
+                        const showGroupRank = (ms.showGroupRank !== false);
+
+                        if (!showRanking) return '';
+
+                        let gridTemplate = "70% 30%";
+                        if (showClassRank && showGroupRank) gridTemplate = "38% 18% 22% 22%";
+                        else if (showClassRank || showGroupRank) gridTemplate = "50% 20% 30%";
+
+                        return `
+                    <div class="ms-extra-box ms-history-column" style="display: flex; flex-direction: column; min-width: 0; overflow: hidden;">
+                        <span class="ms-extra-title">ফলাফলের ইতিহাস${(showClassRank || showGroupRank) ? ' ও মেধাক্রম' : ''}</span>
                         <div class="ms-history-grid-container" style="flex-grow: 1; display: flex; flex-direction: column; width: 100%;">
                             <!-- Header Row -->
-                            <div style="display: grid; grid-template-columns: 38% 18% 22% 22%; width: 100%; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
+                            <div style="display: grid; grid-template-columns: ${gridTemplate}; width: 100%; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px;">
                                 <div style="display: flex; align-items: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: left; padding: 2px;">পরীক্ষার নাম</div>
                                 <div style="display: flex; align-items: flex-end; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;">GPA</div>
-                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="সমন্বিত">
+                                ${showClassRank ? `
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="সমন্বিত">
                                     <span>মেধাক্রম</span>
                                     <span style="font-size:0.55rem; font-weight:800; color:#64748b; margin-top:2px; letter-spacing:0.3px;">CLASS</span>
-                                </div>
-                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="বিভাগীয়">
+                                </div>` : ''}
+                                ${showGroupRank ? `
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #475569; text-align: center; padding: 2px;" title="বিভাগীয়">
                                     <span>মেধাক্রম</span>
                                     <span style="font-size:0.55rem; font-weight:800; color:#64748b; margin-top:2px; letter-spacing:0.3px;">GROUP</span>
-                                </div>
+                                </div>` : ''}
                             </div>
                             
                             <!-- Data Rows -->
                             <div style="display: flex; flex-direction: column; gap: 6px;">
                                 ${history.length > 0 ? history.map(h => {
-            // Helper functions for precise rank styling
-            const getRankClass = (rankVal, type) => {
-                if (rankVal === 'মেধাক্রম নেই' || rankVal === '-' || !rankVal) return 'ms-rank-none';
-                const r = parseInt(convertToEnglishDigits(String(rankVal)));
-                const isClass = type === 'class';
-                if (r === 1) return isClass ? 'ms-rank-1-class' : 'ms-rank-1-group';
-                if (r === 2) return 'ms-rank-2-class';
-                if (r === 3) return 'ms-rank-3-class';
-                return isClass ? 'ms-rank-gen-class' : 'ms-rank-gen-group';
-            };
+                                    const getRankClass = (rankVal, type) => {
+                                        if (rankVal === 'মেধাক্রম নেই' || rankVal === '-' || !rankVal) return 'ms-rank-none';
+                                        const r = parseInt(convertToEnglishDigits(String(rankVal)));
+                                        const isClass = type === 'class';
+                                        if (r === 1) return isClass ? 'ms-rank-1-class' : 'ms-rank-1-group';
+                                        if (r === 2) return 'ms-rank-2-class';
+                                        if (r === 3) return 'ms-rank-3-class';
+                                        return isClass ? 'ms-rank-gen-class' : 'ms-rank-gen-group';
+                                    };
 
-            const getRankText = (rankVal) => {
-                if (rankVal === 'মেধাক্রম নেই' || rankVal === '-' || !rankVal) return '-';
-                const r = parseInt(convertToEnglishDigits(String(rankVal)));
-                if (typeof rankVal === 'string' && /[মর্থষ্ঠ]/.test(rankVal)) return rankVal;
-                return r === 1 ? '১ম' : r === 2 ? '২য়' : r === 3 ? '৩য়' : r === 4 ? '৪র্থ' : r === 5 ? '৫ম' : r === 6 ? '৬ষ্ঠ' : r === 7 ? '৭ম' : r === 8 ? '৮ম' : r === 9 ? '৯ম' : r === 10 ? '১০ম' : `${r.toLocaleString('bn-BD')}তম`;
-            };
+                                    const getRankText = (rankVal) => {
+                                        if (rankVal === 'মেধাক্রম নেই' || rankVal === '-' || !rankVal) return '-';
+                                        const r = parseInt(convertToEnglishDigits(String(rankVal)));
+                                        if (typeof rankVal === 'string' && /[মর্থষ্ঠ]/.test(rankVal)) return rankVal;
+                                        return r === 1 ? '১ম' : r === 2 ? '২য়' : r === 3 ? '৩য়' : r === 4 ? '৪র্থ' : r === 5 ? '৫ম' : r === 6 ? '৬ষ্ঠ' : r === 7 ? '৭ম' : r === 8 ? '৮ম' : r === 9 ? '৯ম' : r === 10 ? '১০ম' : `${r.toLocaleString('bn-BD')}তম`;
+                                    };
 
-            const cRankClass = getRankClass(h.rank, 'class');
-            const gRankClass = getRankClass(h.groupRank, 'group');
-            const cRankText = getRankText(h.rank);
-            const gRankText = getRankText(h.groupRank);
+                                    const cRankClass = getRankClass(h.rank, 'class');
+                                    const gRankClass = getRankClass(h.groupRank, 'group');
+                                    const cRankText = getRankText(h.rank);
+                                    const gRankText = getRankText(h.groupRank);
 
-            return `
-                                    <div style="display: grid; grid-template-columns: 38% 18% 22% 22%; width: 100%; border-bottom: 1px dashed #f1f5f9; padding: 6px 0; align-items: center;">
+                                    return `
+                                    <div style="display: grid; grid-template-columns: ${gridTemplate}; width: 100%; border-bottom: 1px dashed #f1f5f9; padding: 6px 0; align-items: center;">
                                         <div style="font-size: 0.72rem; font-weight: 600; color: #334155; text-align: left; padding: 2px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3;">${h.name}</div>
-                                        <div style="font-size: 0.8rem; font-weight: 800; color: #0f172a; text-align: center; padding: 2px; white-space: nowrap;">${h.gpa}</div>
-                                        <div style="text-align: center; padding: 2px; display: flex; justify-content: center;">
-                                            <div class="ms-rank-badge ${cRankClass}" style="${cRankText === '-' ? 'background:#f8fafc; color:#cbd5e1; border:1px solid #e2e8f0; box-shadow:none !important;' : ''}">
-                                                ${cRankText}
-                                            </div>
-                                        </div>
-                                        <div style="text-align: center; padding: 2px; display: flex; justify-content: center;">
-                                            <div class="ms-rank-badge ${gRankClass}" style="${gRankText === '-' ? 'background:#f8fafc; color:#cbd5e1; border:1px solid #e2e8f0; box-shadow:none !important;' : ''}">
-                                                ${gRankText}
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-        }).join('') : '<div style="text-align:center; font-size: 0.75rem; opacity:0.5; padding: 10px 0; width: 100%;">হিস্টোরি নেই</div>'}
+                                        <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b; text-align: center; padding: 2px; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center;">${h.gpa}</div>
+                                        ${showClassRank ? `<div style="display: flex; justify-content: center; align-items: center;"><div class="ms-rank-badge ${cRankClass}">${cRankText}</div></div>` : ''}
+                                        ${showGroupRank ? `<div style="display: flex; justify-content: center; align-items: center;"><div class="ms-rank-badge ${gRankClass}">${gRankText}</div></div>` : ''}
+                                    </div>`;
+                                }).join('') : `<div style="text-align: center; padding: 10px; font-size: 0.75rem; color: #94a3b8; font-style: italic;">কোনো ইতিহাস পাওয়া যায়নি</div>`}
                             </div>
                         </div>
-                    </div>
+                    </div>`;
+                    })()}
                     
                     <div class="ms-extra-box ms-comments-box" style="${isIdSearch && ms.idSearchShowComments === false ? 'display: none !important;' : ''}">
                         <span class="ms-extra-title">মন্তব্য:</span>
@@ -2070,16 +2547,6 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
 
                 <!-- APS Progress Scale Section -->
                 ${marksheetSettings.progressEnabled !== false ? (() => {
-            const apsData = calculateAPS({
-                gpa: avgGPA,
-                reScore: totalVisibleCountForAPS > 0 ? (relativeExcellenceSum / totalVisibleCountForAPS) : 0,
-                subjectsCount: totalVisibleCountForAPS,
-                passedSubjects: passedSubjectsCount,
-                weakSubjects: weakSubjectsCount,
-                absentCount: absentCount,
-                failedSubjects: failedSubjectsCount
-            });
-
             return `
                     <div class="ms-progress-section" style="margin-top: 10px; width: 100%; page-break-inside: avoid;">
                         <span class="ms-extra-title" style="margin-bottom: 5px;">শিক্ষার্থীর একাডেমিক অগ্রগতি স্কেল (APS) ${apsData.isSerious ? '<span style="color: #059669; font-weight: 800; font-size: 0.6rem; margin-left: 8px; vertical-align: middle; background: #ecfdf5; padding: 1px 6px; border-radius: 4px; border: 1px solid #10b98140;">★ SERIOUS STUDENT</span>' : ''}</span>
@@ -2193,15 +2660,24 @@ async function updateSettingsLivePreview() {
         watermarkUrl: marksheetSettings.watermarkUrl || '',
         watermarkOpacity: (document.getElementById('msWatermarkOpacity') ? parseInt(document.getElementById('msWatermarkOpacity').value) : 10) / 100,
         showSummary: document.getElementById('msShowSummary') ? document.getElementById('msShowSummary').checked : true,
+        showRanking: document.getElementById('msShowRanking') ? document.getElementById('msShowRanking').checked : true,
+        showClassRank: document.getElementById('msShowClassRank') ? document.getElementById('msShowClassRank').checked : true,
+        showGroupRank: document.getElementById('msShowGroupRank') ? document.getElementById('msShowGroupRank').checked : true,
         showGradeScale: document.getElementById('msShowGradeScale') ? document.getElementById('msShowGradeScale').checked : true,
+        showTutorialSummary: document.getElementById('msShowTutorialSummary') ? document.getElementById('msShowTutorialSummary').checked : true,
         idSearchShowTable: document.getElementById('msIdSearchShowTable') ? document.getElementById('msIdSearchShowTable').checked : true,
         idSearchShowGradeScale: document.getElementById('msIdSearchShowGradeScale') ? document.getElementById('msIdSearchShowGradeScale').checked : true,
         idSearchShowSummary: document.getElementById('msIdSearchShowSummary') ? document.getElementById('msIdSearchShowSummary').checked : true,
+        idSearchShowTutorialSummary: document.getElementById('msIdSearchShowTutorialSummary') ? document.getElementById('msIdSearchShowTutorialSummary').checked : true,
         idSearchShowRanking: document.getElementById('msIdSearchShowRanking') ? document.getElementById('msIdSearchShowRanking').checked : true,
         idSearchShowQRCode: document.getElementById('msIdSearchShowQRCode') ? document.getElementById('msIdSearchShowQRCode').checked : true,
         idSearchShowComments: document.getElementById('msIdSearchShowComments') ? document.getElementById('msIdSearchShowComments').checked : true,
         idSearchStatusMode: document.querySelector('input[name="msIdSearchStatusMode"]:checked')?.value || 'full',
-        signatures: marksheetSettings.signatures || []
+        signatures: marksheetSettings.signatures || [],
+        // Include tutorial settings for live preview
+        tutorialIntegrationEnabled: document.getElementById('msTutorialEnabled')?.checked,
+        tutorialGlobalPercentage: parseInt(document.getElementById('msTutorialPct')?.value || 100),
+        tutorialExams: marksheetSettings.tutorialExams || []
     };
 
     // Render the mock preview using existing render function
@@ -2210,14 +2686,15 @@ async function updateSettingsLivePreview() {
         name: 'মোহাম্মদ আব্দুল্লাহ',
         roll: '১০১',
         group: 'বিজ্ঞান',
-        marks: {
-            'Bangla': { cq: 65, mcq: 25, practical: 0, total: 90 },
-            'English': { cq: 85, mcq: 0, practical: 0, total: 85 },
-            'Math': { cq: 75, mcq: 20, practical: 0, total: 95 }
+        subjects: {
+            'বাংলা': { written: 65, mcq: 25, practical: 0, total: 90, grade: 'A+', gpa: 5.00 },
+            'ইংরেজি': { written: 85, mcq: 0, practical: 0, total: 85, grade: 'A+', gpa: 5.00 },
+            'গণিত': { written: 75, mcq: 20, practical: 0, total: 95, grade: 'A+', gpa: 5.00 }
         }
     };
 
-    const html = await renderSingleMarksheet(mockStudent, currentSettings, '২০২৫-২০২৬', 'অর্ধ-বার্ষিক পরীক্ষা ২০২৬');
+    const previewSubjects = state.lastGeneratedSubjects || ['বাংলা', 'ইংরেজি', 'গণিত'];
+    const html = await renderSingleMarksheet(mockStudent, previewSubjects, '২০২৫-২০২৬', 'অর্ধ-বার্ষিক পরীক্ষা ২০২৬', currentSettings);
     previewContainer.innerHTML = html;
 
     // Render QRs in preview
@@ -2251,62 +2728,7 @@ function initMarksheetSettingsModal() {
     const menuItems = document.querySelectorAll('.config-menu-item');
     const tabContents = document.querySelectorAll('.config-tab-content');
 
-    // MOCK DATA for Live Preview
-    const MOCK_PREVIEW_STUDENT = {
-        id: 'mock-123',
-        name: 'মোহাম্মদ আব্দুল্লাহ',
-        roll: '১০১',
-        group: 'বিজ্ঞান',
-        subjects: {
-            'Bangla': { written: 65, mcq: 25, practical: 0, total: 90 },
-            'English': { written: 85, mcq: 0, practical: 0, total: 85 },
-            'Math': { written: 75, mcq: 20, practical: 0, total: 95 }
-        }
-    };
 
-    /**
-     * Update Live Preview in Settings
-     */
-    const updateSettingsLivePreview = async () => {
-        const previewContainer = document.getElementById('msSettingsLivePreview');
-        if (!previewContainer) return;
-
-        const currentSettings = {
-            institutionName: document.getElementById('msInstitutionName').value || 'প্রতিষ্ঠানের নাম',
-            institutionAddress: document.getElementById('msInstitutionAddress').value || 'ঠিকানা এখানে',
-            headerLine1: document.getElementById('msHeaderLine1').value || 'পরীক্ষার ফলাফল পত্র',
-            primaryColor: document.getElementById('msPrimaryColor').value,
-            fontSize: document.getElementById('msFontSize').value,
-            theme: document.getElementById('msTheme').value,
-            borderStyle: document.getElementById('msBorderStyle').value,
-            typography: document.getElementById('msTypography').value,
-            rowDensity: document.getElementById('msRowDensity').value,
-            watermarkUrl: marksheetSettings.watermarkUrl || '',
-            watermarkOpacity: parseInt(document.getElementById('msWatermarkOpacity').value) / 100,
-            signatures: marksheetSettings.signatures || [
-                { label: 'শ্রেণি শিক্ষক', url: '' },
-                { label: 'পরীক্ষা কমিটি', url: '' },
-                { label: 'অধ্যক্ষ', url: '' }
-            ]
-        };
-
-        const mockSubjects = Object.keys(MOCK_PREVIEW_STUDENT.subjects);
-
-        // Render the preview
-        const html = await renderSingleMarksheet(MOCK_PREVIEW_STUDENT, mockSubjects, 'অর্ধ-বার্ষিক পরীক্ষা ২০২৬', '২০২৫-২০২৬', currentSettings);
-
-        // Use a wrapper to keep the scale separate from the content
-        previewContainer.innerHTML = html;
-
-        // Render QRs in preview
-        setTimeout(async () => {
-            await renderMarksheetQRCodes(previewContainer);
-        }, 100);
-
-        // Hide non-printable action buttons in preview
-        const actions = previewContainer.querySelectorAll('.ms-actions-float');
-        actions.forEach(a => a.style.display = 'none');
-    };
 
 
     // Add listeners to all form controls for live preview
@@ -2374,7 +2796,13 @@ function initMarksheetSettingsModal() {
             if (el('msTypography')) el('msTypography').value = marksheetSettings.typography || 'default';
             if (el('msRowDensity')) el('msRowDensity').value = marksheetSettings.rowDensity || 'normal';
             if (el('msShowSummary')) el('msShowSummary').checked = marksheetSettings.showSummary !== false;
+            if (el('msShowRanking')) el('msShowRanking').checked = marksheetSettings.showRanking !== false;
+            if (el('msShowClassRank')) el('msShowClassRank').checked = marksheetSettings.showClassRank !== false;
+            if (el('msShowGroupRank')) el('msShowGroupRank').checked = marksheetSettings.showGroupRank !== false;
+            if (el('msShowSummaryClassRank')) el('msShowSummaryClassRank').checked = marksheetSettings.showSummaryClassRank !== false;
+            if (el('msShowSummaryGroupRank')) el('msShowSummaryGroupRank').checked = marksheetSettings.showSummaryGroupRank !== false;
             if (el('msShowGradeScale')) el('msShowGradeScale').checked = marksheetSettings.showGradeScale !== false;
+            if (el('msShowTutorialSummary')) el('msShowTutorialSummary').checked = marksheetSettings.showTutorialSummary !== false;
             if (el('msBoardStandardOptional')) el('msBoardStandardOptional').checked = marksheetSettings.boardStandardOptional === true;
             if (el('msProgressEnabled')) el('msProgressEnabled').checked = marksheetSettings.progressEnabled !== false;
 
@@ -2389,6 +2817,7 @@ function initMarksheetSettingsModal() {
             if (el('msIdSearchShowTable')) el('msIdSearchShowTable').checked = marksheetSettings.idSearchShowTable !== false;
             if (el('msIdSearchShowGradeScale')) el('msIdSearchShowGradeScale').checked = marksheetSettings.idSearchShowGradeScale !== false;
             if (el('msIdSearchShowSummary')) el('msIdSearchShowSummary').checked = marksheetSettings.idSearchShowSummary !== false;
+            if (el('msIdSearchShowTutorialSummary')) el('msIdSearchShowTutorialSummary').checked = marksheetSettings.idSearchShowTutorialSummary !== false;
             if (el('msIdSearchShowRanking')) el('msIdSearchShowRanking').checked = marksheetSettings.idSearchShowRanking !== false;
             if (el('msIdSearchShowQRCode')) el('msIdSearchShowQRCode').checked = marksheetSettings.idSearchShowQRCode !== false;
             if (el('msIdSearchShowComments')) el('msIdSearchShowComments').checked = marksheetSettings.idSearchShowComments !== false;
@@ -2416,6 +2845,7 @@ function initMarksheetSettingsModal() {
             // Render checklists
             renderSubjectVisibilityToggles();
             renderHistoryExamsChecklist();
+            renderTutorialExamsChecklist();
 
             // Populate mapping dropdown (async load all subjects)
             try {
@@ -2429,6 +2859,22 @@ function initMarksheetSettingsModal() {
             renderSubjectMappings();
 
             if (modal) modal.classList.add('active');
+
+            // Handle sub-config visibility for History
+            const rankMain = el('msShowRanking');
+            const rankDetails = el('msRankingDetailsConfig');
+            if (rankMain && rankDetails) {
+                const updateRankDetails = () => {
+                    rankDetails.style.opacity = rankMain.checked ? '1' : '0.5';
+                    rankDetails.style.pointerEvents = rankMain.checked ? 'auto' : 'none';
+                    if (!rankMain.checked) {
+                        el('msShowClassRank').checked = false;
+                        el('msShowGroupRank').checked = false;
+                    }
+                };
+                rankMain.addEventListener('change', updateRankDetails);
+                updateRankDetails();
+            }
         });
     }
 
@@ -2443,9 +2889,73 @@ function initMarksheetSettingsModal() {
         });
     }
 
+    // Color Presets & Targets Logic
+    const colorPresets = document.querySelectorAll('.color-preset');
+    const universalGroup = document.querySelector('.ms-universal-color-group');
+    const primaryColorInput = document.getElementById('msPrimaryColor');
+    
+    // Initialize active target
+    window.activeColorTarget = { type: 'universal', el: primaryColorInput };
+    if (universalGroup) {
+        universalGroup.style.background = '#eef2ff';
+        universalGroup.style.border = '1px solid #6366f1';
+        universalGroup.classList.add('preset-target-active');
+    }
+
+    if (universalGroup) {
+        universalGroup.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            // Remove active from groups
+            document.querySelectorAll('.group-color-row').forEach(r => {
+                r.style.background = '#f8fafc';
+                r.style.borderColor = '#e2e8f0';
+                r.classList.remove('preset-target-active');
+            });
+            // Set active
+            universalGroup.style.background = '#eef2ff';
+            universalGroup.style.border = '1px solid #6366f1';
+            universalGroup.classList.add('preset-target-active');
+            window.activeColorTarget = { type: 'universal', el: primaryColorInput };
+            showNotification('ইউনিভার্সাল কালার প্রিসেট এর জন্য নির্বাচিত');
+        });
+    }
+
+    if (colorPresets.length > 0) {
+        colorPresets.forEach(preset => {
+            preset.addEventListener('click', () => {
+                const selectedColor = preset.dataset.color;
+                if (window.activeColorTarget && window.activeColorTarget.el) {
+                    window.activeColorTarget.el.value = selectedColor;
+                }
+                
+                // Visual feedback for preset
+                colorPresets.forEach(p => p.classList.remove('active'));
+                preset.classList.add('active');
+                
+                updateSettingsLivePreview();
+            });
+        });
+    }
+
+    // Group-wise Colors Toggle Logic
+    const groupColorsEnabled = document.getElementById('msGroupColorsEnabled');
+    const groupColorsContainer = document.getElementById('msGroupColorsContainer');
+    if (groupColorsEnabled && groupColorsContainer) {
+        groupColorsEnabled.checked = marksheetSettings.groupColorsEnabled || false;
+        groupColorsContainer.style.display = groupColorsEnabled.checked ? 'block' : 'none';
+
+        groupColorsEnabled.addEventListener('change', () => {
+            groupColorsContainer.style.display = groupColorsEnabled.checked ? 'block' : 'none';
+            updateSettingsLivePreview();
+        });
+        
+        renderGroupColorInputs();
+    }
+
     // Initialize Checklists
     renderSubjectVisibilityToggles();
     renderHistoryExamsChecklist();
+    renderTutorialExamsChecklist();
 
     if (closeBtn) {
 
@@ -2525,6 +3035,14 @@ function initMarksheetSettingsModal() {
                 institutionAddress: document.getElementById('msInstitutionAddress').value.trim(),
                 headerLine1: document.getElementById('msHeaderLine1').value.trim(),
                 primaryColor: document.getElementById('msPrimaryColor').value,
+                groupColorsEnabled: document.getElementById('msGroupColorsEnabled').checked,
+                groupColors: (() => {
+                    const colors = {};
+                    document.querySelectorAll('.group-color-input').forEach(input => {
+                        colors[input.dataset.group] = input.value;
+                    });
+                    return colors;
+                })(),
                 fontSize: document.getElementById('msFontSize').value,
                 theme: document.getElementById('msTheme').value,
                 borderStyle: document.getElementById('msBorderStyle').value,
@@ -2535,11 +3053,18 @@ function initMarksheetSettingsModal() {
                 hiddenSubjects: marksheetSettings.hiddenSubjects || [],
                 historyExams: marksheetSettings.historyExams || [],
                 showSummary: document.getElementById('msShowSummary').checked,
+                showRanking: document.getElementById('msShowRanking').checked,
+                showClassRank: document.getElementById('msShowClassRank').checked,
+                showGroupRank: document.getElementById('msShowGroupRank').checked,
+                showSummaryClassRank: document.getElementById('msShowSummaryClassRank') ? document.getElementById('msShowSummaryClassRank').checked : true,
+                showSummaryGroupRank: document.getElementById('msShowSummaryGroupRank') ? document.getElementById('msShowSummaryGroupRank').checked : true,
                 showGradeScale: document.getElementById('msShowGradeScale').checked,
+                showTutorialSummary: document.getElementById('msShowTutorialSummary')?.checked !== false,
                 boardStandardOptional: document.getElementById('msBoardStandardOptional')?.checked || false,
                 idSearchShowTable: document.getElementById('msIdSearchShowTable').checked,
                 idSearchShowGradeScale: document.getElementById('msIdSearchShowGradeScale').checked,
                 idSearchShowSummary: document.getElementById('msIdSearchShowSummary').checked,
+                idSearchShowTutorialSummary: document.getElementById('msIdSearchShowTutorialSummary')?.checked !== false,
                 idSearchShowRanking: document.getElementById('msIdSearchShowRanking').checked,
                 idSearchShowQRCode: document.getElementById('msIdSearchShowQRCode').checked,
                 idSearchShowComments: document.getElementById('msIdSearchShowComments').checked,
@@ -2554,12 +3079,92 @@ function initMarksheetSettingsModal() {
                     { label: 'শ্রেণি শিক্ষক', url: '' },
                     { label: 'পরীক্ষা কমিটি', url: '' },
                     { label: 'অধ্যক্ষ', url: '' }
-                ]
+                ],
+                tutorialExams: marksheetSettings.tutorialExams || [],
+                tutorialIntegrationEnabled: document.getElementById('msEnableTutorialIntegration')?.checked !== false,
+                tutorialGlobalPercentage: parseInt(document.getElementById('msTutorialGlobalPercentage')?.value) || 100,
+                tutorialHistoryExams: marksheetSettings.tutorialHistoryExams || []
             });
 
             if (modal) modal.classList.remove('active');
         });
     }
+}
+
+/**
+ * Render Group-wise color inputs in settings modal
+ */
+function renderGroupColorInputs() {
+    const list = document.getElementById('msGroupColorsList');
+    if (!list) return;
+
+    // Get groups from state or use defaults
+    const defaultGroups = ["বিজ্ঞান", "মানবিক", "ব্যবসায় শিক্ষা", "সাধারণ"];
+    let groups = defaultGroups;
+    
+    if (state.academicStructure && state.academicStructure.group && state.academicStructure.group.length > 0) {
+        groups = state.academicStructure.group.map(g => g.value);
+        // Ensure 'সাধারণ' is also available if not in structure but common
+        if (!groups.includes('সাধারণ') && !groups.includes('General')) {
+            groups.push('সাধারণ');
+        }
+    }
+    
+    const premiumColors = [
+        { name: 'Blue', color: '#4361ee' },
+        { name: 'Green', color: '#10b981' },
+        { name: 'Gold', color: '#d97706' },
+        { name: 'Red', color: '#e11d48' },
+        { name: 'Purple', color: '#8b5cf6' }
+    ];
+    
+    list.innerHTML = groups.map(group => {
+        const color = (marksheetSettings.groupColors && marksheetSettings.groupColors[group]) || marksheetSettings.primaryColor || '#4361ee';
+        return `
+            <div class="group-color-row" data-group="${group}" style="display: flex; flex-direction: column; background: #f8fafc; padding: 12px; border-radius: 10px; border: 1.5px solid #e2e8f0; transition: all 0.2s;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.88rem; font-weight: 700; color: #1e293b;">${group}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 600; color: #64748b; text-transform: uppercase;">কাস্টম:</span>
+                        <input type="color" class="group-color-input" data-group="${group}" value="${color}" style="width: 38px; height: 24px; border: 2px solid #fff; border-radius: 4px; background: none; cursor: pointer; box-shadow: 0 0 0 1px #e2e8f0;">
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.65rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin-right: 2px;">প্রিমিয়াম:</span>
+                    <div class="group-mini-presets" style="display: flex; gap: 6px;">
+                        ${premiumColors.map(pc => `
+                            <div class="mini-color-preset" 
+                                 data-color="${pc.color}" 
+                                 title="${pc.name}"
+                                 style="background: ${pc.color}; width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 1.5px solid #fff; box-shadow: 0 0 0 1px #e2e8f0; transition: transform 0.1s;">
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Logic for Mini Presets
+    list.querySelectorAll('.mini-color-preset').forEach(preset => {
+        preset.addEventListener('click', (e) => {
+            const color = preset.dataset.color;
+            const row = preset.closest('.group-color-row');
+            const input = row.querySelector('.group-color-input');
+            input.value = color;
+            
+            // Visual feedback
+            row.querySelectorAll('.mini-color-preset').forEach(p => p.style.transform = 'scale(1)');
+            preset.style.transform = 'scale(1.25)';
+            
+            updateSettingsLivePreview();
+        });
+    });
+
+    // Add event listeners to color inputs for custom picking
+    list.querySelectorAll('.group-color-input').forEach(input => {
+        input.addEventListener('change', () => updateSettingsLivePreview());
+    });
 }
 
 /**
@@ -2686,13 +3291,13 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
                 align-items: center !important;
                 gap: 30px !important;
             }
-            .ms-page {
+            .ms-page, .msb-page {
                 box-shadow: 0 20px 50px rgba(0,0,0,0.15) !important;
             }
         }
 
         /* CRITICAL: Override the ms-page for perfect A4 fit */
-        html body .ms-page {
+        html body .ms-page, html body .msb-page {
             display: block !important;
             visibility: visible !important;
             width: 210mm !important;
@@ -2711,7 +3316,7 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
             break-inside: avoid !important;
         }
 
-        html body .ms-page:last-child {
+        html body .ms-page:last-child, html body .msb-page:last-child {
             page-break-after: avoid !important;
             break-after: auto !important;
         }
@@ -2736,7 +3341,7 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
                 width: 210mm !important;
             }
 
-            html body .ms-page {
+            html body .ms-page, html body .msb-page {
                 width: 210mm !important;
                 height: 297mm !important;
                 max-height: 297mm !important;
@@ -2750,7 +3355,7 @@ function buildMarksheetPrintDocument(marksheetHtmlArray) {
                 break-inside: avoid !important;
             }
 
-            html body .ms-page:last-child {
+            html body .ms-page:last-child, html body .msb-page:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
             }
@@ -2823,7 +3428,7 @@ function bulkPrint() {
     const previewArea = document.getElementById('marksheetPreview');
     if (!previewArea) return;
 
-    let allPages = Array.from(previewArea.querySelectorAll('.ms-page'));
+    let allPages = Array.from(previewArea.querySelectorAll('.ms-page, .msb-page'));
 
     if (allPages.length === 0) {
         showNotification('প্রিন্ট করার জন্য কোনো মার্কশীট নেই। অনুগ্রহ করে ক্রাইটেরিয়া পরিবর্তন করে আবার জেনারেট করুন।', 'error');
@@ -2934,53 +3539,119 @@ export function initStudentMappingUI() {
 }
 
 /**
- * Render Exam History checklist in settings modal
+ * Render Exam History checklists in settings modal
  */
 async function renderHistoryExamsChecklist() {
-    const container = document.getElementById('msHistoryChecklist');
+    const mainContainer = document.getElementById('msHistoryMainExams');
+    const tutorialContainer = document.getElementById('msHistoryTutorialExams');
+    if (!mainContainer && !tutorialContainer) return;
+
+    try {
+        const exams = await getSavedExams();
+
+        // Filter exams
+        const mainExams = exams.filter(e => (e.examType !== 'tutorial' && e.type !== 'tutorial'));
+        const tutorialExams = exams.filter(e => (e.examType === 'tutorial' || e.type === 'tutorial'));
+
+        const renderList = (container, examList, settingsKey) => {
+            if (!container) return;
+
+            const uniqueExamNames = [...new Set(examList.map(e => e.name).filter(Boolean))].sort();
+
+            if (uniqueExamNames.length === 0) {
+                container.innerHTML = '<p style="opacity: 0.6; font-size: 0.85rem; padding: 10px;">কোনো পরীক্ষা পাওয়া যায়নি।</p>';
+                return;
+            }
+
+            const selectedSet = new Set(marksheetSettings[settingsKey] || []);
+
+            container.innerHTML = uniqueExamNames.map(examName => {
+                return `
+                <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                    <input type="checkbox" class="ms-history-toggle" data-val="${examName}" data-key="${settingsKey}" ${selectedSet.has(examName) ? 'checked' : ''} style="width: 18px; height: 18px;">
+                    <span style="font-size: 0.85rem; font-weight: 600;">${examName}</span>
+                </label>`;
+            }).join('');
+
+            // Add listeners
+            container.querySelectorAll('.ms-history-toggle').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    const val = checkbox.dataset.val;
+                    const key = checkbox.dataset.key;
+                    if (!marksheetSettings[key]) marksheetSettings[key] = [];
+
+                    if (checkbox.checked) {
+                        if (!marksheetSettings[key].includes(val)) {
+                            marksheetSettings[key].push(val);
+                        }
+                    } else {
+                        marksheetSettings[key] = marksheetSettings[key].filter(e => e !== val);
+                    }
+                });
+            });
+        };
+
+        renderList(mainContainer, mainExams, 'historyExams');
+        renderList(tutorialContainer, tutorialExams, 'tutorialHistoryExams');
+
+    } catch (err) {
+        console.error("Failed to load exams for checklist", err);
+        if (mainContainer) mainContainer.innerHTML = '<p style="color:red;">লোড করতে ব্যর্থ</p>';
+    }
+}
+
+/**
+ * Render Tutorial Integration checklist in settings modal
+ */
+async function renderTutorialExamsChecklist() {
+    const container = document.getElementById('msTutorialExamsChecklist');
     if (!container) return;
 
     try {
         const exams = await getSavedExams();
-        const uniqueExamNames = [...new Set(exams.map(e => e.name).filter(Boolean))].sort();
+        // Only show tutorial type exams
+        const tutorialExams = exams.filter(e => (e.examType === 'tutorial' || e.type === 'tutorial'));
+        const uniqueTutorialNames = [...new Set(tutorialExams.map(e => e.name).filter(Boolean))].sort();
 
-        if (uniqueExamNames.length === 0) {
-            container.innerHTML = '<p style="opacity: 0.6; font-size: 0.9rem;">কোনো পরীক্ষা পাওয়া যায়নি।</p>';
+        if (uniqueTutorialNames.length === 0) {
+            container.innerHTML = '<p style="opacity: 0.6; font-size: 0.9rem; padding: 10px;">কোনো টিউটোরিয়াল পরীক্ষা পাওয়া যায়নি।</p>';
             return;
         }
 
-        const selectedHistory = new Set(marksheetSettings.historyExams || []);
+        const selectedTutorials = new Set(marksheetSettings.tutorialExams || []);
 
-        container.innerHTML = uniqueExamNames.map(examName => {
+        container.innerHTML = uniqueTutorialNames.map(examName => {
             return `
             <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: all 0.2s;">
-                <input type="checkbox" class="ms-history-toggle" data-val="${examName}" ${selectedHistory.has(examName) ? 'checked' : ''} style="width: 18px; height: 18px;">
+                <input type="checkbox" class="ms-tutorial-toggle" data-val="${examName}" ${selectedTutorials.has(examName) ? 'checked' : ''} style="width: 18px; height: 18px;">
                 <span style="font-size: 0.9rem; font-weight: 600;">${examName}</span>
             </label>`;
         }).join('');
 
         // Add listeners
-        container.querySelectorAll('.ms-history-toggle').forEach(checkbox => {
+        container.querySelectorAll('.ms-tutorial-toggle').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
                 const val = checkbox.dataset.val;
-                if (!marksheetSettings.historyExams) marksheetSettings.historyExams = [];
+                if (!marksheetSettings.tutorialExams) marksheetSettings.tutorialExams = [];
 
                 if (checkbox.checked) {
-                    if (!marksheetSettings.historyExams.includes(val)) {
-                        marksheetSettings.historyExams.push(val);
+                    if (!marksheetSettings.tutorialExams.includes(val)) {
+                        marksheetSettings.tutorialExams.push(val);
                     }
                 } else {
-                    marksheetSettings.historyExams = marksheetSettings.historyExams.filter(e => e !== val);
+                    marksheetSettings.tutorialExams = marksheetSettings.tutorialExams.filter(e => e !== val);
                 }
 
-                // Note: live preview for history is tricky as it's not in the mock data usually
-                // but we can refresh the main UI if needed.
+                // Trigger preview update if tutorial integration is enabled
+                if (marksheetSettings.tutorialIntegrationEnabled !== false) {
+                    updateSettingsLivePreview();
+                }
             });
         });
 
     } catch (err) {
-        console.error("Failed to load exams for checklist", err);
-        container.innerHTML = '<p style="color:red;">ডাটা লোড করতে ব্যর্থ হয়েছে</p>';
+        console.error("Failed to load tutorial exams", err);
+        container.innerHTML = '<p style="color:red; padding:10px;">ডাটা লোড করতে ব্যর্থ হয়েছে</p>';
     }
 }
 
@@ -3079,9 +3750,12 @@ export function applyCombinedPaperLogic(studentsArray, currentSubjects, rules, a
                     const papersCount = [p1, p2].filter(p => student.subjects[p]).length || 1;
                     combinedData.avgMarks = combinedData.total / papersCount;
 
-                    const pct = totalMax > 0 ? (combinedData.total / totalMax) * 100 : 0;
-                    combinedData.grade = getLetterGrade(pct);
-                    combinedData.gpa = getGradePoint(pct);
+                    // Use average marks for Main Exams (fixed board scale) in combined subjects,
+                    // but use percentage scaling for Tutorial exams.
+                    const effectivePct = state.isTutorialMode ? (totalMax > 0 ? (combinedData.total / totalMax) * 100 : 0) : combinedData.avgMarks;
+                    
+                    combinedData.grade = getLetterGrade(effectivePct);
+                    combinedData.gpa = getGradePoint(effectivePct);
 
                     student.subjects[combinedName] = combinedData;
                 }

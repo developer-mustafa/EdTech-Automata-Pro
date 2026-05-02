@@ -68,6 +68,15 @@ export const state = {
         group: [],
         section: []
     },
+
+    // Tutorial / Class Test Exam System
+    isTutorialMode: false,           // Dashboard tutorial toggle
+    tutorialExamConfigs: [],         // Cached tutorial exam configs
+    tutorialExamsCurrentPage: 1,
+    tutorialExamsPerPage: 4,
+    isTutorialEntryMode: false,      // Result Entry tutorial tab
+    isTutorialReportMode: false,     // Report page tutorial tab
+
     accessControl: {
         tabAccess: {
             'dashboard': ['super_admin', 'admin'],

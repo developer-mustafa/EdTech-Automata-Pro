@@ -56,6 +56,15 @@ service cloud.firestore {
       allow delete: if isAdminOrAbove();
     }
 
+    // =======================================
+    //  Tutorial Exam Configs (ক্লাস টেস্ট / টিউটোরিয়াল)
+    // =======================================
+    match /tutorialExamConfigs/{configId} {
+      allow read: if true;
+      allow create, update: if isTeacherOrAbove();
+      allow delete: if isAdminOrAbove();
+    }
+
     match /academicStructure/{docId} {
       allow read: if true; // ড্রপডাউন মেনুগুলোর জন্য এটি পাবলিক রাখা হয়েছে
       allow write: if isAdminOrAbove();
