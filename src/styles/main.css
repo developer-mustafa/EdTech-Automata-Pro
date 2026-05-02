@@ -26148,7 +26148,8 @@ body.dark-mode .ms-compact-info {
 
   .msb-page .msb-table thead th { background-color: rgba(255, 255, 255, 0.5) !important; border-color: var(--msb-gray-border) !important; }
   .msb-page .msb-row-optional td { background-color: rgba(240, 253, 244, 0.4) !important; }
-  .msb-page .msb-total-section td { background-color: rgba(249, 250, 251, 0.5) !important; }
+  .msb-page .msb-total-section { background-color: rgba(248, 250, 252, 0.5) !important; }
+  .msb-page .msb-bottom-card { background-color: rgba(255, 255, 255, 0.5) !important; }
   .msb-page .msb-mark-fail { color: #DC2626 !important; -webkit-text-fill-color: #DC2626 !important; font-weight: 800 !important; }
   
   .msb-page .msb-detail-row i { color: var(--msb-primary) !important; -webkit-text-fill-color: var(--msb-primary) !important; }
