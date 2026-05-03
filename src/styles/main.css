@@ -22169,6 +22169,9 @@ a.sidebar-contact-item:hover {
   }
 
   /* Reset the entire app container tree to avoid clipping and positioning context issues */
+  body.ac-printing #app,
+  body.ms-printing #app,
+  body.ms-printing-single #app,
   body.ac-printing .container-fluid,
   body.ms-printing .container-fluid,
   body.ms-printing-single .container-fluid,
@@ -22198,6 +22201,8 @@ a.sidebar-contact-item:hover {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
+    flex: none !important;
+    display: block !important;
     height: auto !important;
     min-height: auto !important;
     width: 100% !important;
@@ -22217,6 +22222,8 @@ a.sidebar-contact-item:hover {
   body.ac-printing .preview-header,
   body.ac-printing .controls,
   body.ac-printing .view-toggle,
+  body.ac-printing .preview-placeholder,
+  body.ac-printing .app-footer,
   body.ac-printing .no-print {
     display: none !important;
   }
@@ -22224,9 +22231,7 @@ a.sidebar-contact-item:hover {
   body.ac-printing #admitCardPreview {
     display: block !important;
     visibility: visible !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: static !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
