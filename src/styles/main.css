@@ -16400,79 +16400,79 @@ input:checked+.toggle-slider:before {
 /* Grid Layouts */
 .ac-layout-1 {
   grid-template-columns: 1fr;
-  grid-template-rows: repeat(var(--ac-rows, 1), auto);
+  grid-template-rows: repeat(var(--ac-rows, 1), 1fr);
 }
 
 .ac-layout-2 {
   grid-template-columns: 1fr;
-  grid-template-rows: repeat(var(--ac-rows, 2), auto);
+  grid-template-rows: repeat(var(--ac-rows, 2), 1fr);
   gap: 15mm;
 }
 
 .ac-layout-4 {
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 2), auto);
+  grid-template-rows: repeat(var(--ac-rows, 2), 1fr);
 }
 
 .ac-layout-6 {
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 3), auto);
+  grid-template-rows: repeat(var(--ac-rows, 3), 1fr);
   gap: 8mm;
 }
 
 .ac-layout-8 {
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 4), auto);
+  grid-template-rows: repeat(var(--ac-rows, 4), 1fr);
   gap: 5mm;
 }
 
 .ac-layout-10 {
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 5), auto);
+  grid-template-rows: repeat(var(--ac-rows, 5), 1fr);
   gap: 4mm;
 }
 
 .ac-layout-12 {
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 4), auto);
+  grid-template-rows: repeat(var(--ac-rows, 4), 1fr);
   gap: 4mm;
 }
 
 /* Landscape Grid Overrides - Optimized for A4 proportions */
 .ac-page-landscape.ac-layout-1 {
   grid-template-columns: 1fr;
-  grid-template-rows: repeat(var(--ac-rows, 1), auto);
+  grid-template-rows: repeat(var(--ac-rows, 1), 1fr);
 }
 
 .ac-page-landscape.ac-layout-2 {
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 1), auto);
+  grid-template-rows: repeat(var(--ac-rows, 1), 1fr);
   gap: 10mm;
 }
 
 .ac-page-landscape.ac-layout-4 {
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 2), auto);
+  grid-template-rows: repeat(var(--ac-rows, 2), 1fr);
 }
 
 .ac-page-landscape.ac-layout-6 {
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 2), auto);
+  grid-template-rows: repeat(var(--ac-rows, 2), 1fr);
 }
 
 .ac-page-landscape.ac-layout-8 {
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 2), auto);
+  grid-template-rows: repeat(var(--ac-rows, 2), 1fr);
 }
 
 .ac-page-landscape.ac-layout-10 {
   grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 2), auto);
+  grid-template-rows: repeat(var(--ac-rows, 2), 1fr);
 }
 
 .ac-page-landscape.ac-layout-12 {
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(var(--ac-rows, 3), auto);
+  grid-template-rows: repeat(var(--ac-rows, 3), 1fr);
 }
 
 /* Admit Card & Seat Plan Premium Design */
@@ -16489,9 +16489,8 @@ input:checked+.toggle-slider:before {
   /* very subtle inner depth */
   break-inside: avoid;
   page-break-inside: avoid;
-  /* height: 100%; removed for compactness */
-  align-self: start;
-  /* Prevents stretching and inconsistency in grid rows */
+  height: 100%;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
 }
@@ -16500,7 +16499,7 @@ input:checked+.toggle-slider:before {
 .ac-card-inner {
   border: 2px solid var(--ac-primary-color, #2c3e50);
   padding: 8px;
-  /* height: 100%; removed for compactness */
+  height: 100%;
   box-sizing: border-box;
   position: relative;
   display: flex;
@@ -22253,16 +22252,16 @@ a.sidebar-contact-item:hover {
 
   body.ac-printing .ac-page-portrait {
     /* Precise A4 portrait height with slight safety margin */
-    height: 296.5mm !important;
-    min-height: 296.5mm !important;
-    max-height: 296.5mm !important;
+    height: 296mm !important;
+    min-height: 296mm !important;
+    max-height: 296mm !important;
   }
 
   body.ac-printing .ac-page-landscape {
     /* Precise A4 landscape height with slight safety margin */
-    height: 209.5mm !important;
-    min-height: 209.5mm !important;
-    max-height: 209.5mm !important;
+    height: 209mm !important;
+    min-height: 209mm !important;
+    max-height: 209mm !important;
   }
 
   body.ac-printing .ac-page:last-child {
