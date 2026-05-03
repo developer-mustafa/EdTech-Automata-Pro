@@ -2010,9 +2010,11 @@ export async function renderSingleMarksheet(student, subjects, examDisplayName, 
     }
 
     // --- TEMPLATE B RENDERING BRANCH ---
-    // Priority: 1. DOM dropdown (marksheet page), 2. Settings preference (ID search), 3. Default 'A'
-    const domTemplateValue = document.getElementById('msDesignTemplate')?.value;
-    const selectedTemplate = domTemplateValue || ms.idSearchTemplate || 'A';
+    // When rendering for ID search (public page), use the saved setting from Firestore.
+    // When rendering on the marksheet page, use the DOM dropdown.
+    const selectedTemplate = isIdSearch
+        ? (ms.idSearchTemplate || 'A')
+        : (document.getElementById('msDesignTemplate')?.value || 'A');
     if (selectedTemplate === 'B') {
         // Build subject row data for Template B
         const templateBSubjectRows = visibleSubjects.map((subjObj, idx) => {
