@@ -16406,7 +16406,7 @@ input:checked+.toggle-slider:before {
 .ac-layout-2 {
   grid-template-columns: 1fr;
   grid-template-rows: repeat(var(--ac-rows, 2), 1fr);
-  gap: 15mm;
+  gap: 6mm;
 }
 
 .ac-layout-4 {
@@ -16447,7 +16447,7 @@ input:checked+.toggle-slider:before {
 .ac-page-landscape.ac-layout-2 {
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(var(--ac-rows, 1), 1fr);
-  gap: 10mm;
+  gap: 4mm;
 }
 
 .ac-page-landscape.ac-layout-4 {
@@ -22245,7 +22245,7 @@ a.sidebar-contact-item:hover {
     position: relative !important;
     margin: 0 !important;
     padding: 5mm !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     background: white !important;
     border: none !important;
     box-sizing: border-box !important;
@@ -22253,15 +22253,15 @@ a.sidebar-contact-item:hover {
   }
 
   body.ac-printing .ac-page-portrait {
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
+    height: 296mm !important;
+    min-height: 296mm !important;
+    max-height: 296mm !important;
   }
 
   body.ac-printing .ac-page-landscape {
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
+    height: 209mm !important;
+    min-height: 209mm !important;
+    max-height: 209mm !important;
   }
 
   body.ac-printing .ac-page:last-child {
