@@ -1,0 +1,2106 @@
+/* =========================================
+   print.css — All Print-Related Styles
+   Extracted from main.css for modularity
+   
+   WARNING: Do NOT reorder these blocks.
+   The order matches the original main.css sequence
+   to preserve CSS cascade/specificity behavior.
+   ========================================= */
+
+/* -----------------------------------------
+   Analysis/Chart Page Print (Scoped)
+   Original location: main.css lines 3618-3705
+   ----------------------------------------- */
+@media print {
+
+  /* Hide non-essential elements — safe for all prints */
+  .header-controls,
+  .controls,
+  .view-toggle button,
+  .theme-toggle,
+  .inline-search-wrapper,
+  #adminToggle,
+  .saved-exams-section,
+  .group-stats-card,
+  #historyChart canvas,
+  #saveAnalysisBtn,
+  #downloadTemplateBtn,
+  .json-upload {
+    display: none !important;
+  }
+
+  /* SCOPED: Only apply destructive resets when NO specific print mode is active */
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .controls select,
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .controls input {
+    display: none !important;
+  }
+
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .header button,
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .header input,
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) #loadSampleData,
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) #clearData {
+    display: none !important;
+  }
+
+  /* SCOPED: Full-width card layout — ONLY for chart/analysis page print */
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing),
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .container,
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  /* Chart Canvas Size - Ensure it fits (SCOPED to avoid breaking QR/canvas in other print modes) */
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .chart-container {
+    height: 500px !important;
+    page-break-inside: avoid;
+  }
+
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) canvas {
+    max-width: 100% !important;
+  }
+
+  /* SCOPED: Force light theme — ONLY for chart/analysis print, NOT for styled prints */
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) * {
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* SCOPED: Hide Header — only for default analysis page */
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .header {
+    display: none !important;
+  }
+
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .card-header {
+    display: none !important;
+  }
+
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .card-title {
+    font-size: 18pt !important;
+    text-align: center !important;
+  }
+
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .view-toggle {
+    display: none !important;
+  }
+
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing) .stats-container {
+    display: none !important;
+  }
+
+  /* Watermark for analysis page */
+  body:not(.ac-printing):not(.sr-bulk-printing-active):not(.ms-printing):not(.ms-printing-single):not(.tc-print-mode):not(.notice-printing):not(.tr-printing)::after {
+    display: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Preview Area Print Reset
+   Original location: main.css lines 11219-11226
+   ----------------------------------------- */
+@media print {
+  .marksheet-preview-area {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Preview MS-Page Print Reset
+   Original location: main.css lines 11236-11242
+   ----------------------------------------- */
+@media print {
+  .marksheet-preview-area .ms-page {
+    transform: none !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Teacher ID Card Bulk Print
+   Original location: main.css lines 12255-12606
+   ----------------------------------------- */
+@media print {
+  /* @page rule is injected dynamically by JS (teacherAssignmentManager) to avoid global conflicts */
+
+  /* Neutralize flex layout for print */
+  body.tc-print-mode {
+    display: block !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.tc-print-mode #app,
+  body.tc-print-mode .container-fluid {
+    flex: none !important;
+    display: block !important;
+  }
+
+  /* Hide everything except the bulk print wrapper */
+  body.tc-print-mode .app-container,
+  body.tc-print-mode .navbar,
+  body.tc-print-mode .sidebar,
+  body.tc-print-mode .config-modal,
+  body.tc-print-mode .tc-modal-header,
+  body.tc-print-mode #appContainer,
+  body.tc-print-mode .main-content,
+  body.tc-print-mode .container-fluid,
+  body.tc-print-mode #teacherAssignmentPage,
+  body.tc-print-mode .no-print,
+  body.tc-print-mode .app-footer {
+    display: none !important;
+  }
+
+  body.tc-print-mode .tc-bulk-print-wrapper {
+    display: block !important;
+    visibility: visible !important;
+    position: relative;
+    width: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .tc-print-page {
+    width: 297mm !important;
+    height: 210mm !important;
+    padding: 3mm 4mm !important;
+    box-sizing: border-box;
+    page-break-after: always;
+    break-after: page;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff !important;
+  }
+
+  /* ===== 2 columns × 3 rows grid ===== */
+  .tc-bulk-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-rows: repeat(3, 1fr) !important;
+    gap: 2mm 3mm !important;
+    flex: 1 !important;
+    width: 100% !important;
+    align-content: stretch !important;
+  }
+
+  /* === Card Container === */
+  .tc-bulk-grid .tc-card {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border: 0.8pt solid #94a3b8 !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    background: #fff !important;
+    overflow: hidden;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* === Card Header with Logo === */
+  .tc-bulk-grid .tc-header {
+    padding: 4px 12px !important;
+    color: #fff !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-height: auto !important;
+  }
+
+  .tc-bulk-grid .tc-logo-section {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .tc-bulk-grid .tc-logo-section img {
+    width: 28px !important;
+    height: 28px !important;
+    object-fit: contain !important;
+  }
+
+  .tc-bulk-grid .tc-header-text {
+    flex: 1 !important;
+  }
+
+  .tc-bulk-grid .tc-inst-name {
+    font-size: 8.5pt !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+    text-transform: uppercase !important;
+  }
+
+  .tc-bulk-grid .tc-inst-addr {
+    font-size: 5.5pt !important;
+    margin: 0 !important;
+    opacity: 0.9 !important;
+  }
+
+  /* === Card Body: Left + Right === */
+  .tc-bulk-grid .tc-body {
+    display: flex !important;
+    flex: 1 !important;
+    padding: 4px 10px !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+  }
+
+  .tc-bulk-grid .tc-left-col {
+    width: 95px !important;
+    min-width: 95px !important;
+    padding-right: 8px !important;
+    border-right: 0.5pt dashed #cbd5e1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 2px !important;
+  }
+
+  .tc-bulk-grid .tc-avatar-wrapper {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    border-width: 1.5pt !important;
+    margin-bottom: 2px !important;
+  }
+
+  .tc-bulk-grid .tc-avatar-placeholder {
+    font-size: 14pt !important;
+  }
+
+  .tc-bulk-grid .tc-name {
+    font-size: 7.5pt !important;
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    word-break: break-word !important;
+  }
+
+  .tc-bulk-grid .tc-status-badge {
+    font-size: 5pt !important;
+    padding: 1px 5px !important;
+    margin: 0 !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  .tc-bulk-grid .tc-info-summary {
+    text-align: center !important;
+    margin-bottom: 2px !important;
+  }
+
+  .tc-bulk-grid .tc-contact-list {
+    width: 100% !important;
+  }
+
+  .tc-bulk-grid .tc-info-item {
+    padding: 1.5px 5px !important;
+    margin-bottom: 1.5px !important;
+    background: #f8fafc !important;
+    border-radius: 3px !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  .tc-bulk-grid .tc-info-label {
+    font-size: 4.5pt !important;
+    color: #64748b !important;
+  }
+
+  .tc-bulk-grid .tc-info-value {
+    font-size: 6pt !important;
+    color: #334155 !important;
+    word-break: break-all !important;
+  }
+
+  /* === Right Column: Assignments === */
+  .tc-bulk-grid .tc-right-col {
+    flex: 1 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .tc-bulk-grid .tc-assignments-section {
+    padding: 4px 8px !important;
+    background: #f8fafc !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    border-radius: 5px !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  .tc-bulk-grid .tc-section-header {
+    margin-bottom: 3px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .tc-bulk-grid .tc-section-title {
+    font-size: 6pt !important;
+    font-weight: 800 !important;
+    color: #334155 !important;
+  }
+
+  .tc-bulk-grid .tc-total-count-badge {
+    background: #fff !important;
+    padding: 1px 6px !important;
+    border: 0.3pt solid #cbd5e1 !important;
+    border-radius: 4px !important;
+  }
+
+  .tc-bulk-grid .tc-total-num {
+    font-size: 7pt !important;
+    font-weight: 800 !important;
+  }
+
+  .tc-bulk-grid .tc-total-label {
+    font-size: 4.5pt !important;
+  }
+
+  .tc-bulk-grid .tc-assign-list-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .tc-bulk-grid .tc-assign-row {
+    background: #fff !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 0.3pt solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 2px !important;
+    gap: 5px !important;
+  }
+
+  .tc-bulk-grid .tc-assign-class-badge {
+    font-size: 5.5pt !important;
+    font-weight: 800 !important;
+    padding: 1.5px 6px !important;
+    border-radius: 4px !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    white-space: nowrap !important;
+  }
+
+  .tc-bulk-grid .tc-row-count-badge {
+    font-size: 5pt !important;
+    padding: 0 4px !important;
+  }
+
+  .tc-bulk-grid .tc-subjects-box {
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    flex: 1 !important;
+    text-align: right !important;
+    min-width: 0 !important;
+  }
+
+  .tc-bulk-grid .tc-assign-subjects {
+    font-size: 6pt !important;
+    line-height: 1.3 !important;
+  }
+
+  /* === Card Footer with Software Link === */
+  .tc-bulk-grid .tc-footer-area {
+    padding: 1.5px 8px !important;
+    font-size: 5pt !important;
+    border-top: 0.3pt solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    text-align: center !important;
+  }
+
+  .tc-bulk-grid .tc-live-link {
+    font-size: 5pt !important;
+    color: #475569 !important;
+    font-weight: 600 !important;
+  }
+
+  .tc-bulk-grid .tc-dev-credit {
+    font-size: 4.5pt !important;
+    padding: 0 !important;
+    color: #94a3b8 !important;
+  }
+
+  /* === Page Footer === */
+  .tc-print-footer {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 7pt;
+    font-weight: 700;
+    color: #334155;
+    border-top: 0.8pt solid #64748b;
+    padding: 1mm 3mm 0;
+    margin-top: 1mm;
+    flex-shrink: 0;
+  }
+
+  /* Force color printing */
+  .tc-card,
+  .tc-header,
+  .tc-footer-area,
+  .tc-assignments-section,
+  .tc-avatar-wrapper,
+  .tc-info-item,
+  .tc-assign-row,
+  .tc-assign-class-badge,
+  .tc-status-badge {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Table Header Print Colors
+   Original location: main.css lines 12841-12849
+   ----------------------------------------- */
+@media print {
+  .ms-table thead tr th {
+    background-color: var(--ms-primary) !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border: 1px solid #000 !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Failing/Passing Marks Print Colors
+   Original location: main.css lines 12928-12967
+   ----------------------------------------- */
+@media print {
+
+  /* Force color adjust for all marksheet table cells and data points */
+  .ms-table td,
+  .ms-table td span,
+  .ms-result-value,
+  .ms-gs-item,
+  .ms-sumtbl-pass,
+  .ms-sumtbl-fail,
+  .ms-sumtbl-rate {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Target failing marks specifically with absolute specificity */
+  .ms-page .ms-table td.ms-mark-fail,
+  .ms-page .ms-table td.ms-grade-fail,
+  .ms-page .ms-result-fail .ms-result-value,
+  .ms-page .ms-sumtbl-fail,
+  .ms-page .ms-sumtbl-fail * {
+    color: #dc2626 !important;
+    -webkit-text-fill-color: #dc2626 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Ensure passing colors (green) also survive the print transition */
+  .ms-page .ms-td-total,
+  .ms-page .ms-td-grade:not(.ms-grade-fail),
+  .ms-page .ms-result-pass .ms-result-value,
+  .ms-page .ms-sumtbl-pass {
+    color: #0d5e2e !important;
+    -webkit-text-fill-color: #0d5e2e !important;
+  }
+
+  .ms-page .ms-sumtbl-rate {
+    color: #1565c0 !important;
+    -webkit-text-fill-color: #1565c0 !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Grade Scale Print Quality
+   Original location: main.css lines 13337-13422
+   ----------------------------------------- */
+@media print {
+
+  .ms-grade-scale-wrapper,
+  .ms-gs-item,
+  .ms-gs-top,
+  .ms-gs-bottom,
+  .ms-result-box,
+  .ms-optional-tag,
+  .ms-exam-summary-section caption,
+  .ms-exam-summary-tbl thead th,
+  .ms-sumtbl-pass,
+  .ms-sumtbl-fail,
+  .ms-sumtbl-rate,
+  .ms-table thead tr th {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Robust colored borders for Print */
+  .gs-ap {
+    border-color: #22c55e !important;
+  }
+
+  .gs-a {
+    border-color: #4ade80 !important;
+  }
+
+  .gs-am {
+    border-color: #84cc16 !important;
+  }
+
+  .gs-b {
+    border-color: #eab308 !important;
+  }
+
+  .gs-c {
+    border-color: #f97316 !important;
+  }
+
+  .gs-d {
+    border-color: #f43f5e !important;
+  }
+
+  .gs-f {
+    border-color: #ef4444 !important;
+  }
+
+  /* Fallback for background colors if Background Graphics is unchecked */
+  .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, 0.03) !important;
+  }
+
+  .gs-ap .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px #f0fdf4 !important;
+  }
+
+  .gs-a .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px #f0fdf4 !important;
+  }
+
+  .gs-am .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px #f7fee7 !important;
+  }
+
+  .gs-b .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px #fefce8 !important;
+  }
+
+  .gs-c .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px #fff7ed !important;
+  }
+
+  .gs-d .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px #fff1f2 !important;
+  }
+
+  .gs-f .ms-gs-top {
+    box-shadow: inset 0 0 0 1000px #fef2f2 !important;
+  }
+
+  /* Ensure backgrounds are semi-opaque if needed but solid for quality */
+  .ms-gs-top {
+    filter: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Full Print Layout
+   Original location: main.css lines 13605-13765
+   ----------------------------------------- */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* @page rule moved to JS (marksheetManager/studentResultsManager) to avoid global conflicts */
+
+  /* Universal Reset - Absolute No-Sprawl */
+  body.ms-printing,
+  body.ms-printing-single {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    width: 210mm !important;
+    height: auto !important;
+    overflow: visible !important;
+    /* Neutralize flex layout for print */
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  /* Global UI Suppression - Whitelist the marksheet path */
+  body.ms-printing .sidebar,
+  body.ms-printing-single .sidebar,
+  body.ms-printing .navbar,
+  body.ms-printing-single .navbar,
+  body.ms-printing .top-bar,
+  body.ms-printing-single .top-bar,
+  body.ms-printing .header-controls,
+  body.ms-printing-single .header-controls,
+  body.ms-printing .data-management-card,
+  body.ms-printing-single .data-management-card,
+  body.ms-printing .no-print,
+  body.ms-printing-single .no-print,
+  body.ms-printing .page-nav-tabs,
+  body.ms-printing-single .page-nav-tabs,
+  body.ms-printing .dm-btn,
+  body.ms-printing-single .dm-btn,
+  body.ms-printing .marksheet-view-settings,
+  body.ms-printing-single .marksheet-view-settings,
+  body.ms-printing .result-entry-selectors,
+  body.ms-printing-single .result-entry-selectors,
+  body.ms-printing .sr-top-header-bar,
+  body.ms-printing-single .sr-top-header-bar,
+  body.ms-printing .sr-search-section,
+  body.ms-printing-single .sr-search-section {
+    display: none !important;
+    height: 0 !important;
+    visibility: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Critical Container Path Stabilization */
+  body.ms-printing #appContainer,
+  body.ms-printing-single #appContainer,
+  body.ms-printing .main-content,
+  body.ms-printing-single .main-content,
+  body.ms-printing .container-fluid,
+  body.ms-printing-single .container-fluid,
+  body.ms-printing #marksheetPage,
+  body.ms-printing-single #marksheetPage,
+  body.ms-printing #studentResultsPage,
+  body.ms-printing-single #studentResultsPage,
+  body.ms-printing .marksheet-preview-wrapper,
+  body.ms-printing-single .marksheet-preview-wrapper,
+  body.ms-printing .marksheet-preview-area,
+  body.ms-printing-single .marksheet-preview-area,
+  body.ms-printing .card,
+  body.ms-printing-single .card {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    position: static !important;
+    transform: none !important;
+    /* KILL ALL SCREEN ZOOM/SCALING */
+    --ms-main-scale: 1 !important;
+    /* FORCE 1:1 SCALE */
+  }
+
+  /* The Perfect A4 Marksheet Engine - Optimized for Single Page Fit */
+  .ms-page {
+    display: block !important;
+    visibility: visible !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    transform: none !important;
+    --ms-main-scale: 1 !important;
+    box-shadow: none !important;
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+    break-after: page !important;
+    break-inside: avoid !important;
+    background: #fff !important;
+    position: relative !important;
+  }
+
+  /* Single Print Specific Overrides */
+  body.ms-printing-single .ms-page.ms-single-active {
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  body.ms-printing-single .ms-page:not(.ms-single-active) {
+    display: none !important;
+  }
+
+  body.ms-printing .ms-watermark-img,
+  body.ms-printing-single .ms-watermark-img {
+    display: block !important;
+    opacity: var(--ms-watermark-opacity, 0.1) !important;
+  }
+
+  .ms-page:last-child {
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Preserve layout backgrounds for print safety */
+  .ms-table,
+  .ms-table th,
+  .ms-table td,
+  .ms-student-section,
+  .ms-result-section,
+  .ms-grade-scale-wrapper,
+  .ms-gs-item,
+  .ms-gs-top,
+  .ms-gs-bottom,
+  .ms-exam-summary-tbl,
+  .ms-exam-summary-tbl caption,
+  .ms-exam-summary-tbl thead tr,
+  .ms-exam-summary-tbl tfoot tr,
+  .ms-sumtbl-pass,
+  .ms-sumtbl-fail,
+  .ms-sumtbl-rate {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* FORCE HEADER TEXT VISIBILITY IN PRINT */
+  .ms-table th,
+  .ms-exam-summary-tbl thead th {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    text-shadow: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Admit Card Grid Print Adjustments
+   Original location: main.css lines 16196-16208
+   ----------------------------------------- */
+@media print {
+  .ms-actions-float {
+    display: none !important;
+  }
+
+  .ms-table,
+  .ms-table th,
+  .ms-table td {
+    background-color: transparent !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* -----------------------------------------
+   Admit Card Settings Modal Print Hide
+   Original location: main.css lines 17635-17643
+   ----------------------------------------- */
+@media print {
+
+  body.ac-routine-printing .container-fluid,
+  body.ac-routine-printing .header-controls,
+  body.ac-routine-printing .page-nav-tabs,
+  body.ac-routine-printing .modal {
+    display: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Admit Card Tab Bar Print Hide
+   Original location: main.css lines 17837-17846
+   ----------------------------------------- */
+@media print {
+
+  .ac-tab-bar,
+  .ac-tab-panel:not(.active),
+  .ac-compact-filters,
+  .ac-compact-actions,
+  .header-main-unified {
+    display: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Admit Card Page Divider Print Hide
+   Original location: main.css lines 18357-18366
+   ----------------------------------------- */
+@media print {
+
+  .ac-dev-credit,
+  .sp-dev-credit,
+  .ms-dev-credit {
+    color: #9ca3af !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* -----------------------------------------
+   Admit Card Seat Plan Header Print
+   Original location: main.css lines 19006-19017
+   ----------------------------------------- */
+@media print {
+
+  body.ms-printing-single #studentResultsPage .sr-tabs,
+  body.ms-printing-single #studentResultsPage .sr-search-section,
+  body.ms-printing-single #studentResultsPage .sr-gen-section,
+  body.ms-printing-single #studentResultsPage .sr-not-found,
+  body.ms-printing-single #studentResultsPage #srIdCard,
+  body.ms-printing-single #studentResultsPage #srPreviewHeader,
+  body.ms-printing-single #studentResultsPage .card-header {
+    display: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Admit Card Mobile Responsive Print Overrides
+   Original location: main.css lines 19167-19441
+   ----------------------------------------- */
+@media print {
+
+  /* Step 1: Hide the original app container and everything else to avoid rendering bugs */
+  body.sr-bulk-printing-active>*:not(#srBulkPrintContainer) {
+    display: none !important;
+  }
+
+  /* Step 2: Formally set body structure for printing safely */
+  body.sr-bulk-printing-active {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Step 3: Simply show the bulk print container */
+  /* @page rule injected dynamically by JS (studentResultsManager) to avoid global conflicts */
+  #srBulkPrintContainer {
+    display: block !important;
+    width: 100% !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+
+  .sr-bp-page {
+    width: 100% !important;
+    height: 287mm !important;
+    page-break-after: always !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .sr-bp-page:last-child {
+    page-break-after: avoid !important;
+  }
+
+  .sr-bp-grid-layout {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 3mm 2mm !important;
+    padding: 2mm !important;
+    align-content: flex-start !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sr-bp-card-wrapper {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 65mm !important;
+    margin-bottom: 2mm !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    /* THE CRITICAL WEBKIT PAGINATION BUG FIXES */
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  /* Hide interactive elements during print */
+  .no-print,
+  .sr-id-copy-btn,
+  .sr-gen-search-btn,
+  .sr-id-uid-section button,
+  .sr-id-card-wrapper {
+    display: none !important;
+  }
+
+  /* ============================================
+       FORCE PRINT-ONLY CARDS TO RENDER WITH COLORS
+       ============================================ */
+
+  /* Show print-only cards inside bulk container */
+  .sr-bp-card-wrapper .print-only {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Force all print card elements to render background colors */
+  .sr-bp-card-wrapper .print-only,
+  .sr-bp-card-wrapper .print-only * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Card inner sizing for print */
+  .sr-bp-card-wrapper .sr-id-card-inner {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background-color: #ffffff !important;
+  }
+
+  /* Print Header Base */
+  .sr-bp-card-wrapper .sr-id-card-inner .sr-id-card-header {
+    padding: 6px 10px !important;
+    gap: 8px !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+    background: #f0f4f8 !important;
+    /* CRITICAL BUG FIX: Disable Heavy GPU Backdrop Filters for Print Pipeline */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* GROUP COLORS - SCIENCE (Red) */
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-science .sr-id-card-header {
+    background: #fee2e2 !important;
+    border-bottom-color: #fecaca !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-science .sr-id-card-title,
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-science .sr-id-card-subtitle {
+    color: #991b1b !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-science .sr-id-icon {
+    background: #ef4444 !important;
+  }
+
+  /* GROUP COLORS - BUSINESS/DEFAULT (Blue) */
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-business .sr-id-card-header,
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-default .sr-id-card-header {
+    background: #dbeafe !important;
+    border-bottom-color: #bfdbfe !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-business .sr-id-card-title,
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-default .sr-id-card-title,
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-business .sr-id-card-subtitle,
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-default .sr-id-card-subtitle {
+    color: #1e40af !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-business .sr-id-icon,
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-default .sr-id-icon {
+    background: #2563eb !important;
+  }
+
+  /* GROUP COLORS - HUMANITIES (Green) */
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-humanities .sr-id-card-header {
+    background: #dcfce7 !important;
+    border-bottom-color: #bbf7d0 !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-humanities .sr-id-card-title,
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-humanities .sr-id-card-subtitle {
+    color: #14532d !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-inner.sr-id-group-humanities .sr-id-icon {
+    background: #16a34a !important;
+  }
+
+  /* Print Card Icon */
+  .sr-bp-card-wrapper .sr-id-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+    font-size: 1.1rem !important;
+    color: white !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Print Card Typography */
+  .sr-bp-card-wrapper .sr-id-card-title {
+    font-size: 10.5pt !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-subtitle {
+    font-size: 7.5pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* Print Card Main Body */
+  .sr-bp-card-wrapper .sr-id-card-main {
+    padding: 5px 10px !important;
+    gap: 8px !important;
+    flex: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    background-color: #ffffff !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-body-left {
+    flex: 1 !important;
+    gap: 2px !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-card-body-right {
+    width: 70px !important;
+    padding-left: 8px !important;
+    border-left: 1px dashed #e2e8f0 !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-label {
+    font-size: 7pt !important;
+    color: #64748b !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-value {
+    font-size: 9.5pt !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-field-grid {
+    gap: 5px !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-field {
+    gap: 0px !important;
+  }
+
+  /* Print QR Code */
+  .sr-bp-card-wrapper .sr-id-qr-canvas {
+    width: 60px !important;
+    height: 60px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 3px !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-qr-label {
+    font-size: 4pt !important;
+  }
+
+  /* Print UID Footer */
+  .sr-bp-card-wrapper .sr-id-uid-container {
+    padding: 3px 10px 5px !important;
+    border-top: 1px dashed #e2e8f0 !important;
+    height: auto !important;
+  }
+
+  .sr-bp-card-wrapper .sr-id-uid-box-print-centered {
+    width: 100% !important;
+    padding: 3px !important;
+    border-radius: 4px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+
+
+  /* Developer Credit Footer */
+  .sr-bp-footer {
+    text-align: center !important;
+    font-size: 7pt !important;
+    color: #64748b !important;
+    padding: 2mm 0 !important;
+    margin-top: auto !important;
+  }
+
+  /* Hide actions in ALL print contexts */
+  .sr-id-actions {
+    display: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Admit Card Compact Info Print
+   Original location: main.css lines 19797-19809
+   ----------------------------------------- */
+@media print {
+
+  /* Hide specific buttons in print */
+  .sr-id-actions,
+  .no-print {
+    display: none !important;
+  }
+
+  .sr-id-uid-container {
+    height: auto !important;
+    padding-bottom: 8px !important;
+  }
+}
+
+/* -----------------------------------------
+   Notice/Circular Print Layout
+   Original location: main.css lines 21901-21958
+   ----------------------------------------- */
+@media print {
+
+  /* Hide EVERYTHING — ONLY when printing a notice */
+  body.notice-printing>*:not(#noticeDetailModal),
+  body.notice-printing #app,
+  body.notice-printing nav,
+  body.notice-printing header,
+  body.notice-printing main,
+  body.notice-printing footer,
+  body.notice-printing .no-print {
+    display: none !important;
+  }
+
+  /* Force modal to be visible — ONLY when printing a notice */
+  body.notice-printing #noticeDetailModal {
+    display: block !important;
+    position: static !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  body.notice-printing .modal-content,
+  body.notice-printing #printTarget {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  body.notice-printing {
+    background: white !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.notice-printing .sidebar-scrollbar {
+    overflow: visible !important;
+  }
+
+  body.notice-printing .notice-view-title {
+    font-size: 22pt !important;
+  }
+}
+
+/* -----------------------------------------
+   MASTER Print Layout (AC/MS/TC Combined)
+   Original location: main.css lines 22146-22457
+   ----------------------------------------- */
+@media print {
+
+  /* 0. Universal Hiding Strategy & Resets */
+  body.tc-print-mode .container-fluid,
+  body.ac-printing .loading-overlay,
+  body.tc-print-mode .loading-overlay,
+  body.ms-printing .loading-overlay,
+  body.ms-printing-single .loading-overlay,
+  body.sr-bulk-printing-active .loading-overlay {
+    display: none !important;
+  }
+
+  body.ac-printing,
+  body.tc-print-mode,
+  body.ms-printing,
+  body.ms-printing-single,
+  body.sr-bulk-printing-active {
+    display: block !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    width: 100% !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Reset the entire app container tree to avoid clipping and positioning context issues */
+  body.ac-printing #app,
+  body.ms-printing #app,
+  body.ms-printing-single #app,
+  body.ac-printing .container-fluid,
+  body.ms-printing .container-fluid,
+  body.ms-printing-single .container-fluid,
+  body.ac-printing .row,
+  body.ms-printing .row,
+  body.ms-printing-single .row,
+  body.ac-printing .col-md-10,
+  body.ms-printing .col-md-10,
+  body.ms-printing-single .col-md-10,
+  body.ac-printing .main-content,
+  body.ms-printing .main-content,
+  body.ms-printing-single .main-content,
+  body.ac-printing .app-page,
+  body.ms-printing .app-page,
+  body.ms-printing-single .app-page,
+  body.ac-printing .card,
+  body.ms-printing .card,
+  body.ms-printing-single .card,
+  body.ac-printing .marksheet-preview-wrapper,
+  body.ms-printing .marksheet-preview-wrapper,
+  body.ms-printing-single .marksheet-preview-wrapper {
+    position: static !important;
+    transform: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    flex: none !important;
+    display: block !important;
+    height: auto !important;
+    min-height: auto !important;
+    width: 100% !important;
+    visibility: visible !important;
+  }
+  
+  /* Critical hide of main app tree for Admit Cards to avoid height/blank page bugs */
+  body.ac-printing #app,
+  body.ac-printing .main-content {
+    display: none !important;
+  }
+
+  /* -------------------------------------
+     1. Admit Card / Seat Plan Print
+     ------------------------------------- */
+  body.ac-printing .sidebar-container,
+  body.ac-printing .sidebar,
+  body.ac-printing .navbar,
+  body.ac-printing .top-navbar,
+  body.ac-printing .header,
+  body.ac-printing .card-header,
+  body.ac-printing .ac-compact-filters,
+  body.ac-printing .ac-compact-actions,
+  body.ac-printing .preview-header,
+  body.ac-printing .controls,
+  body.ac-printing .view-toggle,
+  body.ac-printing .preview-placeholder,
+  body.ac-printing .app-footer,
+  body.ac-printing .no-print,
+  body.ac-printing #acEmptyStateMsg,
+  body.ac-printing .ac-tab-bar,
+  body.ac-printing .ac-tab-panel,
+  body.ac-printing .empty-state-msg,
+  body.ac-printing .page-nav-tabs {
+    display: none !important;
+  }
+
+  body.ac-printing #admitCardPreview {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    z-index: 9999 !important;
+    /* Kill any whitespace nodes between page divs */
+    font-size: 0 !important;
+    line-height: 0 !important;
+  }
+
+  body.ac-printing .ac-page {
+    display: grid !important;
+    box-shadow: none !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    position: relative !important;
+    margin: 0 !important;
+    padding: 5mm !important;
+    overflow: hidden !important;
+    background: white !important;
+    border: none !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+
+  body.ac-printing .ac-page-portrait {
+    height: 296mm !important;
+    min-height: 296mm !important;
+    max-height: 296mm !important;
+  }
+
+  body.ac-printing .ac-page-landscape {
+    height: 209mm !important;
+    min-height: 209mm !important;
+    max-height: 209mm !important;
+  }
+
+  body.ac-printing .ac-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  /* Ensure card contents restore font-size */
+  body.ac-printing .ac-page * {
+    font-size: var(--ac-base-font-size, 14px);
+    line-height: normal;
+  }
+
+  /* -------------------------------------
+     2. Teacher ID Card Bulk Print
+     ------------------------------------- */
+  body.tc-print-mode .sidebar,
+  body.tc-print-mode .navbar,
+  body.tc-print-mode .top-bar,
+  body.tc-print-mode .header,
+  body.tc-print-mode .card-header,
+  body.tc-print-mode .ta-form-column,
+  body.tc-print-mode .ta-controls-bar,
+  body.tc-print-mode .no-print {
+    display: none !important;
+  }
+
+  body.tc-print-mode #bulkTeacherCardsContainer {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.tc-print-mode .tc-print-page {
+    page-break-after: always;
+    break-after: page;
+    width: 297mm !important;
+    /* A4 landscape */
+    height: 209mm !important;
+    margin: 0 !important;
+    padding: 10mm !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: white !important;
+  }
+
+  body.tc-print-mode .tc-print-page:last-child {
+    page-break-after: avoid;
+    break-after: auto;
+  }
+
+  body.tc-print-mode .tc-bulk-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr) !important;
+    gap: 15px !important;
+    flex-grow: 1 !important;
+  }
+
+  body.tc-print-mode .tc-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    height: 100% !important;
+  }
+
+  body.tc-print-mode .tc-print-footer {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-top: auto !important;
+    padding-top: 10px !important;
+    font-size: 10pt !important;
+  }
+
+  /* -------------------------------------
+     2b. Student ID Card Bulk Print
+     ------------------------------------- */
+  body.sr-bulk-printing-active #app,
+  body.sr-bulk-printing-active .container-fluid,
+  body.sr-bulk-printing-active .sidebar,
+  body.sr-bulk-printing-active .navbar,
+  body.sr-bulk-printing-active .main-content,
+  body.sr-bulk-printing-active .app-footer,
+  body.sr-bulk-printing-active .no-print {
+    display: none !important;
+  }
+
+  body.sr-bulk-printing-active #srBulkPrintContainer {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* -------------------------------------
+     3. Marksheet Print
+     ------------------------------------- */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.ms-printing .sidebar-container,
+  body.ms-printing .sidebar,
+  body.ms-printing .navbar,
+  body.ms-printing .top-navbar,
+  body.ms-printing .top-bar,
+  body.ms-printing .header-controls,
+  body.ms-printing .card-header,
+  body.ms-printing .result-entry-selectors,
+  body.ms-printing .data-management-card,
+  body.ms-printing .page-nav-tabs,
+  body.ms-printing .preview-header,
+  body.ms-printing .dm-marksheet-controls,
+  body.ms-printing .ms-print-actions,
+  body.ms-printing .app-page:not(#marksheetPage),
+  body.ms-printing .no-print,
+  body.ms-printing .dm-btn,
+  body.ms-printing .marksheet-view-settings,
+  body.ms-printing .empty-state-msg {
+    display: none !important;
+  }
+
+  body.ms-printing .marksheet-preview-wrapper,
+  body.ms-printing .marksheet-preview-area {
+    display: block !important;
+    visibility: visible !important;
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  body.ms-printing .ms-page {
+    visibility: visible !important;
+    page-break-after: always;
+    break-after: page;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    background: white !important;
+    border: none !important;
+    padding: 0 !important;
+    transform: none !important;
+  }
+
+  body.ms-printing .ms-page:last-child {
+    page-break-after: avoid;
+    break-after: auto;
+  }
+
+  /* Marksheet Single Print */
+  body.ms-printing-single .sidebar,
+  body.ms-printing-single .navbar,
+  body.ms-printing-single .top-bar,
+  body.ms-printing-single .header-controls,
+  body.ms-printing-single .data-management-card,
+  body.ms-printing-single .page-nav-tabs,
+  body.ms-printing-single .preview-header,
+  body.ms-printing-single .dm-marksheet-controls,
+  body.ms-printing-single .ms-print-actions,
+  body.ms-printing-single .no-print,
+  body.ms-printing-single .dm-btn,
+  body.ms-printing-single .marksheet-view-settings,
+  body.ms-printing-single .empty-state-msg,
+  body.ms-printing-single .result-entry-selectors,
+  body.ms-printing-single .card-header,
+  body.ms-printing-single .sr-tabs,
+  body.ms-printing-single .sr-search-section,
+  body.ms-printing-single .sr-top-header-bar,
+  body.ms-printing-single .sr-gen-section,
+  body.ms-printing-single #srPreviewHeader,
+  body.ms-printing-single .ms-page:not(.ms-single-active) {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.ms-printing-single .ms-page.ms-single-active {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-after: avoid !important;
+    transform: none !important;
+    --ms-main-scale: 1 !important;
+  }
+}
+
+/* -----------------------------------------
+   Report Print Layout
+   Original location: main.css lines 22460-22483
+   ----------------------------------------- */
+@media print {
+
+  html,
+  body,
+  #appContainer,
+  .app-container,
+  .main-content,
+  .container-fluid,
+  .content-wrapper,
+  .card,
+  .card-body {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  #appContainer,
+  .app-container {
+    display: block !important;
+    width: 100% !important;
+  }
+}
+
+/* -----------------------------------------
+   Student Results Bulk Print
+   Original location: main.css lines 22488-22549
+   ----------------------------------------- */
+@media print {
+  .ms-rank-badge {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .ms-rank-1-class,
+  .ms-rank-1-group {
+    background: #16a34a !important;
+    background: radial-gradient(circle at 30% 30%, #4ade80, #16a34a 60%, #15803d) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: 1.2px solid #14532d !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .ms-rank-2-class,
+  .ms-rank-2-group {
+    background: #2563eb !important;
+    background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb 60%, #1d4ed8) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: 1.2px solid #1e3a8a !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .ms-rank-3-class,
+  .ms-rank-3-group {
+    background: #ea580c !important;
+    background: radial-gradient(circle at 30% 30%, #fb923c, #ea580c 60%, #c2410c) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: 1.2px solid #9a3412 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .ms-rank-gen-class {
+    background: #e2e8f0 !important;
+    background: radial-gradient(circle at 30% 30%, #ffffff 0%, #e2e8f0 40%, #cbd5e1 100%) !important;
+    color: #1e293b !important;
+    border: 1.2px solid #64748b !important;
+    text-shadow: none !important;
+  }
+
+  .ms-rank-gen-group {
+    background: #fde047 !important;
+    background: radial-gradient(circle at 30% 30%, #fef3c7 0%, #fde047 50%, #eab308 100%) !important;
+    color: #0f172a !important;
+    border: 1.2px solid #ca8a04 !important;
+    text-shadow: none !important;
+  }
+
+  .ms-result-box,
+  .ms-result-pass,
+  .ms-result-fail,
+  .ms-gs-item,
+  .ms-pill-left,
+  .ms-header-pill {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* -----------------------------------------
+   App Footer Print Hide
+   Original location: main.css lines 22730-22735
+   ----------------------------------------- */
+@media print {
+  .ms-extra-box {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Compact Info Print
+   Original location: main.css lines 23390-23400
+   ----------------------------------------- */
+@media print {
+  body.printing-report .rpt-footer {
+    border-top: 1.5px solid #000 !important;
+    margin-top: auto !important;
+    padding-bottom: 2mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet APS Progress Print
+   Original location: main.css lines 23480-23721
+   ----------------------------------------- */
+@media print {
+  @page {
+    margin: 5mm !important;
+  }
+
+  body.printing-report .rpt-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    box-shadow: none !important;
+    /* CRITICAL: Remove shadow in print */
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #1e293b !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.printing-report .rpt-inner {
+    padding: 0 !important;
+  }
+
+  body.printing-report * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  body.printing-report .rpt-inst-name {
+    color: #000 !important;
+    font-size: 1.8rem !important;
+    font-weight: 950 !important;
+    margin-bottom: 2px !important;
+  }
+
+  body.printing-report .rpt-inst-addr {
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+  }
+
+  body.printing-report .rpt-summary-table,
+  body.printing-report .rpt-subject-table {
+    width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  body.printing-report .rpt-summary-table td,
+  body.printing-report .rpt-subject-table td,
+  body.printing-report .rpt-summary-table th,
+  body.printing-report .rpt-subject-table th {
+    padding: 3px 2px !important;
+    font-size: 0.62rem !important;
+    color: #000 !important;
+    border: 0.5pt solid #cbd5e1 !important;
+    word-break: break-all !important;
+  }
+
+  body.printing-report .rpt-section {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 12px !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  body.printing-report .rpt-summary-table thead th,
+  body.printing-report .rpt-subject-table thead th {
+    background-color: #f1f5f9 !important;
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 950 !important;
+    font-size: 0.7rem !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: inset 0 0 0 1000px #f1f5f9 !important;
+    border: 1px solid #94a3b8 !important;
+    text-shadow: none !important;
+  }
+
+  body.printing-report .rpt-stat-card,
+  body.printing-report .rpt-grade-item {
+    border: 1px solid #94a3b8 !important;
+    background: #fff !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+
+  body.printing-report .rpt-grade-count {
+    color: #0f172a !important;
+    font-weight: 950 !important;
+  }
+
+  body.printing-report .rpt-grade-label {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+  }
+
+  body.printing-report .rpt-g-aplus .rpt-grade-label {
+    background: linear-gradient(#059669, #059669) !important;
+  }
+
+  body.printing-report .rpt-g-a .rpt-grade-label {
+    background: linear-gradient(#16a34a, #16a34a) !important;
+  }
+
+  body.printing-report .rpt-g-aminus .rpt-grade-label {
+    background: linear-gradient(#65a30d, #65a30d) !important;
+  }
+
+  body.printing-report .rpt-g-b .rpt-grade-label {
+    background: linear-gradient(#2563eb, #2563eb) !important;
+  }
+
+  body.printing-report .rpt-g-c .rpt-grade-label {
+    background: linear-gradient(#d97706, #d97706) !important;
+  }
+
+  body.printing-report .rpt-g-d .rpt-grade-label {
+    background: linear-gradient(#ea580c, #ea580c) !important;
+  }
+
+  body.printing-report .rpt-g-f .rpt-grade-label {
+    background: linear-gradient(#dc2626, #dc2626) !important;
+  }
+
+  body.printing-report .rpt-pill-left,
+  body.printing-report .rpt-pill-left * {
+    background: linear-gradient(#1e40af, #1e40af) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-weight: 950 !important;
+    font-size: 0.95rem !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border-radius: 60px 0 0 60px !important;
+    border-right: none !important;
+    text-shadow: none !important;
+  }
+
+  body.printing-report .rpt-grade-label,
+  body.printing-report .rpt-grade-label * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.printing-report .rpt-summary-table thead th,
+  body.printing-report .rpt-subject-table thead th {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+  }
+
+  body.printing-report .rpt-pill-right {
+    background: linear-gradient(#ffffff, #ffffff) !important;
+    color: #1e40af !important;
+    border-radius: 0 60px 60px 0 !important;
+  }
+
+  body.printing-report .rpt-title-pill {
+    box-shadow: none !important;
+    border: 2px solid #1e40af !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  body.printing-report .rpt-meta-item {
+    border: 1px solid #94a3b8 !important;
+    background: #fff !important;
+    border-radius: 30px !important;
+    padding: 4px 15px !important;
+    box-shadow: none !important;
+  }
+
+  body.printing-report .rpt-section-title {
+    background: linear-gradient(#f0f7ff, #f0f7ff) !important;
+    color: #1e3a8a !important;
+    border-bottom: 2px solid #1e3a8a !important;
+    font-size: 0.95rem !important;
+    font-weight: 950 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body.printing-report thead {
+    display: table-header-group !important;
+  }
+
+  body.printing-report tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.printing-report .sidebar,
+  body.printing-report .navbar,
+  body.printing-report .top-bar,
+  body.printing-report .header-controls,
+  body.printing-report .data-management-card,
+  body.printing-report .page-nav-tabs,
+  body.printing-report .preview-header,
+  body.printing-report .dm-marksheet-controls,
+  body.printing-report .ms-print-actions,
+  body.printing-report .no-print,
+  body.printing-report .dm-btn,
+  body.printing-report .empty-state-msg,
+  body.printing-report .result-entry-selectors,
+  body.printing-report .card-header,
+  body.printing-report #rptPreviewHeader,
+  body.printing-report .selector-group,
+  body.printing-report hr,
+  body.printing-report .rpt-preview-header,
+  body.printing-report h2:not(.rpt-inst-name) {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.printing-report * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  body.printing-report *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  body.printing-report div[style*="overflow-x: auto"],
+  body.printing-report div {
+    overflow: visible !important;
+  }
+}
+
+/* -----------------------------------------
+   Tabulation Group Column Print Hide
+   Original location: main.css lines 24042-24046
+   ----------------------------------------- */
+@media print {
+  .app-footer {
+    display: none !important;
+  }
+}
+
+/* -----------------------------------------
+   Tutorial Summary Table Print
+   Original location: main.css lines 24511-24519
+   ----------------------------------------- */
+@media print {
+  .ms-progress-card {
+    border: 1.5px solid #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  .ms-progress-bar-fill {
+    -webkit-print-color-adjust: exact !important;
+  }
+}
+
+/* -----------------------------------------
+   Marksheet Tutorial Results Print
+   Original location: main.css lines 25101-25142
+   ----------------------------------------- */
+@media print {
+  body.tab-printing * {
+    visibility: hidden;
+  }
+  
+  body.tab-printing #tabulationSheet,
+  body.tab-printing #tabulationSheet * {
+    visibility: visible;
+  }
+  
+  body.tab-printing #tabulationSheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+  }
+  
+  body.tab-printing .tab-table th, 
+  body.tab-printing .tab-table td {
+    border: 1px solid #000 !important;
+    padding: 4px 2px !important;
+    font-size: 10pt !important;
+    color: #000 !important;
+  }
+  
+  body.tab-printing .tab-subj-cols {
+    font-size: 8pt !important;
+  }
+  
+  body.tab-printing .tab-stats-bar {
+    break-inside: avoid;
+  }
+  
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+}
+
+/* -----------------------------------------
+   Student Results Single Print (SR)
+   Original location: main.css lines 26113-26182
+   ----------------------------------------- */
+@media print {
+  .msb-page {
+    box-shadow: none;
+    border-radius: 0;
+    margin: 0;
+    width: 210mm;
+    min-height: 297mm;
+  }
+
+  .msb-page, .msb-page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Defeat Global Print Resets (Bootstrap) */
+  .msb-page .msb-box-gpa .msb-sum-value { color: var(--msb-primary) !important; -webkit-text-fill-color: var(--msb-primary) !important; }
+  .msb-page .msb-box-grade .msb-sum-value { color: #7C3AED !important; -webkit-text-fill-color: #7C3AED !important; }
+  .msb-page .msb-box-pass .msb-sum-value,
+  .msb-page .msb-box-pass .msb-sum-value i { color: var(--msb-green) !important; -webkit-text-fill-color: var(--msb-green) !important; }
+  .msb-page .msb-box-fail .msb-sum-value,
+  .msb-page .msb-box-fail .msb-sum-value i { color: #DC2626 !important; -webkit-text-fill-color: #DC2626 !important; }
+  
+  .msb-page .msb-g-aplus { color: var(--msb-green) !important; -webkit-text-fill-color: var(--msb-green) !important; }
+  .msb-page .msb-g-a { color: #1E40AF !important; -webkit-text-fill-color: #1E40AF !important; }
+  .msb-page .msb-g-aminus { color: #0284C7 !important; -webkit-text-fill-color: #0284C7 !important; }
+  .msb-page .msb-g-b { color: #B45309 !important; -webkit-text-fill-color: #B45309 !important; }
+  .msb-page .msb-g-c { color: #D97706 !important; -webkit-text-fill-color: #D97706 !important; }
+  .msb-page .msb-g-d { color: #EA580C !important; -webkit-text-fill-color: #EA580C !important; }
+  .msb-page .msb-g-f { color: #DC2626 !important; -webkit-text-fill-color: #DC2626 !important; }
+  
+  .msb-page .msb-tb-val-gpa { color: var(--msb-primary) !important; -webkit-text-fill-color: var(--msb-primary) !important; }
+  .msb-page .msb-perf-text { color: var(--msb-green) !important; -webkit-text-fill-color: var(--msb-green) !important; }
+  .msb-page .msb-perf-badge { color: var(--msb-green) !important; -webkit-text-fill-color: var(--msb-green) !important; background-color: #F0FDF4 !important; border-color: #86EFAC !important; }
+  .msb-page .msb-perf-badge i { color: var(--msb-green) !important; -webkit-text-fill-color: var(--msb-green) !important; }
+  
+  .msb-page .msb-summary-title { background-color: rgba(239, 246, 255, 0.5) !important; color: var(--msb-primary) !important; -webkit-text-fill-color: var(--msb-primary) !important; }
+  .msb-page .msb-result-summary { background-color: rgba(250, 251, 252, 0.5) !important; border-color: var(--msb-gray-border) !important; }
+  .msb-page .msb-student-card { background-color: rgba(250, 251, 252, 0.5) !important; border-color: var(--msb-gray-border) !important; }
+  .msb-page .msb-photo-placeholder { background-color: rgba(239, 246, 255, 0.5) !important; border-color: var(--msb-gray-border) !important; }
+  
+  .msb-page .msb-box-pass { background-color: rgba(240, 253, 244, 0.8) !important; border-color: #86EFAC !important; }
+  .msb-page .msb-box-fail { background-color: rgba(254, 242, 242, 0.8) !important; border-color: #FECACA !important; }
+  .msb-page .msb-sum-box { background-color: #ffffff !important; border-color: var(--msb-gray-border) !important; }
+  .msb-page .msb-tb-val-large { color: var(--msb-primary) !important; -webkit-text-fill-color: var(--msb-primary) !important; }
+  .msb-page .msb-tb-val-grade { -webkit-print-color-adjust: exact !important; }
+  .msb-page .msb-perf-fill { stroke: var(--msb-green) !important; -webkit-print-color-adjust: exact !important; }
+
+  .msb-page .msb-table thead th { background-color: rgba(255, 255, 255, 0.5) !important; border-color: var(--msb-gray-border) !important; }
+  .msb-page .msb-row-optional td { background-color: rgba(240, 253, 244, 0.4) !important; }
+  .msb-page .msb-total-section { background-color: rgba(248, 250, 252, 0.5) !important; }
+  .msb-page .msb-bottom-card { background-color: rgba(255, 255, 255, 0.5) !important; }
+  .msb-page .msb-mark-fail { color: #DC2626 !important; -webkit-text-fill-color: #DC2626 !important; font-weight: 800 !important; }
+  
+  .msb-page .msb-total-section { background-color: rgba(248, 250, 252, 0.85) !important; border: 1px solid #BFDBFE !important; -webkit-print-color-adjust: exact !important; }
+  .msb-page .msb-bottom-card { background-color: rgba(255, 255, 255, 0.85) !important; border: 1px solid var(--msb-gray-border) !important; -webkit-print-color-adjust: exact !important; }
+  .msb-page .msb-detail-row i { color: var(--msb-primary) !important; -webkit-text-fill-color: var(--msb-primary) !important; }
+  .msb-page .msb-sum-detail i, .msb-page .msb-sum-detail strong { -webkit-print-color-adjust: exact !important; }
+
+  .msb-frame {
+    margin: 4px;
+  }
+
+  .msb-perf-fill {
+    stroke: var(--msb-green) !important;
+  }
+
+  .msb-perf-bg {
+    stroke: #E5E7EB !important;
+  }
+}
+

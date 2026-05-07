@@ -577,22 +577,11 @@ async function init() {
                 }
             }
             if (pageId === 'tutorial-marksheet') {
-                // Tutorial marksheet page - populate dropdowns
-                const { populateTutorialExamNameDropdown } = await import('./js/modules/tutorialExamConfigManager.js');
-                const tutMsClass = document.getElementById('tutMsClass');
-                const tutMsSession = document.getElementById('tutMsSession');
-                const tutMsExam = document.getElementById('tutMsExamName');
-                
-                const updateTutMsExams = async () => {
-                    const cls = tutMsClass?.value;
-                    const sess = tutMsSession?.value;
-                    if (cls && sess) {
-                        await populateTutorialExamNameDropdown(tutMsExam, cls, sess);
-                    }
-                };
-                
-                tutMsClass?.addEventListener('change', updateTutMsExams);
-                tutMsSession?.addEventListener('change', updateTutMsExams);
+                const { initTutorialMarksheetReport } = await import('./js/modules/tutorialMarksheetReportManager.js');
+                if (!initializedModules.has('tutorial-marksheet')) {
+                    initTutorialMarksheetReport();
+                    initializedModules.add('tutorial-marksheet');
+                }
             }
         });
 

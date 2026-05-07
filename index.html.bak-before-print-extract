@@ -15,9 +15,6 @@
     rel="stylesheet">
 
   <link rel="stylesheet" href="./src/styles/main.css" />
-  <link rel="stylesheet" href="./src/styles/print.css" />
-  <link rel="stylesheet" href="./src/styles/tutorial-report.css" />
-  <link rel="stylesheet" href="./src/styles/tutorial-report-print.css" />
 
 
   <title>এডটেক অটোমাটা প্রো | Automation</title>
@@ -5307,65 +5304,17 @@
               <option value="all">সকল গ্রুপ</option>
             </select>
           </div>
-          <div class="selector-group">
-            <label>শিক্ষার্থী</label>
-            <select id="tutMsStudent" class="form-control">
-              <option value="all">সকল শিক্ষার্থী</option>
-            </select>
-          </div>
           <button id="tutMsGenerateBtn" class="dm-btn dm-save" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none;">
-            <i class="fas fa-file-alt"></i> <span class="dm-btn-text">রিপোর্ট তৈরি</span>
+            <i class="fas fa-file-alt"></i> <span class="dm-btn-text">রিপোর্ট কার্ড তৈরি</span>
           </button>
         </div>
-        
-        <!-- Tutorial Marksheet Preview Wrapper -->
-        <div class="marksheet-preview-wrapper" id="tutMsPreviewWrapper" style="display:none; margin-top: 15px;">
-          <div class="tr-preview-controls">
-            <div class="tr-ctrl-group">
-              <span class="tr-ctrl-label"><i class="fas fa-search-plus"></i> জুম</span>
-              <input type="range" id="tutMsZoom" class="tr-zoom-slider" min="0.4" max="1.5" step="0.05" value="1.0">
-              <span id="tutMsZoomLevel" class="tr-zoom-level">100%</span>
+        <div class="marksheet-preview-wrapper">
+          <div id="tutMsPreview" class="marksheet-preview-area">
+            <div class="empty-state-msg">
+              <i class="fas fa-clipboard-check" style="font-size: 2.5rem; opacity: 0.25; color: #f59e0b;"></i>
+              <p style="margin-top: 12px;">টিউটোরিয়াল রিপোর্ট কার্ড দেখতে শ্রেণি, সেশন ও পরীক্ষা নির্বাচন করে "রিপোর্ট কার্ড তৈরি" বাটনে ক্লিক করুন।</p>
+              <p style="font-size: 0.8rem; color: #999; margin-top: 4px;">(বিস্তারিত রিপোর্ট কার্ড ফিচার শীঘ্রই আসছে)</p>
             </div>
-            <div class="tr-ctrl-group" style="gap: 10px;">
-              <button id="tutMsViewSettingsBtn" class="dm-btn dm-report" style="padding: 6px 12px; font-size: 0.85rem;" title="বিষয় নির্বাচন">
-                <i class="fas fa-sliders-h"></i> <span class="dm-btn-text">ভিউ সেটিংস</span>
-              </button>
-              <button id="tutMsResetBtn" class="dm-btn dm-report" style="padding: 6px 12px; font-size: 0.85rem;">
-                <i class="fas fa-sync-alt"></i> রিসেট
-              </button>
-              <button id="tutMsPrintBtn" class="dm-btn dm-save" style="padding: 6px 12px; font-size: 0.85rem; background: var(--primary);">
-                <i class="fas fa-print"></i> প্রিন্ট রিপোর্ট
-              </button>
-            </div>
-          </div>
-          <!-- Subject View Settings Sidebar -->
-          <div id="tutMsViewSettings" class="tr-view-settings-panel" style="display:none;">
-            <div class="tr-vs-header">
-              <h4><i class="fas fa-filter"></i> বিষয় ফিল্টার</h4>
-              <button id="tutMsViewSettingsClose" class="tr-vs-close" title="বন্ধ করুন"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="tr-vs-actions">
-              <button id="tutMsSelectAll" class="tr-vs-action-btn"><i class="fas fa-check-double"></i> সবগুলো</button>
-              <button id="tutMsDeselectAll" class="tr-vs-action-btn"><i class="fas fa-times-circle"></i> বাদ দিন</button>
-            </div>
-            <div id="tutMsSubjectList" class="tr-vs-list">
-              <!-- Subject checkboxes will be populated by JS -->
-            </div>
-            <div class="tr-vs-footer">
-              <button id="tutMsApplyFilter" class="dm-btn dm-save" style="width:100%; padding: 8px; font-size: 0.85rem; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; border-radius: 6px;">
-                <i class="fas fa-check"></i> প্রয়োগ করুন
-              </button>
-            </div>
-          </div>
-          <div id="tutMsPreview" class="tr-preview-area">
-          </div>
-        </div>
-        
-        <!-- Empty State -->
-        <div id="tutMsEmptyState" style="min-height: 250px; display: flex; align-items: center; justify-content: center; background: var(--card-bg, #fff); border-radius: 8px; border: 1px solid var(--border-color, #eee); margin-top: 15px; box-shadow: var(--shadow-sm);">
-          <div class="empty-state-msg">
-            <i class="fas fa-clipboard-check" style="font-size: 2.5rem; opacity: 0.25; color: #f59e0b; margin-bottom: 15px; display: block; text-align: center;"></i>
-            <p style="margin: 0; color: var(--text-color);">টিউটোরিয়াল রিপোর্ট দেখতে শ্রেণি, সেশন ও পরীক্ষা নির্বাচন করে "রিপোর্ট তৈরি" বাটনে ক্লিক করুন।</p>
           </div>
         </div>
       </div>

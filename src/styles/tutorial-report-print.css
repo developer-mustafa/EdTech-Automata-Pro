@@ -1,0 +1,262 @@
+/* ============================================================
+   TUTORIAL MARKSHEET REPORT — Print-Only CSS
+   A4 Landscape — Single-page fit for 7-15 subjects
+   ============================================================ */
+
+@media print {
+
+  /* Page Setup */
+  @page {
+    size: A4 landscape;
+    margin: 0mm;
+  }
+
+  /* Global */
+  body.tr-printing {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body.tr-printing * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide non-report elements */
+  body.tr-printing .app-page:not(#tutorialMarksheetPage),
+  body.tr-printing #loadingOverlay,
+  body.tr-printing #msCompactProgress,
+  body.tr-printing #appHeader,
+  body.tr-printing #pageNavTabs,
+  body.tr-printing #appFooter,
+  body.tr-printing #inlineSearchPanel,
+  body.tr-printing .notification-toast,
+  body.tr-printing .modal,
+  body.tr-printing .modal-backdrop,
+  body.tr-printing .page-nav-tabs,
+  body.tr-printing #tutorialMarksheetPage .card-header,
+  body.tr-printing #tutorialMarksheetPage .result-entry-selectors,
+  body.tr-printing .tr-preview-controls,
+  body.tr-printing #tutMsEmptyState,
+  body.tr-printing .page-hidden {
+    display: none !important;
+  }
+
+  /* Show tutorial page */
+  body.tr-printing #tutorialMarksheetPage {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Zero out card wrapper */
+  body.tr-printing #tutorialMarksheetPage > .card {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-top: none !important;
+    box-shadow: none !important;
+    background: none !important;
+  }
+
+  /* Zero out preview wrappers */
+  body.tr-printing #tutMsPreviewWrapper {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.tr-printing #tutMsPreview {
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+  }
+
+  /* ============================================================
+     THE REPORT PAGE
+     - 100% width fills the printable area horizontally
+     - 100vh fills the printable area vertically
+     - NO page-break-after to prevent blank page
+     ============================================================ */
+  body.tr-printing .tut-report-page {
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    padding: 6mm 10mm 5mm 10mm !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #fff !important;
+    page-break-inside: avoid !important;
+    /* NO page-break-after — this prevents the blank 2nd page */
+  }
+
+  /* ---- HEADER ---- */
+  body.tr-printing .tr-header {
+    flex-shrink: 0 !important;
+    margin-bottom: 5px !important;
+    padding-bottom: 4px !important;
+  }
+
+  body.tr-printing .tr-college-logo {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  body.tr-printing .tr-college-name { font-size: 0.78rem !important; }
+  body.tr-printing .tr-college-address { font-size: 0.5rem !important; }
+  body.tr-printing .tr-college-meta { font-size: 0.48rem !important; }
+  body.tr-printing .tr-report-title { font-size: 0.85rem !important; }
+
+  body.tr-printing .tr-month-badge {
+    font-size: 0.52rem !important;
+    padding: 2px 12px !important;
+    margin-top: 2px !important;
+  }
+
+  body.tr-printing .tr-qr-code {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  body.tr-printing .tr-student-info {
+    gap: 2px 8px !important;
+    padding: 4px 8px !important;
+    font-size: 0.5rem !important;
+  }
+
+  /* ---- KPI ROW ---- */
+  body.tr-printing .tr-kpi-row {
+    flex-shrink: 0 !important;
+    margin-bottom: 4px !important;
+    gap: 4px !important;
+  }
+
+  body.tr-printing .tr-kpi-card,
+  body.tr-printing .tr-kpi-compare {
+    padding: 3px 6px !important;
+  }
+
+  body.tr-printing .tr-kpi-icon {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 0.55rem !important;
+  }
+
+  body.tr-printing .tr-kpi-value { font-size: 0.8rem !important; line-height: 1.15 !important; }
+  body.tr-printing .tr-kpi-title { font-size: 0.44rem !important; }
+  body.tr-printing .tr-kpi-sub { font-size: 0.46rem !important; }
+  body.tr-printing .tr-compare-marks { font-size: 0.72rem !important; }
+  body.tr-printing .tr-compare-month { font-size: 0.44rem !important; }
+  body.tr-printing .tr-compare-pct { font-size: 0.46rem !important; }
+
+  body.tr-printing .tr-compare-arrow {
+    font-size: 0.8rem !important;
+    animation: none !important;
+  }
+
+  /* ---- MAIN CONTENT (Chart + Table) — fills remaining space ---- */
+  body.tr-printing .tr-main-content {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    gap: 5px !important;
+    margin-bottom: 3px !important;
+  }
+
+  body.tr-printing .tr-chart-section,
+  body.tr-printing .tr-table-section {
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 4px 6px !important;
+  }
+
+  body.tr-printing .tr-section-title {
+    font-size: 0.55rem !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 2px !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.tr-printing .tr-chart-container {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.tr-printing .tr-chart-legend {
+    font-size: 0.46rem !important;
+    margin-top: 2px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ---- TABLE — readable for 7 subjects, compact for 15 ---- */
+  body.tr-printing .tr-subject-table th {
+    padding: 2px 4px !important;
+    font-size: 0.5rem !important;
+  }
+
+  body.tr-printing .tr-subject-table thead .tr-th-group {
+    padding: 1.5px 4px !important;
+    font-size: 0.46rem !important;
+  }
+
+  body.tr-printing .tr-subject-table tbody td {
+    padding: 2px 4px !important;
+    font-size: 0.5rem !important;
+    line-height: 1.3 !important;
+  }
+
+  body.tr-printing .tr-subject-table tfoot td {
+    padding: 2.5px 4px !important;
+    font-size: 0.52rem !important;
+  }
+
+  /* ---- FOOTER ---- */
+  body.tr-printing .tr-footer {
+    flex-shrink: 0 !important;
+    padding-top: 3px !important;
+    font-size: 0.42rem !important;
+    margin-top: auto !important;
+  }
+
+  body.tr-printing .tr-grade-chip {
+    padding: 1px 3px !important;
+    font-size: 0.4rem !important;
+  }
+
+  body.tr-printing .tr-grade-legend-title { font-size: 0.42rem !important; }
+  body.tr-printing .tr-footer-center { font-size: 0.42rem !important; }
+  body.tr-printing .tr-footer-brand { font-size: 0.42rem !important; }
+
+  /* ---- Color Printing ---- */
+  body.tr-printing .tr-kpi-card,
+  body.tr-printing .tr-kpi-icon,
+  body.tr-printing .tr-kpi-compare,
+  body.tr-printing .tr-compare-side,
+  body.tr-printing .tr-grade-chip,
+  body.tr-printing .tr-month-badge,
+  body.tr-printing .tr-subject-table thead th,
+  body.tr-printing .tr-subject-table tfoot td,
+  body.tr-printing .tr-subject-table tbody tr:nth-child(even),
+  body.tr-printing .tr-col-current,
+  body.tr-printing .tr-student-info,
+  body.tr-printing .tr-chart-section,
+  body.tr-printing .tr-table-section,
+  body.tr-printing .tr-header,
+  body.tr-printing .tr-kpi-card::before,
+  body.tr-printing svg,
+  body.tr-printing .tr-qr-code canvas {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
